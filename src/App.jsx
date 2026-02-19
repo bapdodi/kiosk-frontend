@@ -1,0 +1,432 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import AdminLayout from './components/admin/AdminLayout';
+import CategoryManagement from './components/admin/CategoryManagement';
+import OrderManagement from './components/admin/OrderManagement';
+import ProductForm from './components/admin/ProductForm';
+import ProductManagement from './components/admin/ProductManagement';
+import Cart from './components/Cart';
+import CategoryNav from './components/CategoryNav';
+import LoginPage from './components/LoginPage';
+import OptionModal from './components/OptionModal';
+import ProductCard from './components/ProductCard';
+
+// ... (KioskView & ProtectedRoute components)
+
+function App() {
+  const [products, setProducts] = useState([]);
+  const [mainCategories, setMainCategories] = useState([]);
+  const [subCategories, setSubCategories] = useState({});
+  const [detailCategories, setDetailCategories] = useState({});
+  const [orders, setOrders] = useState([]);
+
+  const [activeMainCat, setActiveMainCat] = useState(null);
+  const [activeSubCat, setActiveSubCat] = useState(null);
+  const [activeDetailCat, setActiveDetailCat] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [cart, setCart] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/check');
+        if (res.ok) setIsAuthenticated(true);
+      } catch (e) {
+        console.error('Auth check failed');
+      }
+    };
+
+    const fetchData = async () => {
+      try {
+        const [prodRes, catRes] = await Promise.all([
+          fetch('/api/products'),
+          fetch('/api/categories')
+        ]);
+        const prodData = await prodRes.json();
+        const catData = await catRes.json();
+
+        setProducts(prodData);
+
+        const mainArr = catData.filter(c => c.level === 'main');
+        const subObj = {};
+        const detailObj = {};
+
+        catData.filter(c => c.level === 'sub').forEach(c => {
+          if (!subObj[c.parentId]) subObj[c.parentId] = [];
+          subObj[c.parentId].push(c);
+        });
+
+        catData.filter(c => c.level === 'detail').forEach(c => {
+          if (!detailObj[c.parentId]) detailObj[c.parentId] = [];
+          detailObj[c.parentId].push(c);
+        });
+
+        setMainCategories(mainArr);
+        setSubCategories(subObj);
+        setDetailCategories(detailObj);
+
+        if (mainArr.length > 0) {
+          const firstMainId = mainArr[0].id;
+          setActiveMainCat(firstMainId);
+          const firstSubId = subObj[firstMainId]?.[0]?.id;
+          if (firstSubId) {
+            setActiveSubCat(firstSubId);
+            setActiveDetailCat(detailObj[firstSubId]?.[0]?.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth().then(fetchData);
+  }, []);
+
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '2rem' }}>로딩 중...</div>;
+  window.isAuthenticated = isAuthenticated;
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={
+          <KioskView
+            products={products}
+            mainCategories={mainCategories}
+            subCategories={subCategories}
+            detailCategories={detailCategories}
+            cart={cart}
+            setCart={setCart}
+            orders={orders}
+            setOrders={setOrders}
+            activeMainCat={activeMainCat}
+            setActiveMainCat={setActiveMainCat}
+            activeSubCat={activeSubCat}
+            setActiveSubCat={setActiveSubCat}
+            activeDetailCat={activeDetailCat}
+            setActiveDetailCat={setActiveDetailCat}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+          />
+        } />
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Admin Routes with Nested Routing */}
+        <Route path="/admin" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <AdminLayout
+              products={products}
+              setProducts={setProducts}
+              mainCategories={mainCategories}
+              setMainCategories={setMainCategories}
+              subCategories={subCategories}
+              setSubCategories={setSubCategories}
+              detailCategories={detailCategories}
+              setDetailCategories={setDetailCategories}
+              orders={orders}
+              setOrders={setOrders}
+            />
+          </ProtectedRoute>
+        }>
+          <Route index element={<Navigate to="products" replace />} />
+          <Route path="products" element={<ProductManagement />} />
+          <Route path="products/new" element={<ProductForm />} />
+          <Route path="products/edit/:id" element={<ProductForm />} />
+          <Route path="categories" element={<CategoryManagement />} />
+          <Route path="orders" element={<OrderManagement />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}
+//...
+function KioskView({
+  products,
+  mainCategories,
+  subCategories,
+  detailCategories,
+  cart,
+  setCart,
+  orders,
+  setOrders,
+  activeMainCat,
+  setActiveMainCat,
+  activeSubCat,
+  setActiveSubCat,
+  activeDetailCat,
+  setActiveDetailCat,
+  searchQuery,
+  setSearchQuery
+}) {
+  const navigate = useNavigate();
+  const [selectingProduct, setSelectingProduct] = useState(null);
+  const [optionQuantities, setOptionQuantities] = useState({});
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isNavVisible, setIsNavVisible] = useState(true);
+  const [orderModal, setOrderModal] = useState({ isOpen: false, name: '' });
+  const lastScrollTop = useRef(0);
+
+  const handleScroll = (e) => {
+    const currentScrollTop = e.currentTarget.scrollTop;
+    const diff = currentScrollTop - lastScrollTop.current;
+
+    // 1. 최상단 근처에서는 무조건 표시
+    if (currentScrollTop < 10) {
+      if (!isNavVisible) setIsNavVisible(true);
+      lastScrollTop.current = currentScrollTop;
+      return;
+    }
+
+    // 2. 급격한 변화나 미세한 변화(30px 미만)는 무시하여 깜빡임 방지
+    if (Math.abs(diff) < 30) return;
+
+    if (diff > 0 && isNavVisible && currentScrollTop > 150) {
+      // 내려갈 때: 150px 이상 내려온 상태에서만 숨김
+      setIsNavVisible(false);
+    } else if (diff < 0 && !isNavVisible) {
+      // 올라갈 때: 즉시 표시
+      setIsNavVisible(true);
+    }
+
+    lastScrollTop.current = currentScrollTop;
+  };
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchMain = product.mainCategory === activeMainCat;
+      const matchSub = product.subCategory === activeSubCat;
+      const matchDetail = !activeDetailCat || product.detailCategory === activeDetailCat || product.detailCategory === 'all';
+      const searchLower = searchQuery.toLowerCase();
+      const matchSearch =
+        product.name.toLowerCase().includes(searchLower) ||
+        product.hashtags.some(tag => tag.toLowerCase().includes(searchLower));
+      return matchMain && matchSub && matchDetail && matchSearch;
+    });
+  }, [activeMainCat, activeSubCat, activeDetailCat, searchQuery, products]);
+
+  const handleMainCatChange = (id) => {
+    setActiveMainCat(id);
+    const firstSub = subCategories[id]?.[0]?.id;
+    setActiveSubCat(firstSub);
+    setActiveDetailCat(firstSub ? detailCategories[firstSub]?.[0]?.id : null);
+    setIsNavVisible(true); // 카테고리 변경 시 네비게이션 무조건 노출
+  };
+
+  const handleSubCatChange = (id) => {
+    setActiveSubCat(id);
+    setActiveDetailCat(detailCategories[id]?.[0]?.id);
+    setIsNavVisible(true); // 카테고리 변경 시 네비게이션 무조건 노출
+  };
+
+  const handleAddToCartClick = (product) => {
+    setSelectingProduct(product);
+    setOptionQuantities({});
+  };
+
+  const updateQty = (comboId, delta) => {
+    setOptionQuantities(prev => ({
+      ...prev,
+      [comboId]: Math.max(0, (prev[comboId] || 0) + delta)
+    }));
+  };
+
+  const confirmAddToCart = (product, combinations, quantities) => {
+    const newItems = [];
+    Object.entries(quantities).forEach(([comboId, qty]) => {
+      if (qty > 0) {
+        const combo = combinations.find(c => c.id === comboId);
+        const finalPrice = product.price + (combo ? (combo.totalExtra || combo.price || 0) : 0);
+
+        for (let i = 0; i < qty; i++) {
+          newItems.push({
+            ...product,
+            selectedOption: combo ? (combo.displayName || combo.name) : null,
+            finalPrice: finalPrice,
+            cartId: Date.now() + Math.random()
+          });
+        }
+      }
+    });
+
+    if (newItems.length > 0) {
+      setCart([...cart, ...newItems]);
+    }
+    setSelectingProduct(null);
+    setOptionQuantities({});
+  };
+
+  const removeFromCart = (cartId) => {
+    setCart(cart.filter(item => item.cartId !== cartId));
+  };
+
+  const handleCheckout = () => {
+    if (cart.length === 0) return alert('장바구니가 비어있습니다.');
+    setIsCartOpen(false);
+    setOrderModal({ isOpen: true, name: '' });
+  };
+
+  const submitOrder = async () => {
+    if (!orderModal.name.trim()) return alert('주문자 성함을 입력해주세요.');
+
+    const customerName = orderModal.name;
+
+    const orderData = {
+      customerName,
+      items: cart.map(item => ({
+        name: item.name,
+        selectedOption: item.selectedOption,
+        finalPrice: item.finalPrice
+      })),
+      totalAmount: cart.reduce((sum, item) => sum + item.finalPrice, 0),
+      status: 'pending'
+    };
+
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+      });
+
+      if (response.ok) {
+        const savedOrder = await response.json();
+        setOrders([...orders, savedOrder]);
+        alert(`${customerName}님, 주문이 완료되었습니다. 이용해주셔서 감사합니다!`);
+        setCart([]);
+        setOrderModal({ isOpen: false, name: '' });
+      } else {
+        alert('주문 처리 중 오류가 발생했습니다.');
+      }
+    } catch (e) {
+      alert('서버 연결 오류가 발생했습니다.');
+    }
+  };
+
+  const totalPrice = cart.reduce((sum, item) => sum + item.finalPrice, 0);
+
+  return (
+    <div className="kiosk-container">
+      <div className={`nav-wrapper ${isNavVisible ? '' : 'hidden'}`}>
+        <CategoryNav
+          mainCategories={mainCategories}
+          subCategories={subCategories}
+          detailCategories={detailCategories}
+          activeMainCat={activeMainCat}
+          activeSubCat={activeSubCat}
+          activeDetailCat={activeDetailCat}
+          onMainCatChange={handleMainCatChange}
+          onSubCatChange={handleSubCatChange}
+          onDetailCatChange={setActiveDetailCat}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
+      </div>
+
+      <div className="content-area">
+        <main className="kiosk-main" onScroll={handleScroll}>
+          {filteredProducts.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onAddClick={handleAddToCartClick}
+              onTagClick={setSearchQuery}
+            />
+          ))}
+          {filteredProducts.length === 0 && (
+            <div className="empty-cart-message" style={{ textAlign: 'center', gridColumn: '1/-1', padding: '50px' }}>
+              검색 결과가 없습니다.
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Floating Cart Button */}
+      <div className="floating-cart-btn" onClick={() => setIsCartOpen(true)}>
+        <span className="cart-icon">🛒</span>
+        <span className="cart-count">{cart.length}</span>
+        <span className="cart-total">₩{totalPrice.toLocaleString()}</span>
+      </div>
+
+      {/* Cart Modal */}
+      {isCartOpen && (
+        <div className="modal-overlay" onClick={() => setIsCartOpen(false)}>
+          <div className="cart-modal-content" onClick={(e) => e.stopPropagation()}>
+            <Cart
+              items={cart}
+              onRemove={removeFromCart}
+              onCheckout={handleCheckout}
+            />
+            <button className="modal-close-btn" onClick={() => setIsCartOpen(false)}>×</button>
+          </div>
+        </div>
+      )}
+
+
+
+      {/* Order Name Input Modal */}
+      {orderModal.isOpen && (
+        <div className="modal-overlay" style={{ zIndex: 5000 }}>
+          <div className="modal-content" style={{ maxWidth: '400px', padding: '0', borderRadius: '24px' }}>
+            <div style={{ padding: '25px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
+              <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.4rem' }}>주문 확인</h3>
+              <p style={{ color: '#64748b', marginTop: '8px', fontSize: '0.95rem' }}>주문하시는 분의 성함을 입력해주세요.</p>
+            </div>
+            <div style={{ padding: '30px' }}>
+              <input
+                autoFocus
+                className="admin-input-small"
+                placeholder="성함 입력 (예: 홍길동)"
+                value={orderModal.name}
+                onChange={(e) => setOrderModal({ ...orderModal, name: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && submitOrder()}
+                style={{
+                  padding: '18px',
+                  fontSize: '1.1rem',
+                  textAlign: 'center',
+                  borderRadius: '16px',
+                  marginBottom: '20px',
+                  border: '2px solid #e2e8f0'
+                }}
+              />
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  className="apply-btn"
+                  style={{ flex: 2, padding: '18px', fontSize: '1.1rem', borderRadius: '16px' }}
+                  onClick={submitOrder}
+                >
+                  주문 완료하기
+                </button>
+                <button
+                  className="action-btn"
+                  style={{ flex: 1, padding: '18px', borderRadius: '16px', height: 'auto' }}
+                  onClick={() => setOrderModal({ ...orderModal, isOpen: false })}
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <OptionModal
+        product={selectingProduct}
+        quantities={optionQuantities}
+        onUpdateQty={updateQty}
+        onConfirm={confirmAddToCart}
+        onCancel={() => setSelectingProduct(null)}
+      />
+    </div>
+  );
+}
+const ProtectedRoute = ({ children, isAuthenticated }) => {
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return children;
+};
+
+
+
+export default App;
