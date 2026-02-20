@@ -5,7 +5,12 @@ import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 const ProductForm = () => {
     const navigate = useNavigate();
     const { id } = useParams();
-    const { products, setProducts, mainCategories, subCategories, detailCategories } = useOutletContext();
+    const {
+        products, setProducts,
+        mainCategories, setMainCategories,
+        subCategories, setSubCategories,
+        detailCategories, setDetailCategories
+    } = useOutletContext();
     const isEditMode = Boolean(id);
 
     const [productData, setProductData] = useState({
@@ -88,6 +93,90 @@ const ProductForm = () => {
         }));
     };
 
+    const addMainCategory = async () => {
+        const name = prompt('새 대분류 이름을 입력하세요:');
+        if (!name) return;
+        const id = 'cat_' + Date.now();
+        const catData = { id, name, level: 'main' };
+        try {
+            const res = await fetch('/api/categories/admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(catData)
+            });
+            if (res.ok) {
+                const saved = await res.json();
+                setMainCategories([...mainCategories, saved]);
+                setSubCategories({ ...subCategories, [saved.id]: [] });
+                // 새로 생성된 카테고리 자동 선택
+                setProductData(prev => ({
+                    ...prev,
+                    mainCategory: saved.id,
+                    subCategory: '',
+                    detailCategory: ''
+                }));
+            }
+        } catch (err) { alert('오류 발생'); }
+    };
+
+    const addSubCategory = async () => {
+        if (!productData.mainCategory) return alert('대분류를 먼저 선택해주세요.');
+        const name = prompt('새 중분류 이름을 입력하세요:');
+        if (!name) return;
+        const id = 'sub_' + Date.now();
+        const parentId = productData.mainCategory;
+        const catData = { id, name, parentId, level: 'sub' };
+        try {
+            const res = await fetch('/api/categories/admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(catData)
+            });
+            if (res.ok) {
+                const saved = await res.json();
+                setSubCategories({
+                    ...subCategories,
+                    [parentId]: [...(subCategories[parentId] || []), saved]
+                });
+                setDetailCategories({ ...detailCategories, [saved.id]: [] });
+                // 새로 생성된 중분류 자동 선택
+                setProductData(prev => ({
+                    ...prev,
+                    subCategory: saved.id,
+                    detailCategory: ''
+                }));
+            }
+        } catch (err) { alert('오류 발생'); }
+    };
+
+    const addDetailCategory = async () => {
+        if (!productData.subCategory) return alert('중분류를 먼저 선택해주세요.');
+        const name = prompt('새 소분류 이름을 입력하세요:');
+        if (!name) return;
+        const id = 'det_' + Date.now();
+        const parentId = productData.subCategory;
+        const catData = { id, name, parentId, level: 'detail' };
+        try {
+            const res = await fetch('/api/categories/admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(catData)
+            });
+            if (res.ok) {
+                const saved = await res.json();
+                setDetailCategories({
+                    ...detailCategories,
+                    [parentId]: [...(detailCategories[parentId] || []), saved]
+                });
+                // 새로 생성된 소분류 자동 선택
+                setProductData(prev => ({
+                    ...prev,
+                    detailCategory: saved.id
+                }));
+            }
+        } catch (err) { alert('오류 발생'); }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
@@ -156,7 +245,10 @@ const ProductForm = () => {
                         <div className="section-title">📁 카테고리 분류</div>
                         <div className="section-form compact-row">
                             <div className="form-item">
-                                <label>대분류</label>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <label>대분류</label>
+                                    <button type="button" onClick={addMainCategory} className="mini-add-btn">＋ 추가</button>
+                                </div>
                                 <select
                                     className="form-select"
                                     value={productData.mainCategory}
@@ -175,7 +267,10 @@ const ProductForm = () => {
                                 </select>
                             </div>
                             <div className="form-item">
-                                <label>중분류</label>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <label>중분류</label>
+                                    <button type="button" onClick={addSubCategory} className="mini-add-btn">＋ 추가</button>
+                                </div>
                                 <select
                                     className="form-select"
                                     value={productData.subCategory}
@@ -192,7 +287,10 @@ const ProductForm = () => {
                                 </select>
                             </div>
                             <div className="form-item">
-                                <label>소분류</label>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <label>소분류</label>
+                                    <button type="button" onClick={addDetailCategory} className="mini-add-btn">＋ 추가</button>
+                                </div>
                                 <select
                                     className="form-select"
                                     value={productData.detailCategory}
@@ -529,6 +627,16 @@ const ProductForm = () => {
                 .option-group-wrapper { display: flex; flex-direction: column; gap: 10px; padding: 15px; background: #f8fafc; border-radius: 10px; }
                 .option-group-item { display: flex; gap: 10px; align-items: center; }
                 .icon-btn-del { width: 32px; height: 32px; border-radius: 6px; border: none; background: #fee2e2; color: #ef4444; cursor: pointer; }
+                .mini-add-btn { 
+                    padding: 2px 8px; 
+                    font-size: 0.75rem; 
+                    border-radius: 4px; 
+                    background: #f1f5f9; 
+                    color: #64748b; 
+                    border: none; 
+                    cursor: pointer; 
+                }
+                .mini-add-btn:hover { background: #e2e8f0; color: #475569; }
 
                 .combo-table-wrap { margin-top: 15px; border-radius: 10px; overflow: hidden; border: 1px solid #f1f5f9; }
                 .admin-form-table { width: 100%; border-collapse: collapse; }
