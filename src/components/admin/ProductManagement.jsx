@@ -46,6 +46,21 @@ const ProductManagement = () => {
         }
     };
 
+    const syncWithErp = async () => {
+        if (!window.confirm('ERP 시스템의 최신 상품 정보를 가져오시겠습니까?')) return;
+        try {
+            const res = await fetch('/api/sync/erp', { method: 'POST' });
+            if (res.ok) {
+                alert('동기화가 완료되었습니다. 페이지를 새로고침합니다.');
+                window.location.reload();
+            } else {
+                alert('동기화 실패: ' + (await res.text()));
+            }
+        } catch (err) {
+            alert('네트워크 오류');
+        }
+    };
+
     const deleteSelectedProducts = async () => {
         if (selectedProducts.length === 0) return alert('삭제할 상품을 선택해주세요.');
         if (!window.confirm(`선택한 ${selectedProducts.length}개의 상품을 정말 삭제하시겠습니까?`)) return;
@@ -567,6 +582,9 @@ const ProductManagement = () => {
                         <button className="apply-btn" style={{ background: '#107c41' }} onClick={() => fileInputRef.current.click()}>
                             📊 엑셀 업로드
                         </button>
+                        <button className="apply-btn" style={{ background: '#2563eb' }} onClick={syncWithErp}>
+                            🔄 ERP 상품 동기화
+                        </button>
                         {selectedProducts.length > 0 && (
                             <button className="apply-btn" style={{ background: '#ef4444' }} onClick={deleteSelectedProducts}>
                                 🗑️ 선택 삭제 ({selectedProducts.length})
@@ -746,7 +764,10 @@ const ProductManagement = () => {
                                     )}
                                 </td>
                                 <td>
-                                    <div style={{ fontWeight: 700, marginBottom: '6px' }}>{p.name}</div>
+                                    <div style={{ fontWeight: 700, marginBottom: '6px' }}>
+                                        {p.name}
+                                        {p.erpCode && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#64748b', fontWeight: 400 }}>[{p.erpCode}]</span>}
+                                    </div>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                                         {p.hashtags.map(tag => <span key={tag} className="tag-badge">{tag}</span>)}
                                     </div>

@@ -317,6 +317,15 @@ const ProductForm = () => {
                                 />
                             </div>
                             <div className="form-item">
+                                <label>ERP 상품 코드</label>
+                                <input
+                                    className="form-input"
+                                    placeholder="ERP 시스템의 상품 코드를 입력하세요 (예: 1001)"
+                                    value={productData.erpCode || ''}
+                                    onChange={(e) => setProductData({ ...productData, erpCode: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-item">
                                 <label>상품 설명</label>
                                 <textarea
                                     className="form-textarea"

@@ -279,6 +279,8 @@ function KioskView({
       customerName,
       items: cart.map(item => ({
         name: item.name,
+        erpCode: item.erpCode, // Include ERP code for backend sync
+        quantity: 1,           // Default to 1 for flat cart items
         selectedOption: item.selectedOption,
         finalPrice: item.finalPrice
       })),
