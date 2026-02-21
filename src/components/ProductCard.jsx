@@ -1,3 +1,5 @@
+import { getImageUrl } from '../utils/imageUtils';
+
 const ProductCard = ({ product, onAddClick, onTagClick }) => {
     const FALLBACK_IMAGE = '/no-image.png';
 
@@ -7,7 +9,7 @@ const ProductCard = ({ product, onAddClick, onTagClick }) => {
                 <div className="no-image-placeholder">이미지 준비 중</div>
             ) : (
                 <img
-                    src={product.images[0]}
+                    src={getImageUrl(product.images[0])}
                     alt={product.name}
                     className="product-image"
                     onError={(e) => {

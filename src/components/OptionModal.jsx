@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getImageUrl } from '../utils/imageUtils';
 
 const OptionModal = ({ product, onConfirm, onCancel }) => {
     if (!product) return null;
@@ -106,7 +107,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 <div className="no-image-placeholder">이미지 준비 중</div>
                             ) : (
                                 <img
-                                    src={product.images[0]}
+                                    src={getImageUrl(product.images[0])}
                                     alt={product.name}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                     onError={(e) => {

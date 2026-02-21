@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getImageUrl } from '../utils/imageUtils';
 
 const AdminPage = ({
     products,
@@ -376,7 +377,7 @@ const AdminPage = ({
                                 <td>
                                     {p.image && p.image !== '/no-image.png' ? (
                                         <img
-                                            src={p.image}
+                                            src={getImageUrl(p.image)}
                                             className="product-thumb"
                                             onError={(e) => {
                                                 e.target.style.display = 'none';

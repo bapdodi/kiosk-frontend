@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import XLSX from 'xlsx-js-style';
+import { getImageUrl } from '../../utils/imageUtils';
 
 const ProductManagement = () => {
     const navigate = useNavigate();
@@ -724,7 +725,7 @@ const ProductManagement = () => {
                                 <td>
                                     {p.images && p.images.length > 0 ? (
                                         <img
-                                            src={p.images[0]}
+                                            src={getImageUrl(p.images[0])}
                                             className="product-thumb"
                                             onError={(e) => {
                                                 e.target.style.display = 'none';

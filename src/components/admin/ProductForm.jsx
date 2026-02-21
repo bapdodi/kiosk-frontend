@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
+import { getImageUrl } from '../../utils/imageUtils';
 
 const ProductForm = () => {
     const navigate = useNavigate();
@@ -366,7 +367,7 @@ const ProductForm = () => {
                                     <div className="img-preview-row">
                                         {productData.images.map((url, idx) => (
                                             <div key={idx} className="img-preview-thumb">
-                                                <img src={url} alt="product" />
+                                                <img src={getImageUrl(url)} alt="product" />
                                                 <button type="button" onClick={() => removeImage(idx)} className="img-del-mini">×</button>
                                             </div>
                                         ))}
