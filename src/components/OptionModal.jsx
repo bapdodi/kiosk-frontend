@@ -79,7 +79,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         onConfirm(product, combinations, quantities);
     };
 
-    const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1581094288338-2314dddb7bc3?w=500&auto=format&fit=crop&q=60';
+    const FALLBACK_IMAGE = '/no-image.png';
 
     return (
         <div className="modal-overlay" onClick={onCancel}>
@@ -101,12 +101,24 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                     {/* Top Section: Info & Image */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', background: '#fff' }}>
                         {/* Left: Image */}
-                        <div style={{ position: 'relative', height: '100%', minHeight: '300px' }}>
-                            <img
-                                src={product.images && product.images.length > 0 ? product.images[0] : FALLBACK_IMAGE}
-                                alt={product.name}
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
+                        <div style={{ position: 'relative', height: '100%', minHeight: '300px', display: 'flex' }}>
+                            {(!product.images || product.images.length === 0) ? (
+                                <div className="no-image-placeholder">이미지 준비 중</div>
+                            ) : (
+                                <img
+                                    src={product.images[0]}
+                                    alt={product.name}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        const parent = e.target.parentNode;
+                                        const placeholder = document.createElement('div');
+                                        placeholder.className = 'no-image-placeholder';
+                                        placeholder.innerText = '이미지 준비 중';
+                                        parent.appendChild(placeholder);
+                                    }}
+                                />
+                            )}
                         </div>
 
                         {/* Right: Text Info */}

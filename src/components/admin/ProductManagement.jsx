@@ -30,7 +30,7 @@ const ProductManagement = () => {
     const fileInputRef = useRef(null);
 
     // eslint-disable-next-line no-unused-vars
-    const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1581094288338-2314dddb7bc3?w=500&auto=format&fit=crop&q=60';
+    const FALLBACK_IMAGE = '/no-image.png';
 
     const deleteProduct = async (id) => {
         if (!window.confirm('정말 삭제하시겠습니까?')) return;
@@ -722,13 +722,27 @@ const ProductManagement = () => {
                                     />
                                 </td>
                                 <td>
-                                    <img
-                                        src={p.images && p.images.length > 0 ? p.images[0] : FALLBACK_IMAGE}
-                                        className="product-thumb"
-                                        onError={(e) => {
-                                            if (e.target.src !== FALLBACK_IMAGE) e.target.src = FALLBACK_IMAGE;
-                                        }}
-                                    />
+                                    {p.images && p.images.length > 0 ? (
+                                        <img
+                                            src={p.images[0]}
+                                            className="product-thumb"
+                                            onError={(e) => {
+                                                e.target.style.display = 'none';
+                                                const parent = e.target.parentNode;
+                                                const placeholder = document.createElement('div');
+                                                placeholder.className = 'no-image-placeholder';
+                                                placeholder.style.width = '60px';
+                                                placeholder.style.height = '60px';
+                                                placeholder.style.fontSize = '0.6rem';
+                                                placeholder.innerText = '이미지 준비중';
+                                                parent.appendChild(placeholder);
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="no-image-placeholder" style={{ width: '60px', height: '60px', fontSize: '0.6rem' }}>
+                                            이미지 준비중
+                                        </div>
+                                    )}
                                 </td>
                                 <td>
                                     <div style={{ fontWeight: 700, marginBottom: '6px' }}>{p.name}</div>

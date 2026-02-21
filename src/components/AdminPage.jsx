@@ -25,7 +25,7 @@ const AdminPage = ({
     const [selectedCatId, setSelectedCatId] = useState(null);
     const [selectedOrder, setSelectedOrder] = useState(null);
 
-    const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1581094288338-2314dddb7bc3?w=500&auto=format&fit=crop&q=60';
+    const FALLBACK_IMAGE = '/no-image.png';
 
     const [newProduct, setNewProduct] = useState({
         name: '',
@@ -374,13 +374,27 @@ const AdminPage = ({
                         {filteredProducts.map(p => (
                             <tr key={p.id}>
                                 <td>
-                                    <img
-                                        src={p.image}
-                                        className="product-thumb"
-                                        onError={(e) => {
-                                            if (e.target.src !== FALLBACK_IMAGE) e.target.src = FALLBACK_IMAGE;
-                                        }}
-                                    />
+                                    {p.image && p.image !== '/no-image.png' ? (
+                                        <img
+                                            src={p.image}
+                                            className="product-thumb"
+                                            onError={(e) => {
+                                                e.target.style.display = 'none';
+                                                const parent = e.target.parentNode;
+                                                const placeholder = document.createElement('div');
+                                                placeholder.className = 'no-image-placeholder';
+                                                placeholder.style.width = '60px';
+                                                placeholder.style.height = '60px';
+                                                placeholder.style.fontSize = '0.6rem';
+                                                placeholder.innerText = '이미지 준비중';
+                                                parent.appendChild(placeholder);
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="no-image-placeholder" style={{ width: '60px', height: '60px', fontSize: '0.6rem' }}>
+                                            이미지 준비중
+                                        </div>
+                                    )}
                                 </td>
                                 <td>
                                     <div style={{ fontWeight: 700, marginBottom: '6px' }}>{p.name}</div>

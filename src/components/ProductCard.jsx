@@ -1,18 +1,25 @@
 const ProductCard = ({ product, onAddClick, onTagClick }) => {
-    const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1581094288338-2314dddb7bc3?w=500&auto=format&fit=crop&q=60';
+    const FALLBACK_IMAGE = '/no-image.png';
 
     return (
         <div className="product-card" onClick={() => onAddClick(product)} style={{ cursor: 'pointer' }}>
-            <img
-                src={product.images && product.images.length > 0 ? product.images[0] : FALLBACK_IMAGE}
-                alt={product.name}
-                className="product-image"
-                onError={(e) => {
-                    if (e.target.src !== FALLBACK_IMAGE) {
-                        e.target.src = FALLBACK_IMAGE;
-                    }
-                }}
-            />
+            {(!product.images || product.images.length === 0) ? (
+                <div className="no-image-placeholder">이미지 준비 중</div>
+            ) : (
+                <img
+                    src={product.images[0]}
+                    alt={product.name}
+                    className="product-image"
+                    onError={(e) => {
+                        e.target.style.display = 'none';
+                        const parent = e.target.parentNode;
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'no-image-placeholder';
+                        placeholder.innerText = '이미지 준비 중';
+                        parent.appendChild(placeholder);
+                    }}
+                />
+            )}
             <div className="product-info">
                 <h3 className="product-name">{product.name}</h3>
                 <div style={{ marginBottom: '10px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
