@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import XLSX from 'xlsx-js-style';
 
@@ -22,6 +22,11 @@ const ProductManagement = () => {
     const [bulkSubCat, setBulkSubCat] = useState('');
     const [bulkDetailCat, setBulkDetailCat] = useState('');
 
+    // 선택 상태
+    const [excelSelection, setExcelSelection] = useState([]);
+    const [expandedExcelItems, setExpandedExcelItems] = useState([]);
+    const [selectedProducts, setSelectedProducts] = useState([]);
+
     const fileInputRef = useRef(null);
 
     // eslint-disable-next-line no-unused-vars
@@ -33,7 +38,24 @@ const ProductManagement = () => {
             const res = await fetch(`/api/products/admin/${id}`, { method: 'DELETE' });
             if (res.ok) {
                 setProducts(products.filter(p => p.id !== id));
+                setSelectedProducts(selectedProducts.filter(selId => selId !== id));
             }
+        } catch (err) {
+            alert('삭제 중 오류가 발생했습니다.');
+        }
+    };
+
+    const deleteSelectedProducts = async () => {
+        if (selectedProducts.length === 0) return alert('삭제할 상품을 선택해주세요.');
+        if (!window.confirm(`선택한 ${selectedProducts.length}개의 상품을 정말 삭제하시겠습니까?`)) return;
+
+        try {
+            await Promise.all(selectedProducts.map(id =>
+                fetch(`/api/products/admin/${id}`, { method: 'DELETE' })
+            ));
+            setProducts(products.filter(p => !selectedProducts.includes(p.id)));
+            setSelectedProducts([]);
+            alert('삭제되었습니다.');
         } catch (err) {
             alert('삭제 중 오류가 발생했습니다.');
         }
@@ -105,6 +127,30 @@ const ProductManagement = () => {
         ));
     };
 
+    const handleExcelImageUpload = async (id, file) => {
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setExcelData(prev => prev.map(item =>
+                    item.id === id ? { ...item, images: [...(item.images || []), data.fileUrl] } : item
+                ));
+            }
+        } catch (err) {
+            console.error("Upload failed", err);
+        }
+    };
+
+    const toggleExpandExcelItem = (id) => {
+        setExpandedExcelItems(prev => prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]);
+    };
+
     const addMainCategory = async (itemId) => {
         const name = prompt('새 대분류 이름을 입력하세요:');
         if (!name) return;
@@ -123,6 +169,7 @@ const ProductManagement = () => {
                 if (itemId) {
                     updateExcelItem(itemId, { mainCategory: saved.id, subCategory: '', detailCategory: '' });
                 }
+                return saved;
             }
         } catch (err) { alert('오류 발생'); }
     };
@@ -149,20 +196,31 @@ const ProductManagement = () => {
                 if (itemId) {
                     updateExcelItem(itemId, { subCategory: saved.id, detailCategory: '' });
                 }
+                return saved;
             }
         } catch (err) { alert('오류 발생'); }
     };
 
     const applyBulkCategory = () => {
         if (!bulkMainCat) return alert('일괄 적용할 대분류를 선택해주세요.');
-        if (!window.confirm('모든 항목에 선택한 카테고리를 일괄 적용하시겠습니까?\n(기존 설정은 덮어씌워집니다)')) return;
 
-        setExcelData(prev => prev.map(item => ({
-            ...item,
-            mainCategory: bulkMainCat,
-            subCategory: bulkSubCat || '',
-            detailCategory: bulkDetailCat || ''
-        })));
+        if (excelSelection.length === 0) {
+            if (!window.confirm('선택된 항목이 없습니다. 모든 항목에 선택한 카테고리를 일괄 적용하시겠습니까?\n(기존 설정은 덮어씌워집니다)')) return;
+        } else {
+            if (!window.confirm(`선택한 ${excelSelection.length}개 항목에 카테고리를 일괄 적용하시겠습니까?\n(기존 설정은 덮어씌워집니다)`)) return;
+        }
+
+        setExcelData(prev => prev.map(item => {
+            if (excelSelection.length > 0 && !excelSelection.includes(item.id)) return item;
+
+            return {
+                ...item,
+                mainCategory: bulkMainCat,
+                subCategory: bulkSubCat || '',
+                detailCategory: bulkDetailCat || ''
+            };
+        }));
+
         alert('일괄 적용되었습니다.');
     };
 
@@ -187,6 +245,7 @@ const ProductManagement = () => {
                 if (itemId) {
                     updateExcelItem(itemId, { detailCategory: saved.id });
                 }
+                return saved;
             }
         } catch (err) { alert('오류 발생'); }
     };
@@ -233,7 +292,7 @@ const ProductManagement = () => {
             const rows = data.slice(headerRowIndex + 1);
 
             // 임시 파싱 데이터
-            const tempItems = [];
+            const tempItemsMap = {};
 
             // 기존 카테고리 맵 (이름 -> ID)
             let mainMap = {};
@@ -265,19 +324,34 @@ const ProductManagement = () => {
                 const sName = rowData['중분류'];
                 const dName = rowData['소분류'];
 
-                tempItems.push({
-                    id: `temp-${idx}`,
-                    name,
-                    spec: rowData['규격'] || '',
-                    price: rowData['단가'] || rowData['가격'] || 0,
-                    mainName: mName,
-                    subName: sName,
-                    detailName: dName,
-                    mainCategory: '',
-                    subCategory: '',
-                    detailCategory: ''
-                });
+                let rawPrice = rowData['단가'] || rowData['가격'] || rowData['금액'] || rowData['판매가'];
+                if (rawPrice == null || rawPrice === '') rawPrice = 0;
+                let parsedPrice = typeof rawPrice === 'string' ? rawPrice.replace(/,/g, '') : rawPrice;
+                parsedPrice = parseInt(parsedPrice, 10);
+                if (isNaN(parsedPrice)) parsedPrice = 0;
+
+                const specName = rowData['규격'] || '';
+
+                if (!tempItemsMap[name]) {
+                    tempItemsMap[name] = {
+                        id: `temp-${idx}`,
+                        name,
+                        options: [],
+                        mainName: mName,
+                        subName: sName,
+                        detailName: dName,
+                        mainCategory: '',
+                        subCategory: '',
+                        detailCategory: '',
+                        images: []
+                    };
+                }
+                if (specName || parsedPrice > 0) {
+                    tempItemsMap[name].options.push({ spec: specName, price: parsedPrice });
+                }
             }
+
+            const tempItems = Object.values(tempItemsMap);
 
             // 누락된 카테고리 확인
             const newMains = new Set();
@@ -360,11 +434,19 @@ const ProductManagement = () => {
                 const sId = (mId && subMap[mId]?.[item.subName]) || '';
                 const dId = (sId && detailMap[sId]?.[item.detailName]) || '';
 
+                const validOptions = item.options ? item.options.filter(o => o.spec) : [];
+                let basePrice = item.options && item.options.length > 0 ? item.options[0].price : 0;
+                if (validOptions.length > 0) {
+                    basePrice = Math.min(...validOptions.map(o => o.price));
+                }
+
                 return {
                     id: item.id,
                     name: item.name,
-                    spec: item.spec,
-                    price: item.price,
+                    spec: validOptions.length > 0 ? `${validOptions[0].spec} 등 ${validOptions.length}개 규격` : '',
+                    price: basePrice,
+                    options: item.options || [],
+                    images: item.images || [],
                     mainCategory: mId,
                     subCategory: sId,
                     detailCategory: dId
@@ -372,6 +454,8 @@ const ProductManagement = () => {
             });
 
             setExcelData(finalData);
+            setExcelSelection([]); // Reset selection on new upload
+            setExpandedExcelItems([]);
             setIsExcelModalOpen(true);
         };
         reader.readAsBinaryString(file);
@@ -389,18 +473,36 @@ const ProductManagement = () => {
 
         // 순차적으로 등록 (병렬 처리 시 서버 부하 고려)
         for (const item of excelData) {
+            let optionGroups = [];
+            let combinations = [];
+            let isComplexOptions = false;
+
+            const validOptions = item.options.filter(o => o.spec);
+            if (validOptions.length > 0) {
+                isComplexOptions = true;
+                optionGroups = [{
+                    name: '규격',
+                    values: validOptions.map(o => o.spec)
+                }];
+                combinations = validOptions.map((o, i) => ({
+                    id: `c-${i}`,
+                    name: o.spec,
+                    price: Math.max(0, o.price - item.price)
+                }));
+            }
+
             const payload = {
-                name: item.spec ? `${item.name} (${item.spec})` : item.name,
-                description: item.spec ? `규격: ${item.spec}` : '',
+                name: item.name,
+                description: validOptions.length > 0 ? `규격: ${validOptions.map(o => o.spec).join(', ')}` : '',
                 price: parseInt(item.price || 0),
                 mainCategory: item.mainCategory || mainCategories[0]?.id,
-                subCategory: item.subCategory || (item.mainCategory ? subCategories[item.mainCategory]?.[0]?.id : ''),
+                subCategory: item.subCategory || '',
                 detailCategory: item.detailCategory || '',
                 hashtags: [],
-                images: [],
-                isComplexOptions: false,
-                optionGroups: [],
-                combinations: []
+                images: item.images || [],
+                isComplexOptions,
+                optionGroups,
+                combinations
             };
 
             try {
@@ -464,6 +566,11 @@ const ProductManagement = () => {
                         <button className="apply-btn" style={{ background: '#107c41' }} onClick={() => fileInputRef.current.click()}>
                             📊 엑셀 업로드
                         </button>
+                        {selectedProducts.length > 0 && (
+                            <button className="apply-btn" style={{ background: '#ef4444' }} onClick={deleteSelectedProducts}>
+                                🗑️ 선택 삭제 ({selectedProducts.length})
+                            </button>
+                        )}
                         <button className="apply-btn" onClick={() => navigate('/admin/products/new')}>
                             ＋ 새로운 상품 등록
                         </button>
@@ -582,6 +689,17 @@ const ProductManagement = () => {
                 <table className="admin-table">
                     <thead>
                         <tr>
+                            <th style={{ width: '40px', textAlign: 'center' }}>
+                                <input
+                                    type="checkbox"
+                                    onChange={(e) => {
+                                        if (e.target.checked) setSelectedProducts(filteredProducts.map(p => p.id));
+                                        else setSelectedProducts([]);
+                                    }}
+                                    checked={filteredProducts.length > 0 && selectedProducts.length === filteredProducts.length}
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                />
+                            </th>
                             <th style={{ width: '80px' }}>이미지</th>
                             <th>상품 정보</th>
                             <th>카테고리</th>
@@ -592,6 +710,17 @@ const ProductManagement = () => {
                     <tbody>
                         {filteredProducts.map(p => (
                             <tr key={p.id}>
+                                <td style={{ textAlign: 'center' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedProducts.includes(p.id)}
+                                        onChange={(e) => {
+                                            if (e.target.checked) setSelectedProducts([...selectedProducts, p.id]);
+                                            else setSelectedProducts(selectedProducts.filter(id => id !== p.id));
+                                        }}
+                                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                    />
+                                </td>
                                 <td>
                                     <img
                                         src={p.images && p.images.length > 0 ? p.images[0] : FALLBACK_IMAGE}
@@ -651,44 +780,88 @@ const ProductManagement = () => {
                             </div>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#334155' }}>🗂️ 카테고리 일괄 적용:</span>
-                                <select
-                                    className="admin-input-small"
-                                    style={{ width: '130px' }}
-                                    value={bulkMainCat}
-                                    onChange={(e) => {
-                                        setBulkMainCat(e.target.value);
-                                        setBulkSubCat('');
-                                        setBulkDetailCat('');
-                                    }}
-                                >
-                                    <option value="">대분류 선택</option>
-                                    {mainCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
+                                <div style={{ position: 'relative' }}>
+                                    <select
+                                        className="admin-input-small"
+                                        style={{ width: '130px' }}
+                                        value={bulkMainCat}
+                                        onChange={(e) => {
+                                            setBulkMainCat(e.target.value);
+                                            setBulkSubCat('');
+                                            setBulkDetailCat('');
+                                        }}
+                                    >
+                                        <option value="">대분류 선택</option>
+                                        {mainCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                    <button
+                                        onClick={async () => {
+                                            const newCat = await addMainCategory(null);
+                                            if (newCat) {
+                                                setBulkMainCat(newCat.id);
+                                                setBulkSubCat('');
+                                                setBulkDetailCat('');
+                                            }
+                                        }}
+                                        style={{ position: 'absolute', top: -8, right: 0, fontSize: '0.7rem', padding: '2px 4px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', zIndex: 1 }}
+                                    >
+                                        +
+                                    </button>
+                                </div>
 
-                                <select
-                                    className="admin-input-small"
-                                    style={{ width: '130px' }}
-                                    value={bulkSubCat}
-                                    onChange={(e) => {
-                                        setBulkSubCat(e.target.value);
-                                        setBulkDetailCat('');
-                                    }}
-                                    disabled={!bulkMainCat}
-                                >
-                                    <option value="">중분류 선택</option>
-                                    {bulkMainCat && subCategories[bulkMainCat]?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                </select>
+                                <div style={{ position: 'relative' }}>
+                                    <select
+                                        className="admin-input-small"
+                                        style={{ width: '130px' }}
+                                        value={bulkSubCat}
+                                        onChange={(e) => {
+                                            setBulkSubCat(e.target.value);
+                                            setBulkDetailCat('');
+                                        }}
+                                        disabled={!bulkMainCat}
+                                    >
+                                        <option value="">중분류 없음 (선택)</option>
+                                        {bulkMainCat && subCategories[bulkMainCat]?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                    {bulkMainCat && (
+                                        <button
+                                            onClick={async () => {
+                                                const newCat = await addSubCategory(null, bulkMainCat);
+                                                if (newCat) {
+                                                    setBulkSubCat(newCat.id);
+                                                    setBulkDetailCat('');
+                                                }
+                                            }}
+                                            style={{ position: 'absolute', top: -8, right: 0, fontSize: '0.7rem', padding: '2px 4px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', zIndex: 1 }}
+                                        >
+                                            +
+                                        </button>
+                                    )}
+                                </div>
 
-                                <select
-                                    className="admin-input-small"
-                                    style={{ width: '130px' }}
-                                    value={bulkDetailCat}
-                                    onChange={(e) => setBulkDetailCat(e.target.value)}
-                                    disabled={!bulkSubCat}
-                                >
-                                    <option value="">소분류 선택</option>
-                                    {bulkSubCat && detailCategories[bulkSubCat]?.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
+                                <div style={{ position: 'relative' }}>
+                                    <select
+                                        className="admin-input-small"
+                                        style={{ width: '130px' }}
+                                        value={bulkDetailCat}
+                                        onChange={(e) => setBulkDetailCat(e.target.value)}
+                                        disabled={!bulkSubCat}
+                                    >
+                                        <option value="">소분류 없음 (선택)</option>
+                                        {bulkSubCat && detailCategories[bulkSubCat]?.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                    </select>
+                                    {bulkSubCat && (
+                                        <button
+                                            onClick={async () => {
+                                                const newCat = await addDetailCategory(null, bulkSubCat);
+                                                if (newCat) setBulkDetailCat(newCat.id);
+                                            }}
+                                            style={{ position: 'absolute', top: -8, right: 0, fontSize: '0.7rem', padding: '2px 4px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', zIndex: 1 }}
+                                        >
+                                            +
+                                        </button>
+                                    )}
+                                </div>
 
                                 <button
                                     className="apply-btn"
@@ -703,122 +876,211 @@ const ProductManagement = () => {
                             <table className="admin-table" style={{ borderTop: 'none' }}>
                                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                                     <tr>
+                                        <th style={{ width: '40px', textAlign: 'center' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={excelData.length > 0 && excelSelection.length === excelData.length}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) setExcelSelection(excelData.map(d => d.id));
+                                                    else setExcelSelection([]);
+                                                }}
+                                                style={{ cursor: 'pointer' }}
+                                            />
+                                        </th>
+                                        <th style={{ width: '60px' }}>사진</th>
                                         <th>품명</th>
-                                        <th>규격</th>
-                                        <th>단가</th>
+                                        <th>규격 (옵션)</th>
+                                        <th>기본 단가</th>
                                         <th>카테고리 설정</th>
                                         <th>삭제</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {excelData.map((item, idx) => (
-                                        <tr key={item.id}>
-                                            <td>
-                                                <input
-                                                    className="admin-input-small"
-                                                    value={item.name}
-                                                    onChange={(e) => updateExcelItem(item.id, { name: e.target.value })}
-                                                />
-                                            </td>
-                                            <td>
-                                                <input
-                                                    className="admin-input-small"
-                                                    value={item.spec}
-                                                    onChange={(e) => updateExcelItem(item.id, { spec: e.target.value })}
-                                                />
-                                            </td>
-                                            <td>
-                                                <input
-                                                    type="number"
-                                                    className="admin-input-small"
-                                                    value={item.price}
-                                                    onChange={(e) => updateExcelItem(item.id, { price: e.target.value })}
-                                                />
-                                            </td>
-                                            <td>
-                                                <div style={{ display: 'flex', gap: '5px' }}>
-                                                    <div style={{ position: 'relative' }}>
-                                                        <select
-                                                            className="admin-input-small"
-                                                            style={{ width: '100px' }}
-                                                            value={item.mainCategory}
-                                                            onChange={(e) => {
-                                                                const mId = e.target.value;
-                                                                const sId = subCategories[mId]?.[0]?.id;
-                                                                const dId = sId ? detailCategories[sId]?.[0]?.id : '';
-                                                                updateExcelItem(item.id, {
-                                                                    mainCategory: mId,
-                                                                    subCategory: sId || '',
-                                                                    detailCategory: dId || ''
-                                                                });
-                                                            }}
-                                                        >
-                                                            <option value="">대분류 선택</option>
-                                                            {mainCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                                        </select>
-                                                        <button
-                                                            onClick={() => addMainCategory(item.id)}
-                                                            style={{ position: 'absolute', top: -8, right: 0, fontSize: '0.7rem', padding: '2px 4px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                                                        >
-                                                            +
-                                                        </button>
+                                        <React.Fragment key={item.id}>
+                                            <tr style={{ borderBottom: expandedExcelItems.includes(item.id) ? 'none' : '1px solid #e2e8f0' }}>
+                                                <td style={{ textAlign: 'center' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={excelSelection.includes(item.id)}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) setExcelSelection([...excelSelection, item.id]);
+                                                            else setExcelSelection(excelSelection.filter(id => id !== item.id));
+                                                        }}
+                                                        style={{ cursor: 'pointer' }}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <div style={{ position: 'relative', width: '40px', height: '40px', border: '1px dashed #cbd5e1', borderRadius: '4px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        {item.images && item.images.length > 0 ? (
+                                                            <img src={item.images[0]} alt="thumb" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                        ) : (
+                                                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>+사진</span>
+                                                        )}
+                                                        <input
+                                                            type="file"
+                                                            style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                                                            onChange={(e) => handleExcelImageUpload(item.id, e.target.files[0])}
+                                                        />
                                                     </div>
-
-                                                    {item.mainCategory && (
+                                                </td>
+                                                <td>
+                                                    <input
+                                                        className="admin-input-small"
+                                                        value={item.name}
+                                                        onChange={(e) => updateExcelItem(item.id, { name: e.target.value })}
+                                                    />
+                                                </td>
+                                                <td style={{ position: 'relative' }}>
+                                                    <input
+                                                        className="admin-input-small"
+                                                        value={item.spec}
+                                                        disabled
+                                                        style={{ background: '#f8fafc', color: '#64748b', cursor: 'not-allowed', width: '90%' }}
+                                                    />
+                                                    {item.options && item.options.length > 0 && (
+                                                        <button
+                                                            onClick={() => toggleExpandExcelItem(item.id)}
+                                                            style={{ position: 'absolute', right: '5px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px' }}
+                                                        >
+                                                            {expandedExcelItems.includes(item.id) ? '▲' : '▼'}
+                                                        </button>
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    <input
+                                                        type="number"
+                                                        className="admin-input-small"
+                                                        value={item.price}
+                                                        onChange={(e) => updateExcelItem(item.id, { price: e.target.value })}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <div style={{ display: 'flex', gap: '5px' }}>
                                                         <div style={{ position: 'relative' }}>
                                                             <select
                                                                 className="admin-input-small"
                                                                 style={{ width: '100px' }}
-                                                                value={item.subCategory}
+                                                                value={item.mainCategory}
                                                                 onChange={(e) => {
-                                                                    const sId = e.target.value;
-                                                                    const dId = detailCategories[sId]?.[0]?.id;
+                                                                    const mId = e.target.value;
                                                                     updateExcelItem(item.id, {
-                                                                        subCategory: sId,
-                                                                        detailCategory: dId || ''
+                                                                        mainCategory: mId,
+                                                                        subCategory: '',
+                                                                        detailCategory: ''
                                                                     });
                                                                 }}
                                                             >
-                                                                {subCategories[item.mainCategory]?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                                <option value="">대분류 선택</option>
+                                                                {mainCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                                             </select>
                                                             <button
-                                                                onClick={() => addSubCategory(item.id, item.mainCategory)}
+                                                                onClick={() => addMainCategory(item.id)}
                                                                 style={{ position: 'absolute', top: -8, right: 0, fontSize: '0.7rem', padding: '2px 4px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                                                             >
                                                                 +
                                                             </button>
                                                         </div>
-                                                    )}
 
-                                                    {item.subCategory && (
-                                                        <div style={{ position: 'relative' }}>
-                                                            <select
-                                                                className="admin-input-small"
-                                                                style={{ width: '100px' }}
-                                                                value={item.detailCategory}
-                                                                onChange={(e) => updateExcelItem(item.id, { detailCategory: e.target.value })}
-                                                            >
-                                                                {detailCategories[item.subCategory]?.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                                            </select>
-                                                            <button
-                                                                onClick={() => addDetailCategory(item.id, item.subCategory)}
-                                                                style={{ position: 'absolute', top: -8, right: 0, fontSize: '0.7rem', padding: '2px 4px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                                                            >
-                                                                +
-                                                            </button>
+                                                        {item.mainCategory && (
+                                                            <div style={{ position: 'relative' }}>
+                                                                <select
+                                                                    className="admin-input-small"
+                                                                    style={{ width: '100px' }}
+                                                                    value={item.subCategory}
+                                                                    onChange={(e) => {
+                                                                        const sId = e.target.value;
+                                                                        updateExcelItem(item.id, {
+                                                                            subCategory: sId,
+                                                                            detailCategory: ''
+                                                                        });
+                                                                    }}
+                                                                >
+                                                                    <option value="">중분류 없음</option>
+                                                                    {subCategories[item.mainCategory]?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                                </select>
+                                                                <button
+                                                                    onClick={() => addSubCategory(item.id, item.mainCategory)}
+                                                                    style={{ position: 'absolute', top: -8, right: 0, fontSize: '0.7rem', padding: '2px 4px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                                                >
+                                                                    +
+                                                                </button>
+                                                            </div>
+                                                        )}
+
+
+
+                                                        {item.subCategory && (
+                                                            <div style={{ position: 'relative' }}>
+                                                                <select
+                                                                    className="admin-input-small"
+                                                                    style={{ width: '100px' }}
+                                                                    value={item.detailCategory}
+                                                                    onChange={(e) => updateExcelItem(item.id, { detailCategory: e.target.value })}
+                                                                >
+                                                                    <option value="">소분류 없음</option>
+                                                                    {detailCategories[item.subCategory]?.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                                                </select>
+                                                                <button
+                                                                    onClick={() => addDetailCategory(item.id, item.subCategory)}
+                                                                    style={{ position: 'absolute', top: -8, right: 0, fontSize: '0.7rem', padding: '2px 4px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                                                >
+                                                                    +
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td style={{ textAlign: 'center' }}>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm('정말 삭제하시겠습니까?')) {
+                                                                setExcelData(excelData.filter(d => d.id !== item.id));
+                                                                setExcelSelection(excelSelection.filter(id => id !== item.id));
+                                                            }
+                                                        }}
+                                                        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: '5px' }}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {expandedExcelItems.includes(item.id) && item.options && item.options.length > 0 && (
+                                                <tr key={`${item.id}-options`} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                                    <td colSpan="7" style={{ padding: '0 10px 10px 10px' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', paddingLeft: '20px' }}>
+                                                            {item.options.map((option, optionIdx) => (
+                                                                <div key={optionIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', padding: '5px 10px', borderRadius: '4px' }}>
+                                                                    <span style={{ fontWeight: 500, color: '#475569', minWidth: '80px' }}>{option.name}:</span>
+                                                                    <input
+                                                                        className="admin-input-small"
+                                                                        value={option.spec}
+                                                                        onChange={(e) => {
+                                                                            const newOptions = [...item.options];
+                                                                            newOptions[optionIdx] = { ...option, spec: e.target.value };
+                                                                            updateExcelItem(item.id, { options: newOptions });
+                                                                        }}
+                                                                        style={{ flex: 1 }}
+                                                                    />
+                                                                    <span style={{ fontWeight: 500, color: '#475569', minWidth: '40px' }}>가격:</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        className="admin-input-small"
+                                                                        value={option.price}
+                                                                        onChange={(e) => {
+                                                                            const newOptions = [...item.options];
+                                                                            newOptions[optionIdx] = { ...option, price: e.target.value };
+                                                                            updateExcelItem(item.id, { options: newOptions });
+                                                                        }}
+                                                                        style={{ width: '80px' }}
+                                                                    />
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td style={{ textAlign: 'center' }}>
-                                                <button
-                                                    onClick={() => setExcelData(excelData.filter(d => d.id !== item.id))}
-                                                    style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer' }}
-                                                >
-                                                    ×
-                                                </button>
-                                            </td>
-                                        </tr>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     ))}
                                 </tbody>
                             </table>
@@ -831,8 +1093,7 @@ const ProductManagement = () => {
                         </div>
                     </div>
                 </div>
-            )
-            }
+            )}
         </div>
     );
 };

@@ -42,6 +42,12 @@ const CategoryNav = ({
             {activeMainCat && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: '#f8fafc', padding: '8px', borderRadius: '12px' }}>
                     <div className="categories-scroll">
+                        <button
+                            className={`category-tab sub-tab ${!activeSubCat ? 'active' : ''}`}
+                            onClick={() => onSubCatChange(null)}
+                        >
+                            전체
+                        </button>
                         {(subCategories[activeMainCat] || []).map((sub) => (
                             <button
                                 key={sub.id}
@@ -55,6 +61,12 @@ const CategoryNav = ({
 
                     {activeSubCat && detailCategories[activeSubCat] && (
                         <div className="categories-scroll" style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '4px' }}>
+                            <button
+                                className={`category-tab detail-tab ${!activeDetailCat ? 'active' : ''}`}
+                                onClick={() => onDetailCatChange(null)}
+                            >
+                                전체
+                            </button>
                             {detailCategories[activeSubCat].map((detail) => (
                                 <button
                                     key={detail.id}

@@ -40,14 +40,17 @@ function App() {
 
     const fetchData = async () => {
       try {
-        const [prodRes, catRes] = await Promise.all([
+        const [prodRes, catRes, orderRes] = await Promise.all([
           fetch('/api/products'),
-          fetch('/api/categories')
+          fetch('/api/categories'),
+          fetch('/api/orders/admin')
         ]);
         const prodData = await prodRes.json();
         const catData = await catRes.json();
+        const orderData = await orderRes.json();
 
-        setProducts(prodData);
+        setProducts(Array.isArray(prodData) ? prodData : []);
+        setOrders(Array.isArray(orderData) ? orderData : []);
 
         const mainArr = catData.filter(c => c.level === 'main');
         const subObj = {};
@@ -197,8 +200,8 @@ function KioskView({
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
       const matchMain = product.mainCategory === activeMainCat;
-      const matchSub = product.subCategory === activeSubCat;
-      const matchDetail = !activeDetailCat || product.detailCategory === activeDetailCat || product.detailCategory === 'all';
+      const matchSub = !activeSubCat ? true : product.subCategory === activeSubCat;
+      const matchDetail = !activeDetailCat ? true : product.detailCategory === activeDetailCat;
       const searchLower = searchQuery.toLowerCase();
       const matchSearch =
         product.name.toLowerCase().includes(searchLower) ||
@@ -209,15 +212,14 @@ function KioskView({
 
   const handleMainCatChange = (id) => {
     setActiveMainCat(id);
-    const firstSub = subCategories[id]?.[0]?.id;
-    setActiveSubCat(firstSub);
-    setActiveDetailCat(firstSub ? detailCategories[firstSub]?.[0]?.id : null);
+    setActiveSubCat(null);
+    setActiveDetailCat(null);
     setIsNavVisible(true); // 카테고리 변경 시 네비게이션 무조건 노출
   };
 
   const handleSubCatChange = (id) => {
     setActiveSubCat(id);
-    setActiveDetailCat(detailCategories[id]?.[0]?.id);
+    setActiveDetailCat(null);
     setIsNavVisible(true); // 카테고리 변경 시 네비게이션 무조건 노출
   };
 

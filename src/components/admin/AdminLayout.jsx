@@ -21,24 +21,30 @@ const AdminLayout = ({
                     <div style={{ color: 'white', fontSize: '0.7rem', opacity: 0.5, marginBottom: '5px', letterSpacing: '0.1em' }}>관리 서비스</div>
                     <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>매장 관리자</div>
                 </div>
-                <nav style={{ flex: 1, padding: '20px 0', display: 'flex', flexDirection: 'column' }}>
+                <nav style={{ flex: 1, padding: '20px 10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <NavLink
                         to="/admin/products"
                         className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
+                        style={{ textDecoration: 'none' }}
                     >
-                        <span>📦</span> 상품 통합 관리
+                        <span style={{ fontSize: '1.2rem' }}>📦</span>
+                        <span style={{ fontWeight: 600 }}>상품 통합 관리</span>
                     </NavLink>
                     <NavLink
                         to="/admin/categories"
                         className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
+                        style={{ textDecoration: 'none' }}
                     >
-                        <span>📁</span> 카테고리 설정
+                        <span style={{ fontSize: '1.2rem' }}>📁</span>
+                        <span style={{ fontWeight: 600 }}>카테고리 설정</span>
                     </NavLink>
                     <NavLink
                         to="/admin/orders"
                         className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
+                        style={{ textDecoration: 'none' }}
                     >
-                        <span>🧾</span> 주문 내역 관리
+                        <span style={{ fontSize: '1.2rem' }}>🧾</span>
+                        <span style={{ fontWeight: 600 }}>주문 내역 관리</span>
                     </NavLink>
                 </nav>
             </aside>
