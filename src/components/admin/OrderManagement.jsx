@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
 const OrderManagement = () => {
@@ -10,6 +9,47 @@ const OrderManagement = () => {
     const [startDate, setStartDate] = useState(today);
     const [endDate, setEndDate] = useState(today);
     const [orderSearchQuery, setOrderSearchQuery] = useState('');
+
+    const ordersRef = useRef(orders);
+    useEffect(() => {
+        ordersRef.current = orders;
+    }, [orders]);
+
+    useEffect(() => {
+        let isFetching = false;
+        const interval = setInterval(async () => {
+            if (isFetching) return;
+            isFetching = true;
+            try {
+                const res = await fetch('/api/orders/admin');
+                if (res.ok) {
+                    const fetchedOrders = await res.json();
+                    const currentOrders = ordersRef.current;
+
+                    // Find if there are new orders based on ID
+                    const isInitialized = currentOrders.length > 0;
+                    const newOrders = fetchedOrders.filter(fo => !currentOrders.some(o => o.id === fo.id));
+
+                    if (isInitialized && newOrders.length > 0) {
+                        // Play a sound or show alert
+                        alert(`새로운 주문이 ${newOrders.length}건 들어왔습니다! 확인해 주세요.`);
+                    }
+
+                    // To avoid unnecessary re-renders, only update if length differs or status differs
+                    // Using JSON.stringify is a quick way to diff the data safely
+                    if (JSON.stringify(currentOrders) !== JSON.stringify(fetchedOrders)) {
+                        setOrders(fetchedOrders);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch orders periodically", err);
+            } finally {
+                isFetching = false;
+            }
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [setOrders]);
 
     const deleteOrder = async (orderId) => {
         if (!window.confirm('주문 내역을 삭제하시겠습니까?')) return;
@@ -89,7 +129,7 @@ const OrderManagement = () => {
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <span style={{ color: '#64748b', fontWeight: 600 }}>주문 시간</span>
-                                    <span style={{ color: '#1e293b', fontWeight: 600 }}>{selectedOrder.timestamp}</span>
+                                    <span style={{ color: '#1e293b', fontWeight: 600 }}>{formatTime(selectedOrder.timestamp)}</span>
                                 </div>
                             </div>
 
@@ -97,10 +137,23 @@ const OrderManagement = () => {
                                 🛍️ 주문 상품 ({selectedOrder.items.length})
                             </h4>
                             <div style={{ maxHeight: '350px', overflowY: 'auto', paddingRight: '10px' }}>
-                                {selectedOrder.items.map((item, idx) => (
+                                {Object.values(
+                                    selectedOrder.items.reduce((acc, item) => {
+                                        const key = `${item.name}-${item.selectedOption || ''}`;
+                                        if (!acc[key]) {
+                                            acc[key] = { ...item, displayQty: item.quantity || 1, displayPrice: item.finalPrice * (item.quantity || 1) };
+                                        } else {
+                                            acc[key].displayQty += (item.quantity || 1);
+                                            acc[key].displayPrice += (item.finalPrice * (item.quantity || 1));
+                                        }
+                                        return acc;
+                                    }, {})
+                                ).map((item, idx) => (
                                     <div key={idx} style={{ padding: '15px', background: 'white', borderRadius: '16px', marginBottom: '10px', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div>
-                                            <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1e293b' }}>{item.name}</div>
+                                            <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1e293b' }}>
+                                                {item.name} <span style={{ color: '#ef4444', marginLeft: '6px', fontSize: '0.9rem' }}>x {item.displayQty}개</span>
+                                            </div>
                                             {item.selectedOption && (
                                                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px', background: '#f1f5f9', padding: '2px 8px', borderRadius: '6px', display: 'inline-block' }}>
                                                     옵션: {item.selectedOption}
@@ -108,7 +161,7 @@ const OrderManagement = () => {
                                             )}
                                         </div>
                                         <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#334155' }}>
-                                            ₩{item.finalPrice.toLocaleString()}
+                                            ₩{item.displayPrice.toLocaleString()}
                                         </div>
                                     </div>
                                 ))}

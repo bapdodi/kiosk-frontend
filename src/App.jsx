@@ -38,19 +38,26 @@ function App() {
       }
     };
 
-    const fetchData = async () => {
+    const fetchData = async (isAuth) => {
       try {
-        const [prodRes, catRes, orderRes] = await Promise.all([
-          fetch('/api/products'),
-          fetch('/api/categories'),
-          fetch('/api/orders/admin')
-        ]);
+        const prodRes = await fetch('/api/products');
+        const catRes = await fetch('/api/categories');
         const prodData = await prodRes.json();
         const catData = await catRes.json();
-        const orderData = await orderRes.json();
 
         setProducts(Array.isArray(prodData) ? prodData : []);
-        setOrders(Array.isArray(orderData) ? orderData : []);
+
+        if (isAuth) {
+          try {
+            const orderRes = await fetch('/api/orders/admin');
+            if (orderRes.ok) {
+              const orderData = await orderRes.json();
+              setOrders(Array.isArray(orderData) ? orderData : []);
+            }
+          } catch (e) {
+            console.warn('Could not fetch orders initially');
+          }
+        }
 
         const mainArr = catData.filter(c => c.level === 'main');
         const subObj = {};
@@ -86,7 +93,21 @@ function App() {
       }
     };
 
-    checkAuth().then(fetchData);
+    checkAuth().then((isAuth) => fetchData(isAuth));
+
+    // Poll products every 5 seconds for real-time stock updates
+    const stockInterval = setInterval(() => {
+      fetch('/api/products')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setProducts(data);
+          }
+        })
+        .catch(err => console.error('Failed to poll products for stock updates', err));
+    }, 5000);
+
+    return () => clearInterval(stockInterval);
   }, []);
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '2rem' }}>로딩 중...</div>;
@@ -170,7 +191,25 @@ function KioskView({
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [orderModal, setOrderModal] = useState({ isOpen: false, name: '' });
+  const [customers, setCustomers] = useState([]);
   const lastScrollTop = useRef(0);
+
+  useEffect(() => {
+    fetch('/api/customers')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setCustomers(data);
+        } else {
+          console.error('Expected array for customers, got:', data);
+          setCustomers([]);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load customers:', err);
+        setCustomers([]);
+      });
+  }, []);
 
   const handleScroll = (e) => {
     const currentScrollTop = e.currentTarget.scrollTop;
@@ -236,26 +275,32 @@ function KioskView({
   };
 
   const confirmAddToCart = (product, combinations, quantities) => {
-    const newItems = [];
+    let newCart = [...cart];
     Object.entries(quantities).forEach(([comboId, qty]) => {
       if (qty > 0) {
         const combo = combinations.find(c => c.id === comboId);
         const finalPrice = product.price + (combo ? (combo.totalExtra || combo.price || 0) : 0);
+        const selectedOption = combo ? (combo.displayName || combo.name) : null;
 
-        for (let i = 0; i < qty; i++) {
-          newItems.push({
+        const existingIndex = newCart.findIndex(i => i.id === product.id && i.selectedOption === selectedOption);
+        if (existingIndex > -1) {
+          newCart[existingIndex] = {
+            ...newCart[existingIndex],
+            quantity: (newCart[existingIndex].quantity || 1) + qty
+          };
+        } else {
+          newCart.push({
             ...product,
-            selectedOption: combo ? (combo.displayName || combo.name) : null,
-            finalPrice: finalPrice,
+            selectedOption,
+            finalPrice,
+            quantity: qty,
             cartId: Date.now() + Math.random()
           });
         }
       }
     });
 
-    if (newItems.length > 0) {
-      setCart([...cart, ...newItems]);
-    }
+    setCart(newCart);
     setSelectingProduct(null);
     setOptionQuantities({});
   };
@@ -271,20 +316,28 @@ function KioskView({
   };
 
   const submitOrder = async () => {
-    if (!orderModal.name.trim()) return alert('주문자 성함을 입력해주세요.');
+    if (!orderModal.name.trim()) return alert('상호를 입력하거나 선택해주세요.');
 
-    const customerName = orderModal.name;
+    const customerString = orderModal.name.trim();
+    const codeMatch = customerString.match(/^\[(.*?)\] (.*)/);
+    let erpCustomerCode = "1";
+    let customerName = customerString;
+    if (codeMatch) {
+      erpCustomerCode = codeMatch[1];
+      customerName = codeMatch[2];
+    }
 
     const orderData = {
       customerName,
+      erpCustomerCode,
       items: cart.map(item => ({
         name: item.name,
         erpCode: item.erpCode, // Include ERP code for backend sync
-        quantity: 1,           // Default to 1 for flat cart items
+        quantity: item.quantity || 1, // Store the actual quantity mapping
         selectedOption: item.selectedOption,
         finalPrice: item.finalPrice
       })),
-      totalAmount: cart.reduce((sum, item) => sum + item.finalPrice, 0),
+      totalAmount: cart.reduce((sum, item) => sum + item.finalPrice * (item.quantity || 1), 0),
       status: 'pending'
     };
 
@@ -309,7 +362,7 @@ function KioskView({
     }
   };
 
-  const totalPrice = cart.reduce((sum, item) => sum + item.finalPrice, 0);
+  const totalPrice = cart.reduce((sum, item) => sum + item.finalPrice * (item.quantity || 1), 0);
 
   return (
     <div className="kiosk-container">
@@ -350,7 +403,7 @@ function KioskView({
       {/* Floating Cart Button */}
       <div className="floating-cart-btn" onClick={() => setIsCartOpen(true)}>
         <span className="cart-icon">🛒</span>
-        <span className="cart-count">{cart.length}</span>
+        <span className="cart-count">{cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}</span>
         <span className="cart-total">₩{totalPrice.toLocaleString()}</span>
       </div>
 
@@ -376,13 +429,14 @@ function KioskView({
           <div className="modal-content" style={{ maxWidth: '400px', padding: '0', borderRadius: '24px' }}>
             <div style={{ padding: '25px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
               <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.4rem' }}>주문 확인</h3>
-              <p style={{ color: '#64748b', marginTop: '8px', fontSize: '0.95rem' }}>주문하시는 분의 성함을 입력해주세요.</p>
+              <p style={{ color: '#64748b', marginTop: '8px', fontSize: '0.95rem' }}>주문하실 상호를 검색하거나 선택해주세요.</p>
             </div>
             <div style={{ padding: '30px' }}>
               <input
                 autoFocus
                 className="admin-input-small"
-                placeholder="성함 입력 (예: 홍길동)"
+                list="customer-list"
+                placeholder="상호명 검색/선택"
                 value={orderModal.name}
                 onChange={(e) => setOrderModal({ ...orderModal, name: e.target.value })}
                 onKeyDown={(e) => e.key === 'Enter' && submitOrder()}
@@ -392,9 +446,16 @@ function KioskView({
                   textAlign: 'center',
                   borderRadius: '16px',
                   marginBottom: '20px',
-                  border: '2px solid #e2e8f0'
+                  border: '2px solid #e2e8f0',
+                  width: '100%',
+                  boxSizing: 'border-box'
                 }}
               />
+              <datalist id="customer-list">
+                {customers.map(c => (
+                  <option key={c.CODE} value={`[${c.CODE}] ${c.NAME}`} />
+                ))}
+              </datalist>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
                   className="apply-btn"

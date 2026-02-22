@@ -1,10 +1,11 @@
 
 const Cart = ({ items, onRemove, onCheckout }) => {
-    const totalPrice = items.reduce((sum, item) => sum + item.finalPrice, 0);
+    const totalPrice = items.reduce((sum, item) => sum + item.finalPrice * (item.quantity || 1), 0);
+    const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
     return (
         <section className="kiosk-cart">
-            <div className="cart-header">장바구니 ({items.length})</div>
+            <div className="cart-header">장바구니 ({totalCount})</div>
             <div className="cart-items">
                 {items.length === 0 ? (
                     <div className="empty-cart-message">상품을 선택해주세요.</div>
@@ -12,9 +13,9 @@ const Cart = ({ items, onRemove, onCheckout }) => {
                     items.map((item) => (
                         <div key={item.cartId} className="cart-item">
                             <div>
-                                <div className="cart-item-name">{item.name}</div>
+                                <div className="cart-item-name">{item.name} <span style={{ color: '#ef4444', fontSize: '0.9rem', marginLeft: '6px' }}>x {item.quantity || 1}개</span></div>
                                 {item.selectedOption && <div className="cart-item-opt">{item.selectedOption}</div>}
-                                <div className="cart-item-price">₩{item.finalPrice.toLocaleString()}</div>
+                                <div className="cart-item-price">₩{(item.finalPrice * (item.quantity || 1)).toLocaleString()}</div>
                             </div>
                             <button
                                 onClick={() => onRemove(item.cartId)}
