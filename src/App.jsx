@@ -238,14 +238,21 @@ function KioskView({
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
+      const searchLower = searchQuery.toLowerCase().trim();
+      const matchSearch = searchLower === "" ||
+        product.name.toLowerCase().includes(searchLower) ||
+        product.hashtags.some(tag => tag.toLowerCase().includes(searchLower));
+
+      if (!matchSearch) return false;
+
+      // If actively searching, ignore category filters for global search
+      if (searchLower !== "") return true;
+
       const matchMain = product.mainCategory === activeMainCat;
       const matchSub = !activeSubCat ? true : product.subCategory === activeSubCat;
       const matchDetail = !activeDetailCat ? true : product.detailCategory === activeDetailCat;
-      const searchLower = searchQuery.toLowerCase();
-      const matchSearch =
-        product.name.toLowerCase().includes(searchLower) ||
-        product.hashtags.some(tag => tag.toLowerCase().includes(searchLower));
-      return matchMain && matchSub && matchDetail && matchSearch;
+
+      return matchMain && matchSub && matchDetail;
     });
   }, [activeMainCat, activeSubCat, activeDetailCat, searchQuery, products]);
 
