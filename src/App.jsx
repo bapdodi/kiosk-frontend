@@ -293,6 +293,7 @@ function KioskView({
             ...product,
             selectedOption,
             finalPrice,
+            erpCode: combo ? (combo.erpCode || combo.id) : product.erpCode, // use specific erpCode from combo
             quantity: qty,
             cartId: Date.now() + Math.random()
           });

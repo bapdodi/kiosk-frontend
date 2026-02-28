@@ -17,6 +17,15 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         if (product.origins && product.origins.length > 0) {
             groups.push({ name: '원산지 (Origin)', values: product.origins.map(o => o.name), legacySource: 'origins' });
         }
+
+        // Handle ERP-grouped items as a generic "Options" choice
+        if (groups.length === 0 && product.combinations && product.combinations.length > 1) {
+            groups.push({
+                name: '옵션 선택',
+                values: product.combinations.map(c => c.name),
+                legacySource: 'combinations'
+            });
+        }
         return groups;
     };
 
@@ -36,10 +45,17 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
 
     // Internal price calculation helper
     const getPriceForSelections = (tempSelections) => {
-        if (product.isComplexOptions && product.combinations) {
+        if (product.combinations && product.combinations.length > 0) {
             const comboName = groups.map(g => tempSelections[g.name]).join(' / ');
             const combo = product.combinations.find(c => c.name === comboName);
-            return combo ? combo.price : 0;
+            // If combination based price exists, it's usually the final price (or extra)
+            // But for ERP grouped, it's should be treated as the unit price directly
+            if (combo) {
+                // For ERP items synced as combinations, 'price' is the actual unit price, 
+                // not an "extra" fee. We handle that by returning (combo.price - product.price)
+                return combo.price - product.price;
+            }
+            return 0;
         } else {
             let extra = 0;
             groups.forEach(g => {
@@ -75,8 +91,15 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
 
     const handleConfirm = () => {
         const comboName = groups.map(g => selections[g.name]).join(' / ');
-        const combinations = [{ id: comboName, displayName: comboName, totalExtra: currentExtraPrice }];
-        const quantities = { [comboName]: quantity };
+        const foundCombo = product.combinations?.find(c => c.name === comboName);
+
+        const combinations = [{
+            id: foundCombo ? foundCombo.id : comboName,
+            displayName: comboName,
+            totalExtra: currentExtraPrice,
+            erpCode: foundCombo ? foundCombo.erpCode : (product.erpCode || null)
+        }];
+        const quantities = { [foundCombo ? foundCombo.id : comboName]: quantity };
         onConfirm(product, combinations, quantities);
     };
 
