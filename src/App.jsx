@@ -374,7 +374,7 @@ function KioskView({
 
   return (
     <div className="kiosk-container">
-      <div className={`nav-wrapper ${isNavVisible ? '' : 'hidden'}`}>
+      <div className="nav-wrapper">
         <CategoryNav
           mainCategories={mainCategories}
           subCategories={subCategories}

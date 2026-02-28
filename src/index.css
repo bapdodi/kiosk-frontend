@@ -46,11 +46,13 @@ body {
 }
 
 .nav-wrapper {
-  position: relative;
-  /* Changed from fixed to flow with page */
-  padding: 15px 15px 0 15px;
+  position: sticky;
+  top: 0;
+  padding: 15px 15px 5px 15px;
   background: var(--bg-color);
   z-index: 1000;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.02);
+  /* No hidden state needed for now as it causes layout shifts */
   /* transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); */
   /* will-change: transform; */
 }
@@ -113,14 +115,17 @@ body {
 
 .categories-scroll {
   display: flex;
-  gap: 8px;
-  /* Reduced gap */
+  gap: 10px;
   overflow-x: auto;
-  padding: 4px 0;
+  white-space: nowrap;
+  padding: 8px 0;
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 .categories-scroll::-webkit-scrollbar {
   display: none;
+  /* Hide scrollbar for clean look but allowed to slide */
 }
 
 .category-tab {
@@ -170,8 +175,8 @@ body {
   grid-auto-rows: min-content;
   gap: 20px;
   overflow-y: auto;
-  padding: 240px 15px 100px 15px;
-  /* 상단 여백 고정 (깜빡임 방지) */
+  padding: 10px 15px 100px 15px;
+  /* Reduced padding as nav is now sticky/flow */
   height: 100%;
 }
 
