@@ -95,6 +95,7 @@ function App() {
 
     checkAuth().then((isAuth) => fetchData(isAuth));
 
+    /*
     // Poll products every 5 seconds for real-time stock updates
     const stockInterval = setInterval(() => {
       fetch('/api/products')
@@ -108,6 +109,7 @@ function App() {
     }, 5000);
 
     return () => clearInterval(stockInterval);
+    */
   }, []);
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '2rem' }}>로딩 중...</div>;

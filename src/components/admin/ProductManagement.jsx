@@ -51,8 +51,16 @@ const ProductManagement = () => {
         try {
             const res = await fetch('/api/sync/erp', { method: 'POST' });
             if (res.ok) {
-                alert('동기화가 완료되었습니다. 페이지를 새로고침합니다.');
-                window.location.reload();
+                const updatedProducts = await res.json();
+                // Instead of reload, update the state directly
+                // If the backend returns all products, we replace.
+                // ErpSyncService returns the list of products synced from ERP.
+                // To be safe and simple, we'll just fetch all products again after sync.
+                const allRes = await fetch('/api/products');
+                if (allRes.ok) {
+                    setProducts(await allRes.json());
+                    alert('ERP 동기화가 완료되어 목록을 갱신했습니다.');
+                }
             } else {
                 alert('동기화 실패: ' + (await res.text()));
             }
@@ -66,12 +74,19 @@ const ProductManagement = () => {
         if (!window.confirm(`선택한 ${selectedProducts.length}개의 상품을 정말 삭제하시겠습니까?`)) return;
 
         try {
-            await Promise.all(selectedProducts.map(id =>
-                fetch(`/api/products/admin/${id}`, { method: 'DELETE' })
-            ));
-            setProducts(products.filter(p => !selectedProducts.includes(p.id)));
-            setSelectedProducts([]);
-            alert('삭제되었습니다.');
+            const res = await fetch('/api/products/admin/bulk-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(selectedProducts)
+            });
+
+            if (res.ok) {
+                setProducts(products.filter(p => !selectedProducts.includes(p.id)));
+                setSelectedProducts([]);
+                alert('선택한 상품들이 삭제되었습니다.');
+            } else {
+                alert('삭제 중 오류가 발생했습니다.');
+            }
         } catch (err) {
             alert('삭제 중 오류가 발생했습니다.');
         }
