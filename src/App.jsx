@@ -40,8 +40,11 @@ function App() {
 
     const fetchData = async (isAuth) => {
       try {
-        const prodRes = await fetch('/api/products');
-        const catRes = await fetch('/api/categories');
+        const [prodRes, catRes] = await Promise.all([
+          fetch('/api/products'),
+          fetch('/api/categories')
+        ]);
+
         const prodData = await prodRes.json();
         const catData = await catRes.json();
 
@@ -433,8 +436,8 @@ function KioskView({
 
       {/* Order Name Input Modal */}
       {orderModal.isOpen && (
-        <div className="modal-overlay" style={{ zIndex: 5000 }}>
-          <div className="modal-content" style={{ maxWidth: '400px', padding: '0', borderRadius: '24px' }}>
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
             <div style={{ padding: '25px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
               <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.4rem' }}>주문 확인</h3>
               <p style={{ color: '#64748b', marginTop: '8px', fontSize: '0.95rem' }}>주문하실 상호를 검색하거나 선택해주세요.</p>
@@ -467,14 +470,14 @@ function KioskView({
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
                   className="apply-btn"
-                  style={{ flex: 2, padding: '18px', fontSize: '1.1rem', borderRadius: '16px' }}
+                  style={{ flex: 2, padding: '16px', fontSize: '1.1rem', borderRadius: '16px' }}
                   onClick={submitOrder}
                 >
                   주문 완료하기
                 </button>
                 <button
                   className="action-btn"
-                  style={{ flex: 1, padding: '18px', borderRadius: '16px', height: 'auto' }}
+                  style={{ flex: 1, padding: '16px', borderRadius: '16px', height: 'auto' }}
                   onClick={() => setOrderModal({ ...orderModal, isOpen: false })}
                 >
                   취소

@@ -106,8 +106,8 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     const FALLBACK_IMAGE = '/no-image.png';
 
     return (
-        <div className="modal-overlay" onClick={onCancel}>
-            <div className="modal-content" style={{ maxWidth: '800px', width: '95%', padding: '0', borderRadius: '32px' }} onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay mobile-bottom" onClick={onCancel}>
+            <div className="modal-content full-mobile mobile-bottom" style={{ maxWidth: '800px' }} onClick={e => e.stopPropagation()}>
                 {/* Header Close Button */}
                 <button
                     onClick={onCancel}
@@ -121,11 +121,11 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                     ×
                 </button>
 
-                <div className="detail-layout" style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflowY: 'auto' }}>
+                <div className="option-detail-layout" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
                     {/* Top Section: Info & Image */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', background: '#fff' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'inherit', background: '#fff' }}>
                         {/* Left: Image */}
-                        <div style={{ position: 'relative', height: '100%', minHeight: '300px', display: 'flex' }}>
+                        <div className="option-image-area" style={{ position: 'relative', height: '100%', minHeight: '300px', display: 'flex' }}>
                             {(!product.images || product.images.length === 0) ? (
                                 <div className="no-image-placeholder">이미지 준비 중</div>
                             ) : (
@@ -146,11 +146,11 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                         </div>
 
                         {/* Right: Text Info */}
-                        <div style={{ padding: '40px' }}>
+                        <div className="option-info-padding" style={{ padding: '40px' }}>
                             <div style={{ color: 'var(--accent-color)', fontWeight: 800, fontSize: '0.9rem', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                                 상품 상세 정보
                             </div>
-                            <h2 style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: '15px', color: '#1e293b', lineHeight: 1.2 }}>
+                            <h2 className="option-header-title" style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: '15px', color: '#1e293b', lineHeight: 1.2 }}>
                                 {product.name}
                             </h2>
 
@@ -162,7 +162,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 ))}
                             </div>
 
-                            <p style={{ color: '#475569', lineHeight: 1.6, fontSize: '1.05rem', marginBottom: '25px' }}>
+                            <p className="option-description" style={{ color: '#475569', lineHeight: 1.6, fontSize: '1.05rem', marginBottom: '25px' }}>
                                 {product.description || `본 상품은 고품질 자재로 제작된 ${product.name}입니다. 산업 현장 및 일반 가정에서 신뢰하고 사용할 수 있는 내구성을 갖추고 있습니다. 상세 규격은 옵션에서 선택 가능합니다.`}
                             </p>
 
@@ -177,7 +177,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                 </div>
 
                 {/* Middle Section: Options */}
-                <div style={{ padding: '0 40px 40px 40px', background: '#fff' }}>
+                <div style={{ padding: '0 40px 40px 40px', background: '#fff' }} className="option-info-padding">
                     <div style={{ padding: '30px', background: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
                         <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '20px', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             ⚙️ 옵션 선택
@@ -225,35 +225,36 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                 </div>
 
                 {/* Bottom Section: Qty & Footer */}
-                <div style={{
+                <div className="option-footer" style={{
                     position: 'sticky', bottom: 0, padding: '25px 40px',
-                    background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)',
+                    background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(10px)',
                     borderTop: '1px solid #e2e8f0', display: 'flex',
                     justifyContent: 'space-between', alignItems: 'center',
-                    gap: '20px', flexWrap: 'wrap'
+                    gap: '20px'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
+                    <div className="option-footer-content" style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
                         <div className="qty-controls" style={{ background: '#f1f5f9', padding: '6px', borderRadius: '16px' }}>
                             <button className="qty-btn" style={{ width: '40px', height: '40px', background: 'white', border: 'none', shadow: '0 2px 4px rgba(0,0,0,0.05)' }} onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</button>
                             <span className="qty-num" style={{ minWidth: '40px', textAlign: 'center', fontSize: '1.2rem', fontWeight: 800 }}>{quantity}</span>
                             <button className="qty-btn" style={{ width: '40px', height: '40px', background: 'white', border: 'none', shadow: '0 2px 4px rgba(0,0,0,0.05)' }} onClick={() => setQuantity(quantity + 1)}>+</button>
                         </div>
 
-                        <div>
+                        <div className="option-price-summary">
                             <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 600, marginBottom: '2px' }}>총 주문 금액</div>
-                            <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--accent-color)' }}>
+                            <div className="option-total-price-text" style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--accent-color)' }}>
                                 ₩{totalPrice.toLocaleString()}
                             </div>
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '12px', flex: '1', justifyContent: 'flex-end', minWidth: '280px' }}>
+                    <div className="option-footer-btns" style={{ display: 'flex', gap: '12px', flex: '1', justifyContent: 'flex-end' }}>
                         <button
+                            className="action-btn"
                             onClick={onCancel}
                             style={{
-                                padding: '18px 30px', borderRadius: '18px', border: '1px solid #e2e8f0',
+                                padding: '16px 20px', borderRadius: '18px', height: 'auto',
                                 background: 'white', color: '#64748b', fontWeight: 700, fontSize: '1.1rem',
-                                cursor: 'pointer'
+                                cursor: 'pointer', flex: 1
                             }}
                         >
                             취소
@@ -261,13 +262,13 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                         <button
                             onClick={handleConfirm}
                             style={{
-                                padding: '18px 50px', borderRadius: '18px', border: 'none',
+                                padding: '16px 20px', borderRadius: '18px', border: 'none',
                                 background: 'var(--accent-color)', color: 'white', fontWeight: 800, fontSize: '1.1rem',
                                 cursor: 'pointer', boxShadow: '0 10px 20px rgba(255, 107, 0, 0.2)',
-                                flex: 0.6
+                                flex: 2
                             }}
                         >
-                            장바구니에 담기
+                            장바구니 담기
                         </button>
                     </div>
                 </div>
