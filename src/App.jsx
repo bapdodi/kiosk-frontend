@@ -328,14 +328,12 @@ function KioskView({
   const submitOrder = async () => {
     if (!orderModal.name.trim()) return alert('상호를 입력하거나 선택해주세요.');
 
-    const customerString = orderModal.name.trim();
-    const codeMatch = customerString.match(/^\[(.*?)\] (.*)/);
-    let erpCustomerCode = "1";
-    let customerName = customerString;
-    if (codeMatch) {
-      erpCustomerCode = codeMatch[1];
-      customerName = codeMatch[2];
-    }
+    const customerInput = orderModal.name.trim();
+    // 고객 목록에서 입력된 이름과 공백을 제외하고 정확히 일치하는 고객을 찾음
+    const matchedCustomer = customers.find(c => c.NAME?.trim() === customerInput);
+
+    let erpCustomerCode = matchedCustomer ? String(matchedCustomer.CODE) : "1";
+    let customerName = customerInput;
 
     const orderData = {
       customerName,
@@ -463,7 +461,7 @@ function KioskView({
               />
               <datalist id="customer-list">
                 {customers.map(c => (
-                  <option key={c.CODE} value={`[${c.CODE}] ${c.NAME}`} />
+                  <option key={c.CODE} value={c.NAME} />
                 ))}
               </datalist>
               <div style={{ display: 'flex', gap: '12px' }}>
