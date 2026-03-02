@@ -7,8 +7,6 @@ const AdminLayout = ({
     setMainCategories,
     subCategories,
     setSubCategories,
-    detailCategories,
-    setDetailCategories,
     orders,
     setOrders
 }) => {
@@ -58,7 +56,6 @@ const AdminLayout = ({
                         products, setProducts,
                         mainCategories, setMainCategories,
                         subCategories, setSubCategories,
-                        detailCategories, setDetailCategories,
                         orders, setOrders
                     }} />
                 </div>

@@ -17,12 +17,10 @@ function App() {
   const [products, setProducts] = useState([]);
   const [mainCategories, setMainCategories] = useState([]);
   const [subCategories, setSubCategories] = useState({});
-  const [detailCategories, setDetailCategories] = useState({});
   const [orders, setOrders] = useState([]);
 
   const [activeMainCat, setActiveMainCat] = useState(null);
   const [activeSubCat, setActiveSubCat] = useState(null);
-  const [activeDetailCat, setActiveDetailCat] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,21 +62,14 @@ function App() {
 
         const mainArr = catData.filter(c => c.level === 'main');
         const subObj = {};
-        const detailObj = {};
 
         catData.filter(c => c.level === 'sub').forEach(c => {
           if (!subObj[c.parentId]) subObj[c.parentId] = [];
           subObj[c.parentId].push(c);
         });
 
-        catData.filter(c => c.level === 'detail').forEach(c => {
-          if (!detailObj[c.parentId]) detailObj[c.parentId] = [];
-          detailObj[c.parentId].push(c);
-        });
-
         setMainCategories(mainArr);
         setSubCategories(subObj);
-        setDetailCategories(detailObj);
 
         if (mainArr.length > 0) {
           const firstMainId = mainArr[0].id;
@@ -86,7 +77,6 @@ function App() {
           const firstSubId = subObj[firstMainId]?.[0]?.id;
           if (firstSubId) {
             setActiveSubCat(firstSubId);
-            setActiveDetailCat(detailObj[firstSubId]?.[0]?.id);
           }
         }
       } catch (error) {
@@ -126,7 +116,6 @@ function App() {
             products={products}
             mainCategories={mainCategories}
             subCategories={subCategories}
-            detailCategories={detailCategories}
             cart={cart}
             setCart={setCart}
             orders={orders}
@@ -135,8 +124,6 @@ function App() {
             setActiveMainCat={setActiveMainCat}
             activeSubCat={activeSubCat}
             setActiveSubCat={setActiveSubCat}
-            activeDetailCat={activeDetailCat}
-            setActiveDetailCat={setActiveDetailCat}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
           />
@@ -153,8 +140,6 @@ function App() {
               setMainCategories={setMainCategories}
               subCategories={subCategories}
               setSubCategories={setSubCategories}
-              detailCategories={detailCategories}
-              setDetailCategories={setDetailCategories}
               orders={orders}
               setOrders={setOrders}
             />
@@ -176,7 +161,6 @@ function KioskView({
   products,
   mainCategories,
   subCategories,
-  detailCategories,
   cart,
   setCart,
   orders,
@@ -185,8 +169,6 @@ function KioskView({
   setActiveMainCat,
   activeSubCat,
   setActiveSubCat,
-  activeDetailCat,
-  setActiveDetailCat,
   searchQuery,
   setSearchQuery
 }) {
@@ -255,22 +237,19 @@ function KioskView({
 
       const matchMain = product.mainCategory === activeMainCat;
       const matchSub = !activeSubCat ? true : product.subCategory === activeSubCat;
-      const matchDetail = !activeDetailCat ? true : product.detailCategory === activeDetailCat;
 
-      return matchMain && matchSub && matchDetail;
+      return matchMain && matchSub;
     });
-  }, [activeMainCat, activeSubCat, activeDetailCat, searchQuery, products]);
+  }, [activeMainCat, activeSubCat, products, searchQuery]);
 
   const handleMainCatChange = (id) => {
     setActiveMainCat(id);
     setActiveSubCat(null);
-    setActiveDetailCat(null);
     setIsNavVisible(true); // 카테고리 변경 시 네비게이션 무조건 노출
   };
 
   const handleSubCatChange = (id) => {
     setActiveSubCat(id);
-    setActiveDetailCat(null);
     setIsNavVisible(true); // 카테고리 변경 시 네비게이션 무조건 노출
   };
 
@@ -381,13 +360,10 @@ function KioskView({
         <CategoryNav
           mainCategories={mainCategories}
           subCategories={subCategories}
-          detailCategories={detailCategories}
           activeMainCat={activeMainCat}
           activeSubCat={activeSubCat}
-          activeDetailCat={activeDetailCat}
           onMainCatChange={handleMainCatChange}
           onSubCatChange={handleSubCatChange}
-          onDetailCatChange={setActiveDetailCat}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />

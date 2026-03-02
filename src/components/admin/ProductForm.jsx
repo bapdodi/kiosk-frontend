@@ -9,8 +9,7 @@ const ProductForm = () => {
     const {
         products, setProducts,
         mainCategories, setMainCategories,
-        subCategories, setSubCategories,
-        detailCategories, setDetailCategories
+        subCategories, setSubCategories
     } = useOutletContext();
     const isEditMode = Boolean(id);
 
@@ -19,7 +18,6 @@ const ProductForm = () => {
         description: '',
         mainCategory: '',
         subCategory: '',
-        detailCategory: '',
         price: 0,
         hashtags: '',
         images: []
@@ -35,7 +33,6 @@ const ProductForm = () => {
             if (product) {
                 setProductData({
                     ...product,
-                    detailCategory: product.detailCategory,
                     hashtags: product.hashtags ? product.hashtags.join(', ') : '',
                     images: product.images || (product.image ? [product.image] : [])
                 });
@@ -48,15 +45,13 @@ const ProductForm = () => {
         } else if (mainCategories.length > 0) {
             const mId = mainCategories[0].id;
             const sId = subCategories[mId]?.[0]?.id;
-            const dId = sId ? detailCategories[sId]?.[0]?.id : '';
             setProductData(prev => ({
                 ...prev,
                 mainCategory: mId,
-                subCategory: sId || '',
-                detailCategory: dId || ''
+                subCategory: sId || ''
             }));
         }
-    }, [isEditMode, id, products, mainCategories, subCategories, detailCategories]);
+    }, [isEditMode, id, products, mainCategories, subCategories]);
 
     const handleImageUpload = async (e) => {
         const files = Array.from(e.target.files);
@@ -109,12 +104,10 @@ const ProductForm = () => {
                 const saved = await res.json();
                 setMainCategories([...mainCategories, saved]);
                 setSubCategories({ ...subCategories, [saved.id]: [] });
-                // 새로 생성된 카테고리 자동 선택
                 setProductData(prev => ({
                     ...prev,
                     mainCategory: saved.id,
-                    subCategory: '',
-                    detailCategory: ''
+                    subCategory: ''
                 }));
             }
         } catch (err) { alert('오류 발생'); }
@@ -139,40 +132,9 @@ const ProductForm = () => {
                     ...subCategories,
                     [parentId]: [...(subCategories[parentId] || []), saved]
                 });
-                setDetailCategories({ ...detailCategories, [saved.id]: [] });
-                // 새로 생성된 중분류 자동 선택
                 setProductData(prev => ({
                     ...prev,
-                    subCategory: saved.id,
-                    detailCategory: ''
-                }));
-            }
-        } catch (err) { alert('오류 발생'); }
-    };
-
-    const addDetailCategory = async () => {
-        if (!productData.subCategory) return alert('중분류를 먼저 선택해주세요.');
-        const name = prompt('새 소분류 이름을 입력하세요:');
-        if (!name) return;
-        const id = 'det_' + Date.now();
-        const parentId = productData.subCategory;
-        const catData = { id, name, parentId, level: 'detail' };
-        try {
-            const res = await fetch('/api/categories/admin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(catData)
-            });
-            if (res.ok) {
-                const saved = await res.json();
-                setDetailCategories({
-                    ...detailCategories,
-                    [parentId]: [...(detailCategories[parentId] || []), saved]
-                });
-                // 새로 생성된 소분류 자동 선택
-                setProductData(prev => ({
-                    ...prev,
-                    detailCategory: saved.id
+                    subCategory: saved.id
                 }));
             }
         } catch (err) { alert('오류 발생'); }
@@ -259,8 +221,7 @@ const ProductForm = () => {
                                         setProductData({
                                             ...productData,
                                             mainCategory: mId,
-                                            subCategory: sId || '',
-                                            detailCategory: sId ? detailCategories[sId]?.[0]?.id : ''
+                                            subCategory: sId || ''
                                         });
                                     }}
                                 >
@@ -279,25 +240,11 @@ const ProductForm = () => {
                                         const sId = e.target.value;
                                         setProductData({
                                             ...productData,
-                                            subCategory: sId,
-                                            detailCategory: detailCategories[sId]?.[0]?.id || ''
+                                            subCategory: sId
                                         });
                                     }}
                                 >
                                     {subCategories[productData.mainCategory]?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="form-item">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <label>소분류</label>
-                                    <button type="button" onClick={addDetailCategory} className="mini-add-btn">＋ 추가</button>
-                                </div>
-                                <select
-                                    className="form-select"
-                                    value={productData.detailCategory}
-                                    onChange={(e) => setProductData({ ...productData, detailCategory: e.target.value })}
-                                >
-                                    {(detailCategories[productData.subCategory] || []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                 </select>
                             </div>
                         </div>
@@ -490,7 +437,6 @@ const ProductForm = () => {
                         </div>
                     </section>
 
-                    {/* 하단 버튼 바 */}
                     <div className="admin-form-footer">
                         <div className="footer-content">
                             <span className="status-msg">{isLoading ? '데이터를 처리 중입니다...' : '모든 정보를 입력하셨나요?'}</span>
@@ -547,7 +493,7 @@ const ProductForm = () => {
                 }
 
                 .section-form { display: flex; flex-direction: column; gap: 20px; }
-                .section-form.compact-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+                .section-form.compact-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
                 
                 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
                 .form-item { display: flex; flex-direction: column; gap: 8px; }

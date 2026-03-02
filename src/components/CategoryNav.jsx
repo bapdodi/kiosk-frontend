@@ -1,20 +1,17 @@
 const CategoryNav = ({
     mainCategories,
     subCategories,
-    detailCategories,
     activeMainCat,
     activeSubCat,
-    activeDetailCat,
     onMainCatChange,
     onSubCatChange,
-    onDetailCatChange,
     searchQuery,
     onSearchChange
 }) => {
     return (
         <nav className="top-nav">
             <div className="header-top">
-                <div className="logo">동관배관자제</div>
+                <div className="logo">동광배관자재</div>
                 <div className="search-container">
                     <span className="search-icon">🔍</span>
                     <input
@@ -58,26 +55,6 @@ const CategoryNav = ({
                             </button>
                         ))}
                     </div>
-
-                    {activeSubCat && detailCategories[activeSubCat] && (
-                        <div className="categories-scroll sub-scroll" style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '4px' }}>
-                            <button
-                                className={`category-tab detail-tab ${!activeDetailCat ? 'active' : ''}`}
-                                onClick={() => onDetailCatChange(null)}
-                            >
-                                전체
-                            </button>
-                            {detailCategories[activeSubCat].map((detail) => (
-                                <button
-                                    key={detail.id}
-                                    className={`category-tab detail-tab ${activeDetailCat === detail.id ? 'active' : ''}`}
-                                    onClick={() => onDetailCatChange(detail.id)}
-                                >
-                                    {detail.name}
-                                </button>
-                            ))}
-                        </div>
-                    )}
                 </div>
             )}
         </nav>

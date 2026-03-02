@@ -4,15 +4,14 @@ import { useOutletContext } from 'react-router-dom';
 const CategoryManagement = () => {
     const {
         mainCategories, setMainCategories,
-        subCategories, setSubCategories,
-        detailCategories, setDetailCategories
+        subCategories, setSubCategories
     } = useOutletContext();
 
     const [catModal, setCatModal] = useState({
         isOpen: false,
         title: '',
         value: '',
-        type: '', // 'main', 'sub', 'detail'
+        type: '', // 'main', 'sub'
         parentId: null,
         isEdit: false,
         editId: null
@@ -27,14 +26,12 @@ const CategoryManagement = () => {
     }, [mainCategories]);
 
     const openCatModal = (type, parentId = null, editItem = null) => {
-        console.log('Opening modal:', { type, parentId, editItem });
         let title = '';
         if (editItem) {
             title = '카테고리 이름 수정 (' + editItem.name + ')';
         } else {
             if (type === 'main') title = '신규 대분류 등록';
-            else if (type === 'sub') title = '신규 중분류 등록';
-            else title = '신규 소분류 등록';
+            else title = '신규 중분류 등록';
         }
 
         setCatModal({
@@ -54,7 +51,6 @@ const CategoryManagement = () => {
 
         if (isEdit) {
             const catData = { id: editId, name: value, level: type, parentId };
-            console.log('Updating category:', catData);
             try {
                 const res = await fetch(`/api/categories/admin/${editId}`, {
                     method: 'PUT',
@@ -65,15 +61,10 @@ const CategoryManagement = () => {
                     const updated = await res.json();
                     if (type === 'main') {
                         setMainCategories(mainCategories.map(c => c.id === editId ? updated : c));
-                    } else if (type === 'sub') {
+                    } else {
                         setSubCategories({
                             ...subCategories,
                             [parentId]: subCategories[parentId].map(s => s.id === editId ? updated : s)
-                        });
-                    } else {
-                        setDetailCategories({
-                            ...detailCategories,
-                            [parentId]: detailCategories[parentId].map(d => d.id === editId ? updated : d)
                         });
                     }
                     setCatModal({ ...catModal, isOpen: false });
@@ -83,9 +74,8 @@ const CategoryManagement = () => {
                 }
             } catch (err) { alert('오류 발생: ' + err.message); }
         } else {
-            const id = (type === 'main' ? 'cat_' : type === 'sub' ? 'sub_' : 'det_') + Date.now();
+            const id = (type === 'main' ? 'cat_' : 'sub_') + Date.now();
             const catData = { id, name: value, level: type, parentId };
-            console.log('Creating category:', catData);
 
             try {
                 const res = await fetch('/api/categories/admin', {
@@ -98,16 +88,10 @@ const CategoryManagement = () => {
                     if (type === 'main') {
                         setMainCategories([...mainCategories, saved]);
                         setSubCategories({ ...subCategories, [saved.id]: [] });
-                    } else if (type === 'sub') {
+                    } else {
                         setSubCategories({
                             ...subCategories,
                             [parentId]: [...(subCategories[parentId] || []), saved]
-                        });
-                        setDetailCategories({ ...detailCategories, [saved.id]: [] });
-                    } else {
-                        setDetailCategories({
-                            ...detailCategories,
-                            [parentId]: [...(detailCategories[parentId] || []), saved]
                         });
                     }
                     setCatModal({ ...catModal, isOpen: false });
@@ -129,6 +113,53 @@ const CategoryManagement = () => {
         } catch (err) { alert('오류 발생'); }
     };
 
+    const moveCategory = async (type, id, direction, parentId = null) => {
+        // search query가 적용된 상태에서는 순서 변경을 막는 것이 안전함
+        if (catSearchQuery.trim()) {
+            return alert('순서 변경은 검색어가 없을 때만 가능합니다.');
+        }
+
+        let listToUpdate = [];
+        if (type === 'main') {
+            listToUpdate = [...mainCategories];
+        } else {
+            listToUpdate = [...(subCategories[parentId] || [])];
+        }
+
+        const index = listToUpdate.findIndex(c => c.id === id);
+        if (index < 0) return;
+
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= listToUpdate.length) return;
+
+        // Swap
+        const temp = listToUpdate[index];
+        listToUpdate[index] = listToUpdate[newIndex];
+        listToUpdate[newIndex] = temp;
+
+        // Assign sortOrder
+        const updatedItems = listToUpdate.map((cat, i) => ({ ...cat, sortOrder: i }));
+
+        try {
+            const res = await fetch('/api/categories/admin/reorder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedItems)
+            });
+            if (res.ok) {
+                if (type === 'main') {
+                    setMainCategories(updatedItems);
+                } else {
+                    setSubCategories({ ...subCategories, [parentId]: updatedItems });
+                }
+            } else {
+                alert('순서 변경 실패');
+            }
+        } catch (e) {
+            alert('오류 발생');
+        }
+    };
+
     const deleteSubCategory = async (mainId, subId) => {
         if (!window.confirm('해당 중분류를 삭제하시겠습니까?')) return;
         try {
@@ -137,18 +168,6 @@ const CategoryManagement = () => {
                 setSubCategories({
                     ...subCategories,
                     [mainId]: subCategories[mainId].filter(s => s.id !== subId)
-                });
-            }
-        } catch (err) { alert('오류 발생'); }
-    };
-
-    const deleteDetailCategory = async (subId, detId) => {
-        try {
-            const res = await fetch(`/api/categories/admin/${detId}`, { method: 'DELETE' });
-            if (res.ok) {
-                setDetailCategories({
-                    ...detailCategories,
-                    [subId]: detailCategories[subId].filter(d => d.id !== detId)
                 });
             }
         } catch (err) { alert('오류 발생'); }
@@ -269,6 +288,14 @@ const CategoryManagement = () => {
                                 </div>
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                     <button
+                                        onClick={() => moveCategory('main', main.id, 'up')}
+                                        style={{ padding: '6px 8px', background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                    >▲</button>
+                                    <button
+                                        onClick={() => moveCategory('main', main.id, 'down')}
+                                        style={{ padding: '6px 8px', background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                    >▼</button>
+                                    <button
                                         onClick={() => openCatModal('main', null, main)}
                                         style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem' }}
                                     >
@@ -285,7 +312,7 @@ const CategoryManagement = () => {
 
                             <div style={{ padding: '20px', flex: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8' }}>중분류 / 소분류</span>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8' }}>중분류</span>
                                     <button
                                         onClick={() => openCatModal('sub', main.id)}
                                         style={{ padding: '5px 10px', background: '#334155', color: 'white', border: 'none', borderRadius: '5px', fontSize: '0.75rem', cursor: 'pointer' }}
@@ -296,9 +323,17 @@ const CategoryManagement = () => {
 
                                 {subCategories[main.id]?.map(sub => (
                                     <div key={sub.id} style={{ background: '#f8fafc', borderRadius: '10px', padding: '15px', marginBottom: '10px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div style={{ fontWeight: 700, color: '#1e293b' }}>• {sub.name}</div>
                                             <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button
+                                                    onClick={() => moveCategory('sub', sub.id, 'up', main.id)}
+                                                    style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.85rem' }}
+                                                >▲</button>
+                                                <button
+                                                    onClick={() => moveCategory('sub', sub.id, 'down', main.id)}
+                                                    style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.85rem' }}
+                                                >▼</button>
                                                 <button
                                                     onClick={() => openCatModal('sub', main.id, sub)}
                                                     style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
@@ -313,29 +348,6 @@ const CategoryManagement = () => {
                                                 </button>
                                             </div>
                                         </div>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                            {detailCategories[sub.id]?.map(det => (
-                                                <div
-                                                    key={det.id}
-                                                    onClick={() => openCatModal('detail', sub.id, det)}
-                                                    style={{ background: 'white', padding: '5px 12px', borderRadius: '20px', border: '1px solid #e2e8f0', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
-                                                >
-                                                    {det.name}
-                                                    <span
-                                                        onClick={(e) => { e.stopPropagation(); deleteDetailCategory(sub.id, det.id); }}
-                                                        style={{ color: '#cbd5e1', fontSize: '1.1rem' }}
-                                                    >
-                                                        ×
-                                                    </span>
-                                                </div>
-                                            ))}
-                                            <button
-                                                onClick={() => openCatModal('detail', sub.id)}
-                                                style={{ padding: '4px 10px', background: 'none', border: '1px dashed #cbd5e1', borderRadius: '20px', color: '#94a3b8', fontSize: '0.85rem', cursor: 'pointer' }}
-                                            >
-                                                + 소분류
-                                            </button>
-                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -345,7 +357,6 @@ const CategoryManagement = () => {
             ) : (
                 currentCat && (
                     <div style={{ maxWidth: '800px', margin: '0 auto', background: 'white', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '30px' }}>
-                        {/* Tab view details similar to grid but larger */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '2px solid #f1f5f9', paddingBottom: '20px' }}>
                             <h2 style={{ margin: 0 }}>📁 {currentCat.name}</h2>
                             <div style={{ display: 'flex', gap: '10px' }}>
@@ -353,7 +364,6 @@ const CategoryManagement = () => {
                                 <button onClick={() => deleteMainCategory(currentCat.id)} style={{ padding: '10px 20px', background: 'white', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '10px', cursor: 'pointer' }}>대분류 삭제</button>
                             </div>
                         </div>
-                        {/* ... more detailed view ... */}
                     </div>
                 )
             )}
