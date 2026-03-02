@@ -49,7 +49,6 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         // Handle ERP-grouped items as a generic "Options" choice
         if (groups.length === 0 && product.combinations && product.combinations.length > 1) {
             groups.push({
-                name: '규격',
                 values: product.combinations.map(c => c.name).sort(compareOptions),
                 legacySource: 'combinations'
             });
