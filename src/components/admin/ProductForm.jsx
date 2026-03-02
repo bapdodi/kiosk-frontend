@@ -31,27 +31,42 @@ const ProductForm = () => {
         if (isEditMode) {
             const product = products.find(p => p.id === parseInt(id));
             if (product) {
-                setProductData({
+                setProductData(prev => ({
+                    ...prev,
                     ...product,
                     hashtags: product.hashtags ? product.hashtags.join(', ') : '',
                     images: product.images || (product.image ? [product.image] : [])
-                });
+                }));
                 setCombinations(product.combinations || []);
                 setOptionGroups(product.optionGroups?.map(g => ({
                     name: g.name,
                     values: g.values ? g.values.join(', ') : ''
                 })) || []);
             }
-        } else if (mainCategories.length > 0) {
-            const mId = mainCategories[0].id;
-            const sId = subCategories[mId]?.[0]?.id;
-            setProductData(prev => ({
-                ...prev,
-                mainCategory: mId,
-                subCategory: sId || ''
-            }));
         }
-    }, [isEditMode, id, products, mainCategories, subCategories]);
+    }, [isEditMode, id, products]);
+
+    useEffect(() => {
+        if (mainCategories.length > 0) {
+            setProductData(prev => {
+                // 현재 설정된 대분류가 없거나, 유효하지 않은 항목이면 첫 번째 대분류로 초기화
+                const mId = prev.mainCategory && mainCategories.some(c => c.id === prev.mainCategory)
+                    ? prev.mainCategory
+                    : mainCategories[0].id;
+
+                const currentSubs = subCategories[mId] || [];
+                // 현재 선택된 중분류가 해당 대분류 목록에 없는 항목이거나 비어있으면 첫 번째 중분류로 초기화
+                const sId = prev.subCategory && currentSubs.some(s => s.id === prev.subCategory)
+                    ? prev.subCategory
+                    : (currentSubs.length > 0 ? currentSubs[0].id : '');
+
+                if (prev.mainCategory !== mId || prev.subCategory !== sId) {
+                    return { ...prev, mainCategory: mId, subCategory: sId };
+                }
+                return prev;
+            });
+        }
+    }, [mainCategories, subCategories, productData.mainCategory, productData.subCategory]);
 
     const handleImageUpload = async (e) => {
         const files = Array.from(e.target.files);
