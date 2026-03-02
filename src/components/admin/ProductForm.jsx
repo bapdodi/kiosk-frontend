@@ -68,6 +68,48 @@ const ProductForm = () => {
         }
     }, [mainCategories, subCategories, productData.mainCategory, productData.subCategory]);
 
+    const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.8) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = event => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+                    } else {
+                        if (height > maxHeight) {
+                            width = Math.round((width * maxHeight) / height);
+                            height = maxHeight;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        }));
+                    }, 'image/jpeg', quality);
+                };
+                img.onerror = error => reject(error);
+            };
+            reader.onerror = error => reject(error);
+        });
+    };
+
     const handleImageUpload = async (e) => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
@@ -75,19 +117,27 @@ const ProductForm = () => {
         setIsLoading(true);
         const uploadedUrls = [];
         for (const file of files) {
-            const formData = new FormData();
-            formData.append('file', file);
             try {
-                const res = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    uploadedUrls.push(data.fileUrl);
+                // 압축 적용 (최대 폭/높이 800px, 80% 화질)
+                const isImage = file.type.startsWith('image/');
+                const processedFile = isImage ? await compressImage(file) : file;
+
+                const formData = new FormData();
+                formData.append('file', processedFile);
+                try {
+                    const res = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        uploadedUrls.push(data.fileUrl);
+                    }
+                } catch (err) {
+                    console.error("Upload failed", err);
                 }
             } catch (err) {
-                console.error("Upload failed", err);
+                console.error("Image processing/upload failed", err);
             }
         }
         setProductData(prev => ({

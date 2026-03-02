@@ -6,23 +6,51 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
 
     // Normalizing option groups from different data structures
     const getOptionGroups = () => {
+        const compareOptions = (strA, strB) => {
+            const regex = /(\d+)|(\D+)/g;
+            const partsA = [...strA.trim().matchAll(regex)].map(m => m[0]);
+            const partsB = [...strB.trim().matchAll(regex)].map(m => m[0]);
+
+            for (let i = 0; i < Math.min(partsA.length, partsB.length); i++) {
+                const pA = partsA[i];
+                const pB = partsB[i];
+
+                const isNumA = /^\d+$/.test(pA);
+                const isNumB = /^\d+$/.test(pB);
+
+                if (isNumA && isNumB) {
+                    const diff = parseInt(pA, 10) - parseInt(pB, 10);
+                    if (diff !== 0) return diff;
+                } else if (isNumA !== isNumB) {
+                    return isNumB ? 1 : -1;
+                } else {
+                    const comp = pA.localeCompare(pB, 'ko-KR');
+                    if (comp !== 0) return comp;
+                }
+            }
+            return partsA.length - partsB.length;
+        };
+
         if (product.optionGroups && product.optionGroups.length > 0) {
-            return product.optionGroups;
+            return product.optionGroups.map(g => ({
+                ...g,
+                values: g.values ? [...g.values].sort(compareOptions) : []
+            }));
         }
 
         const groups = [];
         if (product.sizes && product.sizes.length > 0) {
-            groups.push({ name: '규격 (Size)', values: product.sizes.map(s => s.name), legacySource: 'sizes' });
+            groups.push({ name: '규격 (Size)', values: product.sizes.map(s => s.name).sort(compareOptions), legacySource: 'sizes' });
         }
         if (product.origins && product.origins.length > 0) {
-            groups.push({ name: '원산지 (Origin)', values: product.origins.map(o => o.name), legacySource: 'origins' });
+            groups.push({ name: '원산지 (Origin)', values: product.origins.map(o => o.name).sort(compareOptions), legacySource: 'origins' });
         }
 
         // Handle ERP-grouped items as a generic "Options" choice
         if (groups.length === 0 && product.combinations && product.combinations.length > 1) {
             groups.push({
                 name: '규격',
-                values: product.combinations.map(c => c.name),
+                values: product.combinations.map(c => c.name).sort(compareOptions),
                 legacySource: 'combinations'
             });
         }
