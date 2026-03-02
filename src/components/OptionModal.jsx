@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
 
 const OptionModal = ({ product, onConfirm, onCancel }) => {
@@ -32,6 +32,32 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     const groups = getOptionGroups();
     const [selections, setSelections] = useState({});
     const [quantity, setQuantity] = useState(1);
+
+    const intervalRef = useRef(null);
+    const timeoutRef = useRef(null);
+
+    const handleQuantityChange = (delta) => {
+        setQuantity(prev => {
+            const val = typeof prev === 'number' ? prev : parseInt(prev || '0', 10);
+            return Math.max(1, Math.min(val + delta, 9999));
+        });
+    };
+
+    const startPress = (delta) => {
+        // Stop any running intervals first
+        stopPress();
+        handleQuantityChange(delta);
+        timeoutRef.current = setTimeout(() => {
+            intervalRef.current = setInterval(() => {
+                handleQuantityChange(delta);
+            }, 30); // 속도를 더 빠르게 80ms -> 30ms로 변경
+        }, 400);
+    };
+
+    const stopPress = () => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        if (intervalRef.current) clearInterval(intervalRef.current);
+    };
 
     // Initialize selections with the first value of each group
     useEffect(() => {
@@ -75,7 +101,8 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
 
     const currentExtraPrice = getPriceForSelections(selections);
     const unitPrice = product.price + currentExtraPrice;
-    const totalPrice = unitPrice * quantity;
+    const safeQuantity = typeof quantity === 'number' ? quantity : parseInt(quantity || '0', 10);
+    const totalPrice = unitPrice * safeQuantity;
 
     // Helper to calculate potential price change for an option button
     const getPriceAdjustment = (groupName, value) => {
@@ -99,7 +126,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
             totalExtra: currentExtraPrice,
             erpCode: foundCombo ? foundCombo.erpCode : (product.erpCode || null)
         }];
-        const quantities = { [foundCombo ? foundCombo.id : comboName]: quantity };
+        const quantities = { [foundCombo ? foundCombo.id : comboName]: safeQuantity === 0 ? 1 : safeQuantity };
         onConfirm(product, combinations, quantities);
     };
 
@@ -233,10 +260,59 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                     gap: '20px'
                 }}>
                     <div className="option-footer-content" style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
-                        <div className="qty-controls" style={{ background: '#f1f5f9', padding: '6px', borderRadius: '16px' }}>
-                            <button className="qty-btn" style={{ width: '40px', height: '40px', background: 'white', border: 'none', shadow: '0 2px 4px rgba(0,0,0,0.05)' }} onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</button>
-                            <span className="qty-num" style={{ minWidth: '40px', textAlign: 'center', fontSize: '1.2rem', fontWeight: 800 }}>{quantity}</span>
-                            <button className="qty-btn" style={{ width: '40px', height: '40px', background: 'white', border: 'none', shadow: '0 2px 4px rgba(0,0,0,0.05)' }} onClick={() => setQuantity(quantity + 1)}>+</button>
+                        <div className="qty-controls" style={{ background: '#f1f5f9', padding: '6px', borderRadius: '16px', display: 'flex', alignItems: 'center' }}>
+                            <button
+                                className="qty-btn"
+                                style={{ width: '40px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px' }}
+                                onMouseDown={(e) => { e.preventDefault(); startPress(-1); }}
+                                onMouseUp={stopPress}
+                                onMouseLeave={stopPress}
+                                onTouchStart={(e) => { e.preventDefault(); startPress(-1); }}
+                                onTouchEnd={stopPress}
+                                onTouchCancel={stopPress}
+                            >
+                                −
+                            </button>
+                            <input
+                                type="number"
+                                className="qty-num"
+                                value={quantity}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === '') {
+                                        setQuantity('');
+                                    } else {
+                                        const parsed = parseInt(val, 10);
+                                        if (!isNaN(parsed)) setQuantity(parsed);
+                                    }
+                                }}
+                                onBlur={() => {
+                                    if (quantity === '' || quantity < 1) setQuantity(1);
+                                }}
+                                style={{
+                                    width: '60px',
+                                    textAlign: 'center',
+                                    fontSize: '1.2rem',
+                                    fontWeight: 800,
+                                    border: 'none',
+                                    background: 'transparent',
+                                    outline: 'none',
+                                    padding: 0,
+                                    margin: '0 10px'
+                                }}
+                            />
+                            <button
+                                className="qty-btn"
+                                style={{ width: '40px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px' }}
+                                onMouseDown={(e) => { e.preventDefault(); startPress(1); }}
+                                onMouseUp={stopPress}
+                                onMouseLeave={stopPress}
+                                onTouchStart={(e) => { e.preventDefault(); startPress(1); }}
+                                onTouchEnd={stopPress}
+                                onTouchCancel={stopPress}
+                            >
+                                +
+                            </button>
                         </div>
 
                         <div className="option-price-summary">
