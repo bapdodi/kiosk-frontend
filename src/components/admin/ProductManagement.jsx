@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { getImageUrl } from '../../utils/imageUtils';
+import BulkImageMatchModal from './BulkImageMatchModal';
 
 const ProductManagement = () => {
     const navigate = useNavigate();
@@ -13,6 +14,7 @@ const ProductManagement = () => {
     const [adminActiveSubCat, setAdminActiveSubCat] = useState('all');
     const [adminSearchQuery, setAdminSearchQuery] = useState('');
     const [selectedProducts, setSelectedProducts] = useState([]);
+    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
 
     // eslint-disable-next-line no-unused-vars
     const FALLBACK_IMAGE = '/no-image.png';
@@ -72,6 +74,13 @@ const ProductManagement = () => {
         }
     };
 
+    const refreshProducts = async () => {
+        const res = await fetch('/api/products');
+        if (res.ok) {
+            setProducts(await res.json());
+        }
+    };
+
     const filteredProducts = products.filter(p => {
         const matchesMain = adminActiveMainCat ? p.mainCategory === adminActiveMainCat : true;
         const matchesSub = adminActiveSubCat === 'all' ? true : p.subCategory === adminActiveSubCat;
@@ -96,6 +105,9 @@ const ProductManagement = () => {
                         <span className="search-icon" style={{ left: '15px' }}>🔍</span>
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>
+                        <button className="apply-btn" style={{ background: '#3b82f6' }} onClick={() => setIsBulkModalOpen(true)}>
+                            📸 이미지 일괄 매칭
+                        </button>
                         <button className="apply-btn" style={{ background: '#2563eb' }} onClick={syncWithErp}>
                             🔄 ERP 상품 동기화
                         </button>
@@ -271,6 +283,13 @@ const ProductManagement = () => {
                     </div>
                 )}
             </div>
+
+            <BulkImageMatchModal
+                isOpen={isBulkModalOpen}
+                onClose={() => setIsBulkModalOpen(false)}
+                products={products}
+                onUpdateSuccess={refreshProducts}
+            />
         </div>
     );
 };
