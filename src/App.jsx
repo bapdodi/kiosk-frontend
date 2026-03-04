@@ -307,10 +307,10 @@ function KioskView({
     setOrderModal({ isOpen: true, name: '' });
   };
 
-  const submitOrder = async () => {
-    if (!orderModal.name.trim()) return alert('상호를 입력하거나 선택해주세요.');
+  const submitOrder = async (forcedName) => {
+    const customerInput = (typeof forcedName === 'string' ? forcedName : orderModal.name).trim();
+    if (!customerInput) return alert('상호를 입력하거나 선택해주세요.');
 
-    const customerInput = orderModal.name.trim();
     // 고객 목록에서 입력된 이름과 공백을 제외하고 정확히 일치하는 고객을 찾음
     const matchedCustomer = customers.find(c => c.NAME?.trim() === customerInput);
 
@@ -419,6 +419,47 @@ function KioskView({
               <p style={{ color: '#64748b', marginTop: '8px', fontSize: '0.95rem' }}>주문하실 상호를 검색하거나 선택해주세요.</p>
             </div>
             <div style={{ padding: '30px' }}>
+              <button
+                onClick={() => {
+                  const genCust = customers.find(c => String(c.CODE).trim() === "1");
+                  submitOrder(genCust ? genCust.NAME : '일반');
+                }}
+                style={{
+                  width: '100%',
+                  padding: '16px',
+                  marginBottom: '20px',
+                  borderRadius: '16px',
+                  border: '2px solid #10b981',
+                  background: '#ecfdf5',
+                  color: '#065f46',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  fontSize: '1.1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#d1fae5';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = '#ecfdf5';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                👤 일반 사용자는 여기를 눌러주세요
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', margin: '15px 0', color: '#94a3b8' }}>
+                <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
+                <span style={{ margin: '0 10px', fontSize: '0.85rem' }}>또는 직접 입력/선택</span>
+                <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
+              </div>
+
               <input
                 autoFocus
                 className="admin-input-small"
