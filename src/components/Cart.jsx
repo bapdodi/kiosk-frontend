@@ -15,7 +15,6 @@ const Cart = ({ items, onRemove, onCheckout }) => {
                             <div>
                                 <div className="cart-item-name">{item.name} <span style={{ color: '#ef4444', fontSize: '0.9rem', marginLeft: '6px' }}>x {item.quantity || 1}개</span></div>
                                 {item.selectedOption && <div className="cart-item-opt">{item.selectedOption}</div>}
-                                <div className="cart-item-price">₩{(item.finalPrice * (item.quantity || 1)).toLocaleString()}</div>
                             </div>
                             <button
                                 onClick={() => onRemove(item.cartId)}
@@ -28,10 +27,6 @@ const Cart = ({ items, onRemove, onCheckout }) => {
                 )}
             </div>
             <div className="cart-footer">
-                <div className="total-row">
-                    <span>합계</span>
-                    <span>₩{totalPrice.toLocaleString()}</span>
-                </div>
                 <button
                     className="checkout-btn"
                     onClick={onCheckout}

@@ -40,8 +40,7 @@ const ProductCard = ({ product, onAddClick, onTagClick }) => {
                         </span>
                     ))}
                 </div>
-                <div className="product-footer">
-                    <span className="product-price">₩{product.price.toLocaleString()}~</span>
+                <div className="product-footer" style={{ justifyContent: 'flex-end' }}>
                     <button
                         className="add-btn"
                         onClick={(e) => {

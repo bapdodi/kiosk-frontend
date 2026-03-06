@@ -220,12 +220,6 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 {product.description || `본 상품은 고품질 자재로 제작된 ${product.name}입니다. 산업 현장 및 일반 가정에서 신뢰하고 사용할 수 있는 내구성을 갖추고 있습니다. 상세 규격은 옵션에서 선택 가능합니다.`}
                             </p>
 
-                            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
-                                <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '5px' }}>기본 판매가</div>
-                                <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#1e293b' }}>
-                                    ₩{product.price.toLocaleString()}
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -267,7 +261,6 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                                     }}
                                                 >
                                                     <span>{val}</span>
-                                                    {adj && <span style={{ fontSize: '0.8rem', opacity: 0.7, fontWeight: 500 }}>{adj}</span>}
                                                 </button>
                                             );
                                         })}
@@ -342,12 +335,6 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                             </button>
                         </div>
 
-                        <div className="option-price-summary">
-                            <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 600, marginBottom: '2px' }}>총 주문 금액</div>
-                            <div className="option-total-price-text" style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--accent-color)' }}>
-                                ₩{totalPrice.toLocaleString()}
-                            </div>
-                        </div>
                     </div>
 
                     <div className="option-footer-btns" style={{ display: 'flex', gap: '12px', flex: '1', justifyContent: 'flex-end' }}>
