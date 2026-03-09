@@ -34,22 +34,22 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         if (product.optionGroups && product.optionGroups.length > 0) {
             return product.optionGroups.map(g => ({
                 ...g,
-                values: g.values ? [...g.values].sort(compareOptions) : []
+                values: g.values || []
             }));
         }
 
         const groups = [];
         if (product.sizes && product.sizes.length > 0) {
-            groups.push({ name: '규격 (Size)', values: product.sizes.map(s => s.name).sort(compareOptions), legacySource: 'sizes' });
+            groups.push({ name: '규격 (Size)', values: product.sizes.map(s => s.name), legacySource: 'sizes' });
         }
         if (product.origins && product.origins.length > 0) {
-            groups.push({ name: '원산지 (Origin)', values: product.origins.map(o => o.name).sort(compareOptions), legacySource: 'origins' });
+            groups.push({ name: '원산지 (Origin)', values: product.origins.map(o => o.name), legacySource: 'origins' });
         }
 
         // Handle ERP-grouped items as a generic "Options" choice
         if (groups.length === 0 && product.combinations && product.combinations.length > 1) {
             groups.push({
-                values: product.combinations.map(c => c.name).sort(compareOptions),
+                values: product.combinations.map(c => c.name),
                 legacySource: 'combinations'
             });
         }

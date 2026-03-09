@@ -435,6 +435,30 @@ const ProductForm = () => {
                                                 }}
                                                 className="form-input"
                                             />
+                                            <div style={{ display: 'flex', gap: '4px' }}>
+                                                <button
+                                                    type="button"
+                                                    className="mini-add-btn"
+                                                    onClick={() => {
+                                                        if (idx === 0) return;
+                                                        const updated = [...optionGroups];
+                                                        [updated[idx - 1], updated[idx]] = [updated[idx], updated[idx - 1]];
+                                                        setOptionGroups(updated);
+                                                    }}
+                                                    title="위로 이동"
+                                                >▲</button>
+                                                <button
+                                                    type="button"
+                                                    className="mini-add-btn"
+                                                    onClick={() => {
+                                                        if (idx === optionGroups.length - 1) return;
+                                                        const updated = [...optionGroups];
+                                                        [updated[idx + 1], updated[idx]] = [updated[idx], updated[idx + 1]];
+                                                        setOptionGroups(updated);
+                                                    }}
+                                                    title="아래로 이동"
+                                                >▼</button>
+                                            </div>
                                             <button
                                                 type="button"
                                                 className="icon-btn-del"
@@ -473,6 +497,7 @@ const ProductForm = () => {
                                     <table className="admin-form-table">
                                         <thead>
                                             <tr>
+                                                <th width="50">순서</th>
                                                 <th>옵션 조합</th>
                                                 <th width="150">추가 금액</th>
                                             </tr>
@@ -480,6 +505,32 @@ const ProductForm = () => {
                                         <tbody>
                                             {combinations.map((c, i) => (
                                                 <tr key={i}>
+                                                    <td>
+                                                        <div style={{ display: 'flex', gap: '2px' }}>
+                                                            <button
+                                                                type="button"
+                                                                className="mini-add-btn"
+                                                                style={{ padding: '2px 4px' }}
+                                                                onClick={() => {
+                                                                    if (i === 0) return;
+                                                                    const updated = [...combinations];
+                                                                    [updated[i - 1], updated[i]] = [updated[i], updated[i - 1]];
+                                                                    setCombinations(updated);
+                                                                }}
+                                                            >▲</button>
+                                                            <button
+                                                                type="button"
+                                                                className="mini-add-btn"
+                                                                style={{ padding: '2px 4px' }}
+                                                                onClick={() => {
+                                                                    if (i === combinations.length - 1) return;
+                                                                    const updated = [...combinations];
+                                                                    [updated[i + 1], updated[i]] = [updated[i], updated[i + 1]];
+                                                                    setCombinations(updated);
+                                                                }}
+                                                            >▼</button>
+                                                        </div>
+                                                    </td>
                                                     <td>{c.name}</td>
                                                     <td>
                                                         <input
