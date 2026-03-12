@@ -720,6 +720,31 @@ body {
   margin-right: 5px;
 }
 
+.mini-edit-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.mini-edit-btn:hover {
+  background-color: #f1f5f9;
+  color: #1e293b;
+  transform: scale(1.1);
+}
+
+.mini-add-btn:hover {
+  background-color: #e2e8f0;
+  color: #475569;
+}
+
 .action-btn {
   padding: 8px 16px;
   border-radius: 8px;

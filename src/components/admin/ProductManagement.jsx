@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { getImageUrl } from '../../utils/imageUtils';
 import BulkImageMatchModal from './BulkImageMatchModal';
@@ -10,14 +10,70 @@ const ProductManagement = () => {
         mainCategories, setMainCategories,
         subCategories, setSubCategories
     } = useOutletContext();
-    const [adminActiveMainCat, setAdminActiveMainCat] = useState(null);
-    const [adminActiveSubCat, setAdminActiveSubCat] = useState('all');
-    const [adminSearchQuery, setAdminSearchQuery] = useState('');
+    const [adminActiveMainCat, setAdminActiveMainCat] = useState(() => sessionStorage.getItem('adminMainCat') || null);
+    const [adminActiveSubCat, setAdminActiveSubCat] = useState(() => sessionStorage.getItem('adminSubCat') || 'all');
+    const [adminSearchQuery, setAdminSearchQuery] = useState(() => sessionStorage.getItem('adminSearch') || '');
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+    const [editingCatId, setEditingCatId] = useState(null);
+    const [tempMainCat, setTempMainCat] = useState('');
+    const [tempSubCat, setTempSubCat] = useState('');
 
-    // eslint-disable-next-line no-unused-vars
     const FALLBACK_IMAGE = '/no-image.png';
+
+    useEffect(() => {
+        // Persist filter states
+        sessionStorage.setItem('adminMainCat', adminActiveMainCat || '');
+        sessionStorage.setItem('adminSubCat', adminActiveSubCat || '');
+        sessionStorage.setItem('adminSearch', adminSearchQuery || '');
+    }, [adminActiveMainCat, adminActiveSubCat, adminSearchQuery]);
+
+    useEffect(() => {
+        // Restore scroll position
+        const savedScroll = sessionStorage.getItem('adminScrollPos');
+        if (savedScroll && products.length > 0) {
+            // Use a small timeout to ensure the list is rendered
+            const timer = setTimeout(() => {
+                window.scrollTo(0, parseInt(savedScroll));
+                sessionStorage.removeItem('adminScrollPos');
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [products.length]);
+
+    const handleEditNavigate = (productId) => {
+        sessionStorage.setItem('adminScrollPos', window.scrollY.toString());
+        navigate(`/admin/products/edit/${productId}`);
+    };
+
+    const startEditingCategory = (product) => {
+        setEditingCatId(product.id);
+        setTempMainCat(product.mainCategory);
+        setTempSubCat(product.subCategory || '');
+    };
+
+    const saveCategoryUpdate = async (product) => {
+        try {
+            const res = await fetch(`/api/products/admin/${product.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...product,
+                    mainCategory: tempMainCat,
+                    subCategory: tempSubCat
+                })
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setProducts(products.map(p => p.id === updated.id ? updated : p));
+                setEditingCatId(null);
+            } else {
+                alert('저장에 실패했습니다.');
+            }
+        } catch (err) {
+            alert('오류가 발생했습니다.');
+        }
+    };
 
     const deleteProduct = async (id) => {
         if (!window.confirm('정말 삭제하시겠습니까?')) return;
@@ -116,7 +172,10 @@ const ProductManagement = () => {
                                 🗑️ 선택 삭제 ({selectedProducts.length})
                             </button>
                         )}
-                        <button className="apply-btn" onClick={() => navigate('/admin/products/new')}>
+                        <button className="apply-btn" onClick={() => {
+                            sessionStorage.setItem('adminScrollPos', window.scrollY.toString());
+                            navigate('/admin/products/new');
+                        }}>
                             ＋ 새로운 상품 등록
                         </button>
                     </div>
@@ -250,16 +309,67 @@ const ProductManagement = () => {
                                     </div>
                                 </td>
                                 <td>
-                                    <span className="tag-badge" style={{ background: '#e0f2fe', color: '#0369a1' }}>
-                                        {mainCategories.find(c => c.id === p.mainCategory)?.name || p.mainCategory}
-                                    </span>
-                                    {p.subCategory && (
-                                        <>
-                                            <span style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 5px' }}>›</span>
-                                            <span className="tag-badge" style={{ background: '#f0fdf4', color: '#15803d' }}>
-                                                {subCategories[p.mainCategory]?.find(s => s.id === p.subCategory)?.name || p.subCategory}
-                                            </span>
-                                        </>
+                                    {editingCatId === p.id ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <select
+                                                className="form-select"
+                                                style={{ padding: '4px', fontSize: '0.8rem' }}
+                                                value={tempMainCat}
+                                                onChange={(e) => {
+                                                    const mId = e.target.value;
+                                                    setTempMainCat(mId);
+                                                    setTempSubCat(subCategories[mId]?.[0]?.id || '');
+                                                }}
+                                            >
+                                                {mainCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            </select>
+                                            <select
+                                                className="form-select"
+                                                style={{ padding: '4px', fontSize: '0.8rem' }}
+                                                value={tempSubCat}
+                                                onChange={(e) => setTempSubCat(e.target.value)}
+                                            >
+                                                <option value="">중분류 없음</option>
+                                                {subCategories[tempMainCat]?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                            </select>
+                                            <div style={{ display: 'flex', gap: '4px' }}>
+                                                <button
+                                                    onClick={() => saveCategoryUpdate(p)}
+                                                    style={{ padding: '2px 8px', fontSize: '0.7rem', background: '#1e293b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                                >
+                                                    저장
+                                                </button>
+                                                <button
+                                                    onClick={() => setEditingCatId(null)}
+                                                    style={{ padding: '2px 8px', fontSize: '0.7rem', background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                                >
+                                                    취소
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="cat-display-cell" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '2px' }}>
+                                                <span className="tag-badge" style={{ background: '#e0f2fe', color: '#0369a1' }}>
+                                                    {mainCategories.find(c => c.id === p.mainCategory)?.name || p.mainCategory}
+                                                </span>
+                                                {p.subCategory && (
+                                                    <>
+                                                        <span style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 5px' }}>›</span>
+                                                        <span className="tag-badge" style={{ background: '#f0fdf4', color: '#15803d' }}>
+                                                            {subCategories[p.mainCategory]?.find(s => s.id === p.subCategory)?.name || p.subCategory}
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <button
+                                                className="mini-edit-btn"
+                                                onClick={() => startEditingCategory(p)}
+                                                title="카테고리 수정"
+                                            >
+                                                ✏️
+                                            </button>
+                                        </div>
                                     )}
                                 </td>
                                 <td>
@@ -269,7 +379,7 @@ const ProductManagement = () => {
                                 </td>
                                 <td style={{ textAlign: 'right' }}>
                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                        <button className="action-btn" onClick={() => navigate(`/admin/products/edit/${p.id}`)}>수정</button>
+                                        <button className="action-btn" onClick={() => handleEditNavigate(p.id)}>수정</button>
                                         <button className="action-btn" style={{ color: '#ef4444' }} onClick={() => deleteProduct(p.id)}>삭제</button>
                                     </div>
                                 </td>
