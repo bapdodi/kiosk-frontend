@@ -137,12 +137,98 @@ const ProductManagement = () => {
         }
     };
 
+    const moveProduct = async (id, direction) => {
+        // Find indices in the CURRENT view (filteredProducts)
+        const index = filteredProducts.findIndex(p => p.id === id);
+        if (index < 0) return;
+
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= filteredProducts.length) return;
+
+        const movedProd = filteredProducts[index];
+        let prevRank = null;
+        let nextRank = null;
+
+        if (direction === 'up') {
+            // Target position is [newIndex]
+            // It will be between [newIndex-1] and [newIndex]
+            nextRank = filteredProducts[newIndex].sortOrder;
+            prevRank = newIndex > 0 ? filteredProducts[newIndex - 1].sortOrder : null;
+        } else {
+            // Target position is [newIndex]
+            // It will be between [newIndex] and [newIndex+1]
+            prevRank = filteredProducts[newIndex].sortOrder;
+            nextRank = newIndex < filteredProducts.length - 1 ? filteredProducts[newIndex + 1].sortOrder : null;
+        }
+
+        // LexoRank Midpoint logic (simplified for frontend)
+        const generateBetween = (p, n) => {
+            const ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+            const MIN = "0";
+            const MAX = "z";
+            
+            let prev = p || "0";
+            let next = n || "zzzzzzzz";
+
+            let result = "";
+            let i = 0;
+            while (true) {
+                let pChar = prev[i] || "0";
+                let nChar = next[i] || "z";
+
+                if (pChar === nChar) {
+                    result += pChar;
+                    i++;
+                    continue;
+                }
+
+                let pIdx = ALPHABET.indexOf(pChar);
+                let nIdx = ALPHABET.indexOf(nChar);
+
+                if (nIdx - pIdx > 1) {
+                    result += ALPHABET[pIdx + Math.floor((nIdx - pIdx) / 2)];
+                    break;
+                } else {
+                    result += pChar;
+                    if (prev.length <= i + 1) {
+                        result += ALPHABET[Math.floor(ALPHABET.length / 2)];
+                        break;
+                    }
+                    i++;
+                }
+            }
+            return result;
+        };
+
+        const newSortOrder = generateBetween(prevRank, nextRank);
+        const updatedProduct = { ...movedProd, sortOrder: newSortOrder };
+
+        try {
+            const res = await fetch(`/api/products/admin/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedProduct)
+            });
+            if (res.ok) {
+                const saved = await res.json();
+                setProducts(products.map(p => p.id === id ? saved : p));
+            } else {
+                alert('순서 변경 실패');
+            }
+        } catch (e) {
+            alert('오류 발생');
+        }
+    };
+
     const filteredProducts = products.filter(p => {
         const matchesMain = adminActiveMainCat ? p.mainCategory === adminActiveMainCat : true;
         const matchesSub = adminActiveSubCat === 'all' ? true : p.subCategory === adminActiveSubCat;
         const matchesSearch = p.name.toLowerCase().includes(adminSearchQuery.toLowerCase()) ||
             (p.hashtags && p.hashtags.some(tag => tag.toLowerCase().includes(adminSearchQuery.toLowerCase())));
         return matchesMain && matchesSub && matchesSearch;
+    }).sort((a, b) => {
+        const rankCompare = (a.sortOrder || "").localeCompare(b.sortOrder || "");
+        return rankCompare !== 0 ? rankCompare : (a.id - b.id);
     });
 
     return (
@@ -269,6 +355,7 @@ const ProductManagement = () => {
                             <th>상품 정보</th>
                             <th>카테고리</th>
                             <th>기본 판매가</th>
+                            <th style={{ width: '80px', textAlign: 'center' }}>순서</th>
                             <th style={{ textAlign: 'right' }}>관리</th>
                         </tr>
                     </thead>
@@ -375,6 +462,18 @@ const ProductManagement = () => {
                                 <td>
                                     <div style={{ fontWeight: 800, color: '#1e293b' }}>
                                         {p.price.toLocaleString()}원
+                                    </div>
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                        <button 
+                                            onClick={() => moveProduct(p.id, 'up')}
+                                            style={{ padding: '6px 8px', background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                        >▲</button>
+                                        <button 
+                                            onClick={() => moveProduct(p.id, 'down')}
+                                            style={{ padding: '6px 8px', background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                        >▼</button>
                                     </div>
                                 </td>
                                 <td style={{ textAlign: 'right' }}>

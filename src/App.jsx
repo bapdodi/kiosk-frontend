@@ -46,7 +46,11 @@ function App() {
         const prodData = await prodRes.json();
         const catData = await catRes.json();
 
-        setProducts(Array.isArray(prodData) ? prodData : []);
+        const sortedProd = Array.isArray(prodData) ? prodData.sort((a, b) => {
+          const rankCompare = (a.sortOrder || "").localeCompare(b.sortOrder || "");
+          return rankCompare !== 0 ? rankCompare : (a.id - b.id);
+        }) : [];
+        setProducts(sortedProd);
 
         if (isAuth) {
           try {
@@ -239,6 +243,9 @@ function KioskView({
       const matchSub = !activeSubCat ? true : product.subCategory === activeSubCat;
 
       return matchMain && matchSub;
+    }).sort((a, b) => {
+      const rankCompare = (a.sortOrder || "").localeCompare(b.sortOrder || "");
+      return rankCompare !== 0 ? rankCompare : (a.id - b.id);
     });
   }, [activeMainCat, activeSubCat, products, searchQuery]);
 
