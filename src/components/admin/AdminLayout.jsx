@@ -8,7 +8,18 @@ const AdminLayout = ({
     subCategories,
     setSubCategories,
     orders,
-    setOrders
+    setOrders,
+    page,
+    hasMore,
+    isFetchingMore,
+    onLoadMore,
+    onRefresh,
+    activeMainCat,
+    setActiveMainCat,
+    activeSubCat,
+    setActiveSubCat,
+    searchQuery,
+    setSearchQuery
 }) => {
     const navigate = useNavigate();
 
@@ -56,7 +67,9 @@ const AdminLayout = ({
                         products, setProducts,
                         mainCategories, setMainCategories,
                         subCategories, setSubCategories,
-                        orders, setOrders
+                        orders, setOrders,
+                        page, hasMore, isFetchingMore, onLoadMore, onRefresh,
+                        activeMainCat, setActiveMainCat, activeSubCat, setActiveSubCat, searchQuery, setSearchQuery
                     }} />
                 </div>
             </main>

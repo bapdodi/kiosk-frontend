@@ -25,6 +25,12 @@ const CategoryNav = ({
             </div>
 
             <div className="categories-scroll" style={{ borderBottom: '1px solid #f1f3f5' }}>
+                <button
+                    className={`category-tab ${!activeMainCat ? 'active' : ''}`}
+                    onClick={() => onMainCatChange(null)}
+                >
+                    전체
+                </button>
                 {mainCategories.map((cat) => (
                     <button
                         key={cat.id}

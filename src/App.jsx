@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import AdminLayout from './components/admin/AdminLayout';
 import CategoryManagement from './components/admin/CategoryManagement';
@@ -24,7 +24,13 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Pagination states
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -36,37 +42,18 @@ function App() {
       }
     };
 
-    const fetchData = async (isAuth) => {
+    const fetchInitialData = async () => {
       try {
-        const [prodRes, catRes] = await Promise.all([
-          fetch('/api/products'),
+        const [isAuth, catRes] = await Promise.all([
+          checkAuth(),
           fetch('/api/categories')
         ]);
 
-        const prodData = await prodRes.json();
+        if (!catRes.ok) throw new Error('카테고리를 불러오는데 실패했습니다.');
         const catData = await catRes.json();
-
-        const sortedProd = Array.isArray(prodData) ? prodData.sort((a, b) => {
-          const rankCompare = (a.sortOrder || "").localeCompare(b.sortOrder || "");
-          return rankCompare !== 0 ? rankCompare : (a.id - b.id);
-        }) : [];
-        setProducts(sortedProd);
-
-        if (isAuth) {
-          try {
-            const orderRes = await fetch('/api/orders/admin');
-            if (orderRes.ok) {
-              const orderData = await orderRes.json();
-              setOrders(Array.isArray(orderData) ? orderData : []);
-            }
-          } catch (e) {
-            console.warn('Could not fetch orders initially');
-          }
-        }
 
         const mainArr = catData.filter(c => c.level === 'main');
         const subObj = {};
-
         catData.filter(c => c.level === 'sub').forEach(c => {
           if (!subObj[c.parentId]) subObj[c.parentId] = [];
           subObj[c.parentId].push(c);
@@ -75,41 +62,80 @@ function App() {
         setMainCategories(mainArr);
         setSubCategories(subObj);
 
-        if (mainArr.length > 0) {
-          const firstMainId = mainArr[0].id;
-          setActiveMainCat(firstMainId);
-          const firstSubId = subObj[firstMainId]?.[0]?.id;
-          if (firstSubId) {
-            setActiveSubCat(firstSubId);
-          }
+        // Fetch first page of products
+        await fetchProducts(0, null, null, true);
+
+        if (isAuth) {
+          fetchOrders();
         }
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching initial data:', error);
+        setError(error.message);
       } finally {
         setLoading(false);
       }
     };
 
-    checkAuth().then((isAuth) => fetchData(isAuth));
-
-    /*
-    // Poll products every 5 seconds for real-time stock updates
-    const stockInterval = setInterval(() => {
-      fetch('/api/products')
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setProducts(data);
-          }
-        })
-        .catch(err => console.error('Failed to poll products for stock updates', err));
-    }, 5000);
-
-    return () => clearInterval(stockInterval);
-    */
+    fetchInitialData();
   }, []);
 
+  const fetchOrders = async () => {
+    try {
+      const orderRes = await fetch('/api/orders/admin');
+      if (orderRes.ok) {
+        const orderData = await orderRes.json();
+        setOrders(Array.isArray(orderData) ? orderData : []);
+      }
+    } catch (e) {
+      console.warn('Could not fetch orders');
+    }
+  };
+
+  const fetchProducts = async (pageNumber, mainCat, subCat, query = '', isInitial = false) => {
+    try {
+      if (!isInitial) setIsFetchingMore(true);
+      
+      let url = `/api/products?page=${pageNumber}&size=50`;
+      if (mainCat) url += `&mainCategory=${mainCat}`;
+      if (subCat && subCat !== 'all') url += `&subCategory=${subCat}`;
+      if (query) url += `&search=${encodeURIComponent(query)}`;
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('상품 데이터를 불러오는데 실패했습니다.');
+      
+      const data = await res.json();
+      const newProducts = data.content || [];
+
+      if (isInitial || pageNumber === 0) {
+        setProducts(newProducts);
+      } else {
+        setProducts(prev => [...prev, ...newProducts]);
+      }
+
+      setHasMore(!data.last);
+      setPage(pageNumber);
+    } catch (e) {
+      console.error('Fetch products failed:', e);
+      setError(e.message);
+    } finally {
+      setIsFetchingMore(false);
+    }
+  };
+
+  // Reset and fetch when filter changes
+  useEffect(() => {
+    if (!loading) {
+        fetchProducts(0, activeMainCat, activeSubCat, searchQuery, true);
+    }
+  }, [activeMainCat, activeSubCat, searchQuery]);
+
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '2rem' }}>로딩 중...</div>;
+  if (error) return <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', padding: '20px', textAlign: 'center' }}>
+    <h2 style={{ marginBottom: '10px', color: 'var(--admin-danger)' }}>오류 발생</h2>
+    <p>{error}</p>
+    <button onClick={() => window.location.reload()} style={{ marginTop: '20px', padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'var(--accent-color)', color: 'white', fontWeight: 'bold' }}>다시 시도</button>
+  </div>;
+
   window.isAuthenticated = isAuthenticated;
 
   return (
@@ -130,6 +156,10 @@ function App() {
             setActiveSubCat={setActiveSubCat}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
+            page={page}
+            hasMore={hasMore}
+            isFetchingMore={isFetchingMore}
+            onLoadMore={() => fetchProducts(page + 1, activeMainCat, activeSubCat, searchQuery)}
           />
         } />
         <Route path="/login" element={<LoginPage />} />
@@ -144,8 +174,18 @@ function App() {
               setMainCategories={setMainCategories}
               subCategories={subCategories}
               setSubCategories={setSubCategories}
-              orders={orders}
-              setOrders={setOrders}
+               orders={orders}
+               setOrders={setOrders}
+               page={page}
+               hasMore={hasMore}
+               onLoadMore={() => fetchProducts(page + 1, activeMainCat, activeSubCat, searchQuery)}
+               onRefresh={() => fetchProducts(0, activeMainCat, activeSubCat, searchQuery, true)}
+               activeMainCat={activeMainCat}
+               setActiveMainCat={setActiveMainCat}
+               activeSubCat={activeSubCat}
+               setActiveSubCat={setActiveSubCat}
+               searchQuery={searchQuery}
+               setSearchQuery={setSearchQuery}
             />
           </ProtectedRoute>
         }>
@@ -174,7 +214,11 @@ function KioskView({
   activeSubCat,
   setActiveSubCat,
   searchQuery,
-  setSearchQuery
+  setSearchQuery,
+  page,
+  hasMore,
+  isFetchingMore,
+  onLoadMore
 }) {
   const navigate = useNavigate();
   const [selectingProduct, setSelectingProduct] = useState(null);
@@ -184,6 +228,18 @@ function KioskView({
   const [orderModal, setOrderModal] = useState({ isOpen: false, name: '' });
   const [customers, setCustomers] = useState([]);
   const lastScrollTop = useRef(0);
+  const observer = useRef();
+
+  const lastProductElementRef = useCallback(node => {
+    if (isFetchingMore) return;
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        onLoadMore();
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [isFetchingMore, hasMore, onLoadMore]);
 
   useEffect(() => {
     fetch('/api/customers')
@@ -239,7 +295,7 @@ function KioskView({
       // If actively searching, ignore category filters for global search
       if (searchLower !== "") return true;
 
-      const matchMain = product.mainCategory === activeMainCat;
+      const matchMain = !activeMainCat ? true : product.mainCategory === activeMainCat;
       const matchSub = !activeSubCat ? true : product.subCategory === activeSubCat;
 
       return matchMain && matchSub;
@@ -378,15 +434,21 @@ function KioskView({
 
       <div className="content-area">
         <main className="kiosk-main" onScroll={handleScroll}>
-          {filteredProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onAddClick={handleAddToCartClick}
-              onTagClick={setSearchQuery}
-            />
+          {filteredProducts.map((product, index) => (
+            <div key={product.id} ref={index === filteredProducts.length - 1 ? lastProductElementRef : null}>
+              <ProductCard
+                product={product}
+                onAddClick={handleAddToCartClick}
+                onTagClick={setSearchQuery}
+              />
+            </div>
           ))}
-          {filteredProducts.length === 0 && (
+          {isFetchingMore && (
+            <div style={{ textAlign: 'center', gridColumn: '1/-1', padding: '20px', color: '#667085' }}>
+              더 불러오는 중...
+            </div>
+          )}
+          {filteredProducts.length === 0 && !isFetchingMore && (
             <div className="empty-cart-message" style={{ textAlign: 'center', gridColumn: '1/-1', padding: '50px' }}>
               검색 결과가 없습니다.
             </div>

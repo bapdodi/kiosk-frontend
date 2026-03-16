@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { getImageUrl } from '../../utils/imageUtils';
 import BulkImageMatchModal from './BulkImageMatchModal';
@@ -8,11 +8,12 @@ const ProductManagement = () => {
     const {
         products, setProducts,
         mainCategories, setMainCategories,
-        subCategories, setSubCategories
+        subCategories, setSubCategories,
+        page, hasMore, isFetchingMore, onLoadMore, onRefresh,
+        activeMainCat, setActiveMainCat,
+        activeSubCat, setActiveSubCat,
+        searchQuery, setSearchQuery
     } = useOutletContext();
-    const [adminActiveMainCat, setAdminActiveMainCat] = useState(() => sessionStorage.getItem('adminMainCat') || null);
-    const [adminActiveSubCat, setAdminActiveSubCat] = useState(() => sessionStorage.getItem('adminSubCat') || 'all');
-    const [adminSearchQuery, setAdminSearchQuery] = useState(() => sessionStorage.getItem('adminSearch') || '');
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [editingCatId, setEditingCatId] = useState(null);
@@ -23,10 +24,23 @@ const ProductManagement = () => {
 
     useEffect(() => {
         // Persist filter states
-        sessionStorage.setItem('adminMainCat', adminActiveMainCat || '');
-        sessionStorage.setItem('adminSubCat', adminActiveSubCat || '');
-        sessionStorage.setItem('adminSearch', adminSearchQuery || '');
-    }, [adminActiveMainCat, adminActiveSubCat, adminSearchQuery]);
+        sessionStorage.setItem('adminMainCat', activeMainCat || '');
+        sessionStorage.setItem('adminSubCat', activeSubCat || '');
+        sessionStorage.setItem('adminSearch', searchQuery || '');
+    }, [activeMainCat, activeSubCat, searchQuery]);
+
+    // Infinite Scroll logic
+    const observer = useRef();
+    const lastProductElementRef = useCallback(node => {
+        if (isFetchingMore) return;
+        if (observer.current) observer.current.disconnect();
+        observer.current = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && hasMore) {
+                onLoadMore();
+            }
+        });
+        if (node) observer.current.observe(node);
+    }, [isFetchingMore, hasMore, onLoadMore]);
 
     useEffect(() => {
         // Restore scroll position
@@ -96,7 +110,7 @@ const ProductManagement = () => {
                 const updatedProducts = await res.json();
                 const allRes = await fetch('/api/products');
                 if (allRes.ok) {
-                    setProducts(await allRes.json());
+                    onRefresh();
                     alert('ERP 동기화가 완료되어 목록을 갱신했습니다.');
                 }
             } else {
@@ -131,10 +145,7 @@ const ProductManagement = () => {
     };
 
     const refreshProducts = async () => {
-        const res = await fetch('/api/products');
-        if (res.ok) {
-            setProducts(await res.json());
-        }
+        onRefresh();
     };
 
     const moveProduct = async (id, direction) => {
@@ -220,16 +231,7 @@ const ProductManagement = () => {
         }
     };
 
-    const filteredProducts = products.filter(p => {
-        const matchesMain = adminActiveMainCat ? p.mainCategory === adminActiveMainCat : true;
-        const matchesSub = adminActiveSubCat === 'all' ? true : p.subCategory === adminActiveSubCat;
-        const matchesSearch = p.name.toLowerCase().includes(adminSearchQuery.toLowerCase()) ||
-            (p.hashtags && p.hashtags.some(tag => tag.toLowerCase().includes(adminSearchQuery.toLowerCase())));
-        return matchesMain && matchesSub && matchesSearch;
-    }).sort((a, b) => {
-        const rankCompare = (a.sortOrder || "").localeCompare(b.sortOrder || "");
-        return rankCompare !== 0 ? rankCompare : (a.id - b.id);
-    });
+    const filteredProducts = products; // Already filtered and sorted by server
 
     return (
         <div className="fade-in">
@@ -240,8 +242,8 @@ const ProductManagement = () => {
                         <input
                             className="search-input"
                             placeholder="상품명 또는 해시태그 검색..."
-                            value={adminSearchQuery}
-                            onChange={(e) => setAdminSearchQuery(e.target.value)}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             style={{ padding: '10px 15px 10px 40px' }}
                         />
                         <span className="search-icon" style={{ left: '15px' }}>🔍</span>
@@ -270,19 +272,37 @@ const ProductManagement = () => {
 
             <div style={{ marginBottom: '25px' }}>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', overflowX: 'auto', paddingBottom: '5px' }}>
+                    <button
+                        className={`action-btn ${!activeMainCat ? 'active' : ''}`}
+                        onClick={() => {
+                            setActiveMainCat(null);
+                            setActiveSubCat('all');
+                        }}
+                        style={{
+                            borderRadius: '100px',
+                            padding: '8px 18px',
+                            background: !activeMainCat ? 'var(--admin-primary)' : '#f1f5f9',
+                            color: !activeMainCat ? 'white' : '#64748b',
+                            border: 'none',
+                            fontWeight: 600,
+                            fontSize: '0.9rem'
+                        }}
+                    >
+                        전체 상품
+                    </button>
                     {mainCategories.map(cat => (
                         <button
                             key={cat.id}
-                            className={`action-btn ${adminActiveMainCat === cat.id ? 'active' : ''}`}
+                            className={`action-btn ${activeMainCat === cat.id ? 'active' : ''}`}
                             onClick={() => {
-                                setAdminActiveMainCat(cat.id);
-                                setAdminActiveSubCat('all');
+                                setActiveMainCat(cat.id);
+                                setActiveSubCat('all');
                             }}
                             style={{
                                 borderRadius: '100px',
                                 padding: '8px 18px',
-                                background: adminActiveMainCat === cat.id ? 'var(--admin-primary)' : '#f1f5f9',
-                                color: adminActiveMainCat === cat.id ? 'white' : '#64748b',
+                                background: activeMainCat === cat.id ? 'var(--admin-primary)' : '#f1f5f9',
+                                color: activeMainCat === cat.id ? 'white' : '#64748b',
                                 border: 'none',
                                 fontWeight: 600,
                                 fontSize: '0.9rem'
@@ -293,38 +313,38 @@ const ProductManagement = () => {
                     ))}
                 </div>
 
-                {adminActiveMainCat && subCategories[adminActiveMainCat] && (
+                {activeMainCat && subCategories[activeMainCat] && (
                     <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
                         <button
-                            className={`sub-cat-btn ${adminActiveSubCat === 'all' ? 'active' : ''}`}
+                            className={`sub-cat-btn ${activeSubCat === 'all' ? 'active' : ''}`}
                             onClick={() => {
-                                setAdminActiveSubCat('all');
+                                setActiveSubCat('all');
                             }}
                             style={{
                                 padding: '5px 12px',
                                 borderRadius: '8px',
                                 fontSize: '0.8rem',
-                                background: adminActiveSubCat === 'all' ? '#1e293b' : 'white',
-                                color: adminActiveSubCat === 'all' ? 'white' : '#64748b',
+                                background: activeSubCat === 'all' ? '#1e293b' : 'white',
+                                color: activeSubCat === 'all' ? 'white' : '#64748b',
                                 border: '1px solid #e2e8f0',
                                 cursor: 'pointer'
                             }}
                         >
                             전체 중분류
                         </button>
-                        {subCategories[adminActiveMainCat].map(sub => (
+                        {subCategories[activeMainCat].map(sub => (
                             <button
                                 key={sub.id}
-                                className={`sub-cat-btn ${adminActiveSubCat === sub.id ? 'active' : ''}`}
+                                className={`sub-cat-btn ${activeSubCat === sub.id ? 'active' : ''}`}
                                 onClick={() => {
-                                    setAdminActiveSubCat(sub.id);
+                                    setActiveSubCat(sub.id);
                                 }}
                                 style={{
                                     padding: '5px 12px',
                                     borderRadius: '8px',
                                     fontSize: '0.8rem',
-                                    background: adminActiveSubCat === sub.id ? '#1e293b' : 'white',
-                                    color: adminActiveSubCat === sub.id ? 'white' : '#64748b',
+                                    background: activeSubCat === sub.id ? '#1e293b' : 'white',
+                                    color: activeSubCat === sub.id ? 'white' : '#64748b',
                                     border: '1px solid #e2e8f0',
                                     cursor: 'pointer'
                                 }}
@@ -360,8 +380,8 @@ const ProductManagement = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredProducts.map(p => (
-                            <tr key={p.id}>
+                        {filteredProducts.map((p, index) => (
+                            <tr key={p.id} ref={index === filteredProducts.length - 1 ? lastProductElementRef : null}>
                                 <td style={{ textAlign: 'center' }}>
                                     <input
                                         type="checkbox"
@@ -486,7 +506,12 @@ const ProductManagement = () => {
                         ))}
                     </tbody>
                 </table>
-                {filteredProducts.length === 0 && (
+                {isFetchingMore && (
+                    <div style={{ textAlign: 'center', padding: '20px', color: '#64748b', fontSize: '0.9rem' }}>
+                        데이터를 불러오는 중...
+                    </div>
+                )}
+                {filteredProducts.length === 0 && !isFetchingMore && (
                     <div style={{ textAlign: 'center', padding: '100px 0', color: '#94a3b8' }}>
                         검색 결과가 없습니다.
                     </div>
