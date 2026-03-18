@@ -153,7 +153,7 @@ const ProductManagement = () => {
         let prev = p || "0";
         let next = n || "zzzzzzzz";
 
-        if (prev.localeCompare(next) >= 0) {
+        if (prev >= next) {
             // Should not happen if logic is correct, but for safety:
             next = prev + "z";
         }
@@ -277,12 +277,21 @@ const ProductManagement = () => {
     };
 
     const filteredProducts = useMemo(() => {
-        return [...products].sort((a, b) => {
-            const rankCompare = (a.sortOrder || "").localeCompare(b.sortOrder || "");
-            if (rankCompare !== 0) return rankCompare;
-            return (a.id || 0) - (b.id || 0);
-        });
-    }, [products]);
+        const query = searchQuery.toLowerCase().trim();
+        return [...products]
+            .filter(p => {
+                if (!query) return true;
+                return p.name?.toLowerCase().includes(query) ||
+                    p.hashtags?.some(t => t.toLowerCase().includes(query));
+            })
+            .sort((a, b) => {
+                const aOrder = a.sortOrder || "";
+                const bOrder = b.sortOrder || "";
+                if (aOrder < bOrder) return -1;
+                if (aOrder > bOrder) return 1;
+                return (a.id || 0) - (b.id || 0);
+            });
+    }, [products, searchQuery]);
 
     return (
         <div className="fade-in">
