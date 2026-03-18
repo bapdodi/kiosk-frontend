@@ -98,7 +98,7 @@ function App() {
       let url = `/api/products?page=${pageNumber}&size=50`;
       if (mainCat) url += `&mainCategory=${mainCat}`;
       if (subCat && subCat !== 'all') url += `&subCategory=${subCat}`;
-      if (query) url += `&search=${encodeURIComponent(query)}`;
+      // search is handled client-side only (backend does not support search param)
 
       const res = await fetch(url);
       if (!res.ok) throw new Error('상품 데이터를 불러오는데 실패했습니다.');
@@ -122,12 +122,12 @@ function App() {
     }
   };
 
-  // Reset and fetch when filter changes
+  // Reset and fetch when category filter changes (search is handled client-side)
   useEffect(() => {
     if (!loading) {
-        fetchProducts(0, activeMainCat, activeSubCat, searchQuery, true);
+        fetchProducts(0, activeMainCat, activeSubCat, '', true);
     }
-  }, [activeMainCat, activeSubCat, searchQuery]);
+  }, [activeMainCat, activeSubCat]);
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '2rem' }}>로딩 중...</div>;
   if (error) return <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', padding: '20px', textAlign: 'center' }}>
@@ -300,8 +300,11 @@ function KioskView({
 
       return matchMain && matchSub;
     }).sort((a, b) => {
-      const rankCompare = (a.sortOrder || "").localeCompare(b.sortOrder || "");
-      return rankCompare !== 0 ? rankCompare : (a.id - b.id);
+      const aOrder = a.sortOrder || "";
+      const bOrder = b.sortOrder || "";
+      if (aOrder < bOrder) return -1;
+      if (aOrder > bOrder) return 1;
+      return a.id - b.id;
     });
   }, [activeMainCat, activeSubCat, products, searchQuery]);
 
