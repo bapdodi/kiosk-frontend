@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { getImageUrl } from '../../utils/imageUtils';
 import BulkImageMatchModal from './BulkImageMatchModal';
