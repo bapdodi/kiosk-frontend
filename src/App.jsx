@@ -95,7 +95,7 @@ function App() {
     try {
       if (!isInitial) setIsFetchingMore(true);
       
-      let url = `/api/products?page=${pageNumber}&size=50`;
+      let url = `/api/products?page=${pageNumber}&size=2000`;
       if (mainCat) url += `&mainCategory=${mainCat}`;
       if (subCat && subCat !== 'all') url += `&subCategory=${subCat}`;
       // search is handled client-side only (backend does not support search param)
