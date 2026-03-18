@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { getImageUrl } from '../../utils/imageUtils';
 import BulkImageMatchModal from './BulkImageMatchModal';
@@ -148,71 +148,76 @@ const ProductManagement = () => {
         onRefresh();
     };
 
+    const generateBetween = (p, n) => {
+        const ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        let prev = p || "0";
+        let next = n || "zzzzzzzz";
+
+        if (prev.localeCompare(next) >= 0) {
+            // Should not happen if logic is correct, but for safety:
+            next = prev + "z";
+        }
+
+        let result = "";
+        let i = 0;
+        while (true) {
+            let pChar = prev[i] || ALPHABET[0];
+            let nChar = next[i] || ALPHABET[ALPHABET.length - 1];
+
+            if (pChar === nChar) {
+                result += pChar;
+                i++;
+                continue;
+            }
+
+            let pIdx = ALPHABET.indexOf(pChar);
+            let nIdx = ALPHABET.indexOf(nChar);
+
+            if (nIdx - pIdx > 1) {
+                result += ALPHABET[pIdx + Math.floor((nIdx - pIdx) / 2)];
+                break;
+            } else {
+                result += pChar;
+                if (prev.length <= i + 1) {
+                    result += ALPHABET[Math.floor(ALPHABET.length / 2)];
+                    break;
+                }
+                i++;
+            }
+        }
+        return result;
+    };
+
     const moveProduct = async (id, direction) => {
-        // Find indices in the CURRENT view (filteredProducts)
         const index = filteredProducts.findIndex(p => p.id === id);
         if (index < 0) return;
 
         const newIndex = direction === 'up' ? index - 1 : index + 1;
         if (newIndex < 0 || newIndex >= filteredProducts.length) return;
 
-        const movedProd = filteredProducts[index];
         let prevRank = null;
         let nextRank = null;
 
         if (direction === 'up') {
-            // Target position is [newIndex]
-            // It will be between [newIndex-1] and [newIndex]
             nextRank = filteredProducts[newIndex].sortOrder;
             prevRank = newIndex > 0 ? filteredProducts[newIndex - 1].sortOrder : null;
         } else {
-            // Target position is [newIndex]
-            // It will be between [newIndex] and [newIndex+1]
             prevRank = filteredProducts[newIndex].sortOrder;
             nextRank = newIndex < filteredProducts.length - 1 ? filteredProducts[newIndex + 1].sortOrder : null;
         }
 
-        // LexoRank Midpoint logic (simplified for frontend)
-        const generateBetween = (p, n) => {
-            const ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-            const MIN = "0";
-            const MAX = "z";
-            
-            let prev = p || "0";
-            let next = n || "zzzzzzzz";
-
-            let result = "";
-            let i = 0;
-            while (true) {
-                let pChar = prev[i] || "0";
-                let nChar = next[i] || "z";
-
-                if (pChar === nChar) {
-                    result += pChar;
-                    i++;
-                    continue;
-                }
-
-                let pIdx = ALPHABET.indexOf(pChar);
-                let nIdx = ALPHABET.indexOf(nChar);
-
-                if (nIdx - pIdx > 1) {
-                    result += ALPHABET[pIdx + Math.floor((nIdx - pIdx) / 2)];
-                    break;
-                } else {
-                    result += pChar;
-                    if (prev.length <= i + 1) {
-                        result += ALPHABET[Math.floor(ALPHABET.length / 2)];
-                        break;
-                    }
-                    i++;
-                }
-            }
-            return result;
-        };
-
         const newSortOrder = generateBetween(prevRank, nextRank);
-        const updatedProduct = { ...movedProd, sortOrder: newSortOrder };
+        await updateProductOrder(id, newSortOrder);
+    };
+
+    const updateProductOrder = async (id, newSortOrder) => {
+        const product = products.find(p => p.id === id);
+        if (!product) return;
+
+        const updatedProduct = { ...product, sortOrder: newSortOrder };
+
+        // Optimistic UI update
+        setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
 
         try {
             const res = await fetch(`/api/products/admin/${id}`, {
@@ -220,18 +225,64 @@ const ProductManagement = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedProduct)
             });
-            if (res.ok) {
-                const saved = await res.json();
-                setProducts(products.map(p => p.id === id ? saved : p));
-            } else {
-                alert('순서 변경 실패');
+            if (!res.ok) {
+                alert('순서 저장 실패');
+                onRefresh(); // Rollback on failure
             }
         } catch (e) {
             alert('오류 발생');
+            onRefresh();
         }
     };
 
-    const filteredProducts = products; // Already filtered and sorted by server
+    // Native Drag and Drop logic
+    const [draggedId, setDraggedId] = useState(null);
+
+    const handleDragStart = (e, id) => {
+        setDraggedId(id);
+        e.dataTransfer.effectAllowed = "move";
+        // Customize drag image if needed, or just let default happen
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+    };
+
+    const handleDrop = async (e, targetId) => {
+        e.preventDefault();
+        if (draggedId === null || draggedId === targetId) return;
+
+        const draggedIndex = filteredProducts.findIndex(p => p.id === draggedId);
+        const targetIndex = filteredProducts.findIndex(p => p.id === targetId);
+
+        if (draggedIndex === -1 || targetIndex === -1) return;
+
+        let prevRank = null;
+        let nextRank = null;
+
+        if (draggedIndex < targetIndex) {
+            // dragging down: drop AFTER target
+            prevRank = filteredProducts[targetIndex].sortOrder;
+            nextRank = (targetIndex < filteredProducts.length - 1) ? filteredProducts[targetIndex + 1].sortOrder : null;
+        } else {
+            // dragging up: drop BEFORE target
+            nextRank = filteredProducts[targetIndex].sortOrder;
+            prevRank = (targetIndex > 0) ? filteredProducts[targetIndex - 1].sortOrder : null;
+        }
+
+        const newSortOrder = generateBetween(prevRank, nextRank);
+        await updateProductOrder(draggedId, newSortOrder);
+        setDraggedId(null);
+    };
+
+    const filteredProducts = useMemo(() => {
+        return [...products].sort((a, b) => {
+            const rankCompare = (a.sortOrder || "").localeCompare(b.sortOrder || "");
+            if (rankCompare !== 0) return rankCompare;
+            return (a.id || 0) - (b.id || 0);
+        });
+    }, [products]);
 
     return (
         <div className="fade-in">
@@ -381,7 +432,19 @@ const ProductManagement = () => {
                     </thead>
                     <tbody>
                         {filteredProducts.map((p, index) => (
-                            <tr key={p.id} ref={index === filteredProducts.length - 1 ? lastProductElementRef : null}>
+                            <tr
+                                key={p.id}
+                                ref={index === filteredProducts.length - 1 ? lastProductElementRef : null}
+                                draggable="true"
+                                onDragStart={(e) => handleDragStart(e, p.id)}
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDrop(e, p.id)}
+                                style={{
+                                    cursor: 'grab',
+                                    opacity: draggedId === p.id ? 0.4 : 1,
+                                    transition: 'background 0.2s ease'
+                                }}
+                            >
                                 <td style={{ textAlign: 'center' }}>
                                     <input
                                         type="checkbox"
@@ -486,11 +549,11 @@ const ProductManagement = () => {
                                 </td>
                                 <td style={{ textAlign: 'center' }}>
                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                                        <button 
+                                        <button
                                             onClick={() => moveProduct(p.id, 'up')}
                                             style={{ padding: '6px 8px', background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
                                         >▲</button>
-                                        <button 
+                                        <button
                                             onClick={() => moveProduct(p.id, 'down')}
                                             style={{ padding: '6px 8px', background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
                                         >▼</button>
