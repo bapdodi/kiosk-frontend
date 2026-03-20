@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin
 Disallow: /login
 
-Sitemap: https://your-domain.com/sitemap.xml
+Sitemap: https://donggwang.vercel.app/sitemap.xml
