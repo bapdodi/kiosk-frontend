@@ -230,6 +230,30 @@ function KioskView({
   const lastScrollTop = useRef(0);
   const observer = useRef();
 
+  // 초성 추출 유틸리티
+  const getChosung = (str) => {
+    if (!str) return '';
+    const firstChar = str.trim().charAt(0);
+    const unicode = firstChar.charCodeAt(0);
+
+    // 한글 유니코드 범위: 0xAC00 ~ 0xD7A3
+    if (unicode >= 0xAC00 && unicode <= 0xD7A3) {
+      const chosungList = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+      const index = Math.floor((unicode - 0xAC00) / 588);
+      return chosungList[index];
+    }
+
+    // 영어 또는 기타 문자
+    if ((unicode >= 65 && unicode <= 90) || (unicode >= 97 && unicode <= 122)) {
+      return firstChar.toUpperCase();
+    }
+
+    return '기타';
+  };
+
+  const chosungTabs = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ', 'A-Z'];
+  const [selectedChosung, setSelectedChosung] = useState('ㄱ');
+
   const lastProductElementRef = useCallback(node => {
     if (isFetchingMore) return;
     if (observer.current) observer.current.disconnect();
@@ -373,15 +397,18 @@ function KioskView({
     setOrderModal({ isOpen: true, name: '' });
   };
 
-  const submitOrder = async (forcedName) => {
-    const customerInput = (typeof forcedName === 'string' ? forcedName : orderModal.name).trim();
-    if (!customerInput) return alert('상호를 입력하거나 선택해주세요.');
+  const submitOrder = async (forcedName, forcedCode) => {
+    let customerName = (typeof forcedName === 'string' ? forcedName : orderModal.name).trim();
+    if (!customerName) return alert('상호를 입력하거나 선택해주세요.');
 
     // 고객 목록에서 입력된 이름과 공백을 제외하고 정확히 일치하는 고객을 찾음
-    const matchedCustomer = customers.find(c => c.NAME?.trim() === customerInput);
+    const matchedCustomer = customers.find(c => c.NAME?.trim() === customerName);
 
-    let erpCustomerCode = matchedCustomer ? String(matchedCustomer.CODE) : "1";
-    let customerName = customerInput;
+    if (!matchedCustomer && !forcedName) {
+        return alert('목록에 있는 정확한 상호명을 입력하거나 선택해 주세요.');
+    }
+
+    let erpCustomerCode = forcedCode || (matchedCustomer ? String(matchedCustomer.CODE) : "1");
 
     const orderData = {
       customerName,
@@ -411,7 +438,8 @@ function KioskView({
         setCart([]);
         setOrderModal({ isOpen: false, name: '' });
       } else {
-        alert('주문 처리 중 오류가 발생했습니다.');
+        const errorText = await response.text();
+        alert(errorText || '주문 처리 중 오류가 발생했습니다.');
       }
     } catch (e) {
       alert('서버 연결 오류가 발생했습니다.');
@@ -482,99 +510,200 @@ function KioskView({
 
 
       {/* Order Name Input Modal */}
-      {orderModal.isOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '400px' }}>
-            <div style={{ padding: '25px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
-              <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.4rem' }}>주문 확인</h3>
-              <p style={{ color: '#64748b', marginTop: '8px', fontSize: '0.95rem' }}>주문하실 상호를 검색하거나 선택해주세요.</p>
-            </div>
-            <div style={{ padding: '30px' }}>
-              <button
-                onClick={() => {
-                  const genCust = customers.find(c => String(c.CODE).trim() === "1");
-                  submitOrder(genCust ? genCust.NAME : '일반');
-                }}
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  marginBottom: '20px',
-                  borderRadius: '16px',
-                  border: '2px solid #10b981',
-                  background: '#ecfdf5',
-                  color: '#065f46',
-                  fontWeight: '800',
-                  cursor: 'pointer',
-                  fontSize: '1.1rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '10px',
-                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = '#d1fae5';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = '#ecfdf5';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                👤 일반 사용자는 여기를 눌러주세요
-              </button>
+      {orderModal.isOpen && (() => {
+        const filteredCustomers = customers.filter(c => {
+          const name = c.NAME?.trim() || '';
+          if (selectedChosung === 'A-Z') {
+            const firstChar = name.charAt(0).toUpperCase();
+            return firstChar >= 'A' && firstChar <= 'Z';
+          }
+          if (selectedChosung === '기타') {
+            return getChosung(name) === '기타';
+          }
+          return getChosung(name) === selectedChosung;
+        });
 
-              <div style={{ display: 'flex', alignItems: 'center', margin: '15px 0', color: '#94a3b8' }}>
-                <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
-                <span style={{ margin: '0 10px', fontSize: '0.85rem' }}>또는 직접 입력/선택</span>
-                <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
+        const isValidName = customers.some(c => c.NAME?.trim() === orderModal.name.trim());
+        
+        return (
+          <div className="modal-overlay">
+            <div className="modal-content" style={{ maxWidth: '600px', width: '90%' }}>
+              <div style={{ padding: '20px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
+                <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.4rem' }}>주문 확인</h3>
+                <p style={{ color: '#64748b', marginTop: '8px', fontSize: '0.95rem' }}>주문하실 상호를 선택하거나 검색해주세요.</p>
               </div>
+              
+              <div style={{ padding: '20px' }}>
+                {/* 일반 사용자 버튼 */}
+                <button
+                  onClick={() => {
+                    const genCust = customers.find(c => String(c.CODE).trim() === "1");
+                    submitOrder(genCust ? genCust.NAME : '일반', genCust ? String(genCust.CODE) : "1");
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    marginBottom: '15px',
+                    borderRadius: '12px',
+                    border: '2px solid #10b981',
+                    background: '#ecfdf5',
+                    color: '#065f46',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px'
+                  }}
+                >
+                  👤 일반 사용자는 여기를 눌러주세요
+                </button>
 
-              <input
-                autoFocus
-                className="admin-input-small"
-                list="customer-list"
-                placeholder="상호명 검색/선택"
-                value={orderModal.name}
-                onChange={(e) => setOrderModal({ ...orderModal, name: e.target.value })}
-                onKeyDown={(e) => e.key === 'Enter' && submitOrder()}
-                style={{
-                  padding: '18px',
-                  fontSize: '1.1rem',
-                  textAlign: 'center',
-                  borderRadius: '16px',
+                {/* 초성 카테고리 탭 */}
+                <div style={{ 
+                  display: 'flex', 
+                  overflowX: 'auto', 
+                  gap: '8px', 
+                  paddingBottom: '12px',
+                  marginBottom: '15px',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }} className="chosung-scroll">
+                  {chosungTabs.map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setSelectedChosung(tab)}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        border: '1px solid #e2e8f0',
+                        background: selectedChosung === tab ? 'var(--accent-color)' : 'white',
+                        color: selectedChosung === tab ? 'white' : '#64748b',
+                        fontWeight: 'bold',
+                        whiteSpace: 'nowrap',
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setSelectedChosung('기타')}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '20px',
+                      border: '1px solid #e2e8f0',
+                      background: selectedChosung === '기타' ? 'var(--accent-color)' : 'white',
+                      color: selectedChosung === '기타' ? 'white' : '#64748b',
+                      fontWeight: 'bold',
+                      whiteSpace: 'nowrap',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
+                  >
+                    기타
+                  </button>
+                </div>
+
+                {/* 상호명 리스트 */}
+                <div style={{ 
+                  maxHeight: '250px', 
+                  overflowY: 'auto', 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                  gap: '10px',
                   marginBottom: '20px',
-                  border: '2px solid #e2e8f0',
-                  width: '100%',
-                  boxSizing: 'border-box'
-                }}
-              />
-              <datalist id="customer-list">
-                {customers.map(c => (
-                  <option key={c.CODE} value={c.NAME} />
-                ))}
-              </datalist>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button
-                  className="apply-btn"
-                  style={{ flex: 2, padding: '16px', fontSize: '1.1rem', borderRadius: '16px' }}
-                  onClick={submitOrder}
-                >
-                  주문 완료하기
-                </button>
-                <button
-                  className="action-btn"
-                  style={{ flex: 1, padding: '16px', borderRadius: '16px', height: 'auto' }}
-                  onClick={() => setOrderModal({ ...orderModal, isOpen: false })}
-                >
-                  취소
-                </button>
+                  padding: '10px',
+                  background: '#f8fafc',
+                  borderRadius: '12px'
+                }}>
+                  {filteredCustomers.length > 0 ? filteredCustomers.map(c => (
+                    <button
+                      key={c.CODE}
+                      onClick={() => setOrderModal({ ...orderModal, name: c.NAME })}
+                      style={{
+                        padding: '12px 8px',
+                        borderRadius: '10px',
+                        border: orderModal.name === c.NAME ? '2px solid var(--accent-color)' : '1px solid #e2e8f0',
+                        background: orderModal.name === c.NAME ? '#eff6ff' : 'white',
+                        color: orderModal.name === c.NAME ? 'var(--accent-color)' : '#334155',
+                        fontSize: '0.9rem',
+                        fontWeight: orderModal.name === c.NAME ? 'bold' : 'normal',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        wordBreak: 'break-all'
+                      }}
+                    >
+                      {c.NAME}
+                    </button>
+                  )) : (
+                    <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
+                      해당하는 상호가 없습니다.
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ position: 'relative', marginBottom: '20px' }}>
+                  <input
+                    className="admin-input-small"
+                    placeholder="상호명 직접 검색"
+                    value={orderModal.name}
+                    onChange={(e) => setOrderModal({ ...orderModal, name: e.target.value })}
+                    onKeyDown={(e) => e.key === 'Enter' && isValidName && submitOrder()}
+                    style={{
+                      padding: '15px',
+                      fontSize: '1rem',
+                      textAlign: 'center',
+                      borderRadius: '12px',
+                      border: `2px solid ${orderModal.name.trim() === '' ? '#e2e8f0' : (isValidName ? '#10b981' : '#ef4444')}`,
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  {orderModal.name.trim() !== '' && (
+                    <div style={{ 
+                      position: 'absolute', 
+                      right: '15px', 
+                      top: '50%', 
+                      transform: 'translateY(-50%)',
+                      fontSize: '1.1rem'
+                    }}>
+                      {isValidName ? '✅' : '❌'}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    className="apply-btn"
+                    style={{ 
+                      flex: 2, 
+                      padding: '15px', 
+                      fontSize: '1rem', 
+                      borderRadius: '12px',
+                      opacity: isValidName ? 1 : 0.5,
+                      cursor: isValidName ? 'pointer' : 'not-allowed'
+                    }}
+                    onClick={submitOrder}
+                    disabled={!isValidName}
+                  >
+                    주문 완료하기
+                  </button>
+                  <button
+                    className="action-btn"
+                    style={{ flex: 1, padding: '15px', borderRadius: '12px', height: 'auto' }}
+                    onClick={() => setOrderModal({ ...orderModal, isOpen: false })}
+                  >
+                    취소
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <OptionModal
         product={selectingProduct}

@@ -9,7 +9,7 @@
             "destination": "http://43.201.18.30:8080/uploads/$1"
         },
         {
-            "source": "/(.*)",
+            "source": "/((?!api/|uploads/|.*\\..*).*)",
             "destination": "/index.html"
         }
     ]
