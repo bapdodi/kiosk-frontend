@@ -19,7 +19,25 @@
 
   </head>
   <body>
-    <div id="root"></div>
+    <!-- SEO 및 네이버 수집을 위한 정적 Fallback (React 로드 전까지 노출) -->
+    <div id="root">
+      <div class="seo-fallback" style="padding: 20px; text-align: center; font-family: sans-serif;">
+        <h1 style="color: #2563eb;">동광배관자재 - 스마트 키오스크</h1>
+        <p><strong>고양시 보일러, 난방용품, 배관자재 전문</strong></p>
+        <p>동광배관자재 스마트 키오스크를 통해 보일러 및 각종 배관 부속을 합리적인 가격에 쉽고 빠르게 주문하실 수 있습니다.</p>
+        <article>
+          <h3>주요 취급 품목</h3>
+          <ul>
+            <li>보일러 및 온수기</li>
+            <li>엑셀 배관 부속</li>
+            <li>PB 배관 자재</li>
+            <li>동관 및 주름관 부속</li>
+            <li>난방 제어 시스템</li>
+          </ul>
+        </article>
+        <p style="color: #64748b; font-size: 0.9rem;">이 페이지는 JavaScript가 활성화된 브라우저에 최적화되어 있습니다.</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

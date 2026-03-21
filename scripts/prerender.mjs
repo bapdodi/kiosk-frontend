@@ -67,6 +67,11 @@ function startServer(port = 5050) {
 }
 
 async function prerender() {
+  if (process.env.VERCEL) {
+    console.log('⚡ Vercel 빌드 환경 감지: 프리렌더링을 스킵합니다.');
+    return;
+  }
+  
   console.log('\n🚀 prerender 시작...\n')
 
   const { server, port } = await startServer()
