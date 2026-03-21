@@ -33,6 +33,9 @@ function App() {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   useEffect(() => {
+    // react-snap(prerender) 환경에서는 API 없이 즉시 SEO용 빈 상태로 렌더링
+    const isPrerender = navigator.userAgent === 'ReactSnap';
+
     const checkAuth = async () => {
       try {
         const res = await fetch('/api/auth/check');
@@ -43,6 +46,12 @@ function App() {
     };
 
     const fetchInitialData = async () => {
+      if (isPrerender) {
+        // prerender 환경: API 호출 없이 바로 완료 처리
+        setLoading(false);
+        return;
+      }
+
       try {
         const [isAuth, catRes] = await Promise.all([
           checkAuth(),
@@ -78,6 +87,7 @@ function App() {
 
     fetchInitialData();
   }, []);
+
 
   const fetchOrders = async () => {
     try {
