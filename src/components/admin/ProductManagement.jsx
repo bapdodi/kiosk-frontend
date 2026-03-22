@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { getImageUrl } from '../../utils/imageUtils';
+import { getImageUrl, uploadImage } from '../../utils/imageUtils';
 import BulkImageMatchModal from './BulkImageMatchModal';
 
 const ProductManagement = () => {
@@ -19,6 +19,7 @@ const ProductManagement = () => {
     const [editingCatId, setEditingCatId] = useState(null);
     const [tempMainCat, setTempMainCat] = useState('');
     const [tempSubCat, setTempSubCat] = useState('');
+    const [dragOverProductId, setDragOverProductId] = useState(null);
 
     const FALLBACK_IMAGE = '/no-image.png';
 
@@ -276,6 +277,46 @@ const ProductManagement = () => {
         setDraggedId(null);
     };
 
+    const handleFileDrop = async (e, productId) => {
+        e.preventDefault();
+        setDragOverProductId(null);
+        
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length === 0) return;
+
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
+
+        try {
+            const uploadedUrls = [];
+            for (const file of files) {
+                const data = await uploadImage(file);
+                uploadedUrls.push(data.fileUrl);
+            }
+
+            const updatedProduct = {
+                ...product,
+                images: [...(product.images || []), ...uploadedUrls]
+            };
+
+            const res = await fetch(`/api/products/admin/${productId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedProduct)
+            });
+
+            if (res.ok) {
+                const updated = await res.json();
+                setProducts(products.map(p => p.id === updated.id ? updated : p));
+            } else {
+                alert('이미지 저장에 실패했습니다.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('업로드 중 오류가 발생했습니다.');
+        }
+    };
+
     const filteredProducts = useMemo(() => {
         const query = searchQuery.toLowerCase().trim();
         return [...products]
@@ -446,12 +487,32 @@ const ProductManagement = () => {
                                 ref={index === filteredProducts.length - 1 ? lastProductElementRef : null}
                                 draggable="true"
                                 onDragStart={(e) => handleDragStart(e, p.id)}
-                                onDragOver={handleDragOver}
-                                onDrop={(e) => handleDrop(e, p.id)}
+                                onDragOver={(e) => {
+                                    e.preventDefault();
+                                    const isFile = e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files');
+                                    if (isFile) {
+                                        e.dataTransfer.dropEffect = 'copy';
+                                        setDragOverProductId(p.id);
+                                    } else {
+                                        e.dataTransfer.dropEffect = 'move';
+                                    }
+                                }}
+                                onDragLeave={() => setDragOverProductId(null)}
+                                onDrop={(e) => {
+                                    e.preventDefault();
+                                    setDragOverProductId(null);
+                                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                        handleFileDrop(e, p.id);
+                                    } else {
+                                        handleDrop(e, p.id);
+                                    }
+                                }}
                                 style={{
                                     cursor: 'grab',
                                     opacity: draggedId === p.id ? 0.4 : 1,
-                                    transition: 'background 0.2s ease'
+                                    background: dragOverProductId === p.id ? '#f0fdf4' : 'transparent',
+                                    border: dragOverProductId === p.id ? '2px dashed #22c55e' : 'none',
+                                    transition: 'all 0.2s ease'
                                 }}
                             >
                                 <td style={{ textAlign: 'center' }}>

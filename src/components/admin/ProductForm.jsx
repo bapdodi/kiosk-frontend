@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
-import { getImageUrl } from '../../utils/imageUtils';
+import { getImageUrl, uploadImage } from '../../utils/imageUtils';
 
 const ProductForm = () => {
     const navigate = useNavigate();
@@ -26,6 +26,7 @@ const ProductForm = () => {
     const [optionGroups, setOptionGroups] = useState([]);
     const [combinations, setCombinations] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
 
     useEffect(() => {
         if (isEditMode) {
@@ -68,76 +69,25 @@ const ProductForm = () => {
         }
     }, [mainCategories, subCategories, productData.mainCategory, productData.subCategory]);
 
-    const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.8) => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = event => {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
 
-                    if (width > height) {
-                        if (width > maxWidth) {
-                            height = Math.round((height * maxWidth) / width);
-                            width = maxWidth;
-                        }
-                    } else {
-                        if (height > maxHeight) {
-                            width = Math.round((width * maxHeight) / height);
-                            height = maxHeight;
-                        }
-                    }
+    const handleImageUpload = async (eOrFiles) => {
+        let files = [];
+        if (eOrFiles.target && eOrFiles.target.files) {
+            files = Array.from(eOrFiles.target.files);
+        } else if (eOrFiles instanceof FileList || Array.isArray(eOrFiles)) {
+            files = Array.from(eOrFiles);
+        }
 
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    canvas.toBlob((blob) => {
-                        resolve(new File([blob], file.name, {
-                            type: 'image/jpeg',
-                            lastModified: Date.now()
-                        }));
-                    }, 'image/jpeg', quality);
-                };
-                img.onerror = error => reject(error);
-            };
-            reader.onerror = error => reject(error);
-        });
-    };
-
-    const handleImageUpload = async (e) => {
-        const files = Array.from(e.target.files);
         if (files.length === 0) return;
 
         setIsLoading(true);
         const uploadedUrls = [];
         for (const file of files) {
             try {
-                // 압축 적용 (최대 폭/높이 800px, 80% 화질)
-                const isImage = file.type.startsWith('image/');
-                const processedFile = isImage ? await compressImage(file) : file;
-
-                const formData = new FormData();
-                formData.append('file', processedFile);
-                try {
-                    const res = await fetch('/api/upload', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        uploadedUrls.push(data.fileUrl);
-                    }
-                } catch (err) {
-                    console.error("Upload failed", err);
-                }
+                const data = await uploadImage(file);
+                uploadedUrls.push(data.fileUrl);
             } catch (err) {
-                console.error("Image processing/upload failed", err);
+                console.error("Upload failed", err);
             }
         }
         setProductData(prev => ({
@@ -152,6 +102,25 @@ const ProductForm = () => {
             ...prev,
             images: prev.images.filter((_, i) => i !== index)
         }));
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = () => {
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) {
+            handleImageUpload(files);
+        }
     };
 
     const addMainCategory = async () => {
@@ -373,7 +342,12 @@ const ProductForm = () => {
                     <section className="admin-section">
                         <div className="section-title">🖼️ 이미지 관리</div>
                         <div className="section-form">
-                            <div className="img-upload-box">
+                            <div 
+                                className={`img-upload-box ${isDragging ? 'dragging' : ''}`}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                            >
                                 <input
                                     type="file"
                                     id="img-input"
@@ -668,6 +642,18 @@ const ProductForm = () => {
                 }
                 .img-add-square:hover { border-color: #94a3b8; background: #f1f5f9; }
                 
+                .img-upload-box.dragging {
+                    background: #f0fdf4;
+                    border: 2px dashed #22c55e;
+                    border-radius: 12px;
+                    padding: 10px;
+                }
+
+                .img-upload-box.dragging .img-add-square {
+                    border-color: #22c55e;
+                    color: #22c55e;
+                }
+
                 .img-preview-row { display: flex; gap: 10px; }
                 .img-preview-thumb {
                     position: relative;
