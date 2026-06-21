@@ -2,11 +2,11 @@
     "rewrites": [
         {
             "source": "/api/(.*)",
-            "destination": "http://54.180.123.239:8080/api/$1"
+            "destination": "https://kioskserver.bapdodi.cloud/api/$1"
         },
         {
             "source": "/uploads/(.*)",
-            "destination": "http://54.180.123.239:8080/uploads/$1"
+            "destination": "https://kioskserver.bapdodi.cloud/uploads/$1"
         },
         {
             "source": "/((?!api/|uploads/|.*\\..*).*)",
