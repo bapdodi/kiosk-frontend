@@ -26,6 +26,11 @@ const ProductCard = ({ product, onAddClick, onTagClick }) => {
             </div>
             <div className="product-info">
                 <h3 className="product-name">{product.name}</h3>
+                {product.gyu && (
+                    <div className="product-spec" style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 600, marginBottom: '8px' }}>
+                        규격: {product.gyu}
+                    </div>
+                )}
                 <div style={{ marginBottom: '10px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                     {product.hashtags && product.hashtags.map((tag) => (
                         <span

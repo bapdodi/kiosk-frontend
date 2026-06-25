@@ -307,6 +307,15 @@ const ProductForm = () => {
                                 />
                             </div>
                             <div className="form-item">
+                                <label>규격 (단일 규격 상품)</label>
+                                <input
+                                    className="form-input"
+                                    placeholder="단일 규격을 입력하세요 (예: 15A). 옵션이 여러 개면 비워두세요."
+                                    value={productData.gyu || ''}
+                                    onChange={(e) => setProductData({ ...productData, gyu: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-item">
                                 <label>상품 설명</label>
                                 <textarea
                                     className="form-textarea"

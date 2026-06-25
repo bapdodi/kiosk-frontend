@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
 
 const OptionModal = ({ product, onConfirm, onCancel }) => {
-    if (!product) return null;
-
     // Normalizing option groups from different data structures
     const getOptionGroups = () => {
+        if (!product) return [];
+
         const compareOptions = (strA, strB) => {
             const regex = /(\d+)|(\D+)/g;
             const partsA = [...strA.trim().matchAll(regex)].map(m => m[0]);
@@ -60,6 +60,33 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     const [selections, setSelections] = useState({});
     const [quantity, setQuantity] = useState(1);
 
+    // Image carousel state
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [failedImages, setFailedImages] = useState({});
+    const touchStartX = useRef(null);
+
+    const images = product?.images || [];
+    const hasMultipleImages = images.length > 1;
+
+    const moveImage = (dir) => {
+        const count = images.length;
+        if (count <= 1) return;
+        setCurrentImageIndex(prev => (prev + dir + count) % count);
+    };
+
+    const handleImageTouchStart = (e) => {
+        touchStartX.current = e.touches[0].clientX;
+    };
+
+    const handleImageTouchEnd = (e) => {
+        if (touchStartX.current === null) return;
+        const delta = e.changedTouches[0].clientX - touchStartX.current;
+        if (Math.abs(delta) > 40) {
+            moveImage(delta < 0 ? 1 : -1);
+        }
+        touchStartX.current = null;
+    };
+
     const intervalRef = useRef(null);
     const timeoutRef = useRef(null);
 
@@ -94,7 +121,12 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         });
         setSelections(initial);
         setQuantity(1);
+        setCurrentImageIndex(0);
+        setFailedImages({});
     }, [product]);
+
+    // All hooks are declared above; safe to bail out for a missing product here.
+    if (!product) return null;
 
     // Internal price calculation helper
     const getPriceForSelections = (tempSelections) => {
@@ -178,24 +210,88 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                 <div className="option-detail-layout" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
                     {/* Top Section: Info & Image */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'inherit', background: '#fff' }}>
-                        {/* Left: Image */}
-                        <div className="option-image-area" style={{ position: 'relative', height: '100%', minHeight: '300px', display: 'flex' }}>
-                            {(!product.images || product.images.length === 0) ? (
+                        {/* Left: Image carousel */}
+                        <div
+                            className="option-image-area"
+                            style={{ position: 'relative', height: '100%', minHeight: '300px', display: 'flex', overflow: 'hidden' }}
+                            onTouchStart={hasMultipleImages ? handleImageTouchStart : undefined}
+                            onTouchEnd={hasMultipleImages ? handleImageTouchEnd : undefined}
+                        >
+                            {(images.length === 0 || failedImages[currentImageIndex]) ? (
                                 <div className="no-image-placeholder">이미지 준비 중</div>
                             ) : (
                                 <img
-                                    src={getImageUrl(product.images[0])}
+                                    key={currentImageIndex}
+                                    src={getImageUrl(images[currentImageIndex])}
                                     alt={product.name}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                    onError={(e) => {
-                                        e.target.style.display = 'none';
-                                        const parent = e.target.parentNode;
-                                        const placeholder = document.createElement('div');
-                                        placeholder.className = 'no-image-placeholder';
-                                        placeholder.innerText = '이미지 준비 중';
-                                        parent.appendChild(placeholder);
-                                    }}
+                                    onError={() => setFailedImages(prev => ({ ...prev, [currentImageIndex]: true }))}
                                 />
+                            )}
+
+                            {hasMultipleImages && (
+                                <>
+                                    {/* Image counter */}
+                                    <div style={{
+                                        position: 'absolute', top: '16px', left: '16px', zIndex: 5,
+                                        background: 'rgba(0,0,0,0.6)', color: '#fff',
+                                        padding: '4px 12px', borderRadius: '999px',
+                                        fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.03em'
+                                    }}>
+                                        {currentImageIndex + 1} / {images.length}
+                                    </div>
+
+                                    {/* Prev arrow */}
+                                    <button
+                                        onClick={() => moveImage(-1)}
+                                        aria-label="이전 사진"
+                                        style={{
+                                            position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', zIndex: 5,
+                                            width: '40px', height: '40px', borderRadius: '50%', border: 'none',
+                                            background: 'rgba(255,255,255,0.9)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                            fontSize: '1.6rem', lineHeight: 1, cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1e293b'
+                                        }}
+                                    >
+                                        ‹
+                                    </button>
+
+                                    {/* Next arrow */}
+                                    <button
+                                        onClick={() => moveImage(1)}
+                                        aria-label="다음 사진"
+                                        style={{
+                                            position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', zIndex: 5,
+                                            width: '40px', height: '40px', borderRadius: '50%', border: 'none',
+                                            background: 'rgba(255,255,255,0.9)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                            fontSize: '1.6rem', lineHeight: 1, cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1e293b'
+                                        }}
+                                    >
+                                        ›
+                                    </button>
+
+                                    {/* Dot indicators */}
+                                    <div style={{
+                                        position: 'absolute', bottom: '14px', left: '50%', transform: 'translateX(-50%)', zIndex: 5,
+                                        display: 'flex', gap: '8px', padding: '6px 10px',
+                                        background: 'rgba(0,0,0,0.3)', borderRadius: '999px'
+                                    }}>
+                                        {images.map((_, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => setCurrentImageIndex(i)}
+                                                aria-label={`${i + 1}번째 사진`}
+                                                style={{
+                                                    width: i === currentImageIndex ? '22px' : '8px',
+                                                    height: '8px', borderRadius: '999px', border: 'none', padding: 0, cursor: 'pointer',
+                                                    background: i === currentImageIndex ? '#fff' : 'rgba(255,255,255,0.5)',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </>
                             )}
                         </div>
 
@@ -215,6 +311,15 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                     </span>
                                 ))}
                             </div>
+
+                            {product.gyu && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                                    <span style={{ fontWeight: 700, color: '#64748b', fontSize: '0.95rem' }}>규격</span>
+                                    <span style={{ background: '#fff7ed', color: 'var(--accent-color)', padding: '6px 14px', borderRadius: '10px', fontWeight: 800, fontSize: '1rem', border: '1px solid #fed7aa' }}>
+                                        {product.gyu}
+                                    </span>
+                                </div>
+                            )}
 
                             <p className="option-description" style={{ color: '#475569', lineHeight: 1.6, fontSize: '1.05rem', marginBottom: '25px' }}>
                                 {product.description || `본 상품은 고품질 자재로 제작된 ${product.name}입니다. 산업 현장 및 일반 가정에서 신뢰하고 사용할 수 있는 내구성을 갖추고 있습니다. 상세 규격은 옵션에서 선택 가능합니다.`}
