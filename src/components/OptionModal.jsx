@@ -47,9 +47,10 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         }
 
         // Handle ERP-grouped items as a generic "Options" choice
-        if (groups.length === 0 && product.combinations && product.combinations.length > 1) {
+        const activeCombos = (product.combinations || []).filter(c => !c.deleted);
+        if (groups.length === 0 && activeCombos.length > 1) {
             groups.push({
-                values: product.combinations.map(c => c.name),
+                values: activeCombos.map(c => c.name),
                 legacySource: 'combinations'
             });
         }
@@ -130,9 +131,10 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
 
     // Internal price calculation helper
     const getPriceForSelections = (tempSelections) => {
-        if (product.combinations && product.combinations.length > 0) {
+        const activeCombos = (product.combinations || []).filter(c => !c.deleted);
+        if (activeCombos.length > 0) {
             const comboName = groups.map(g => tempSelections[g.name]).join(' / ');
-            const combo = product.combinations.find(c => c.name === comboName);
+            const combo = activeCombos.find(c => c.name === comboName);
             // If combination based price exists, it's usually the final price (or extra)
             // But for ERP grouped, it's should be treated as the unit price directly
             if (combo) {
@@ -177,7 +179,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
 
     const handleConfirm = () => {
         const comboName = groups.map(g => selections[g.name]).join(' / ');
-        const foundCombo = product.combinations?.find(c => c.name === comboName);
+        const foundCombo = (product.combinations || []).filter(c => !c.deleted).find(c => c.name === comboName);
 
         const combinations = [{
             id: foundCombo ? foundCombo.id : comboName,

@@ -39,7 +39,12 @@ const ProductForm = () => {
                     hashtags: product.hashtags ? product.hashtags.join(', ') : '',
                     images: product.images || (product.image ? [product.image] : [])
                 }));
-                setCombinations(product.combinations || []);
+                const combos = product.combinations || [];
+                // 활성 조합을 앞에, 삭제(소프트삭제)된 조합을 뒤에 모아 둔다.
+                setCombinations([
+                    ...combos.filter(c => !c.deleted),
+                    ...combos.filter(c => c.deleted)
+                ]);
                 setOptionGroups(product.optionGroups?.map(g => ({
                     name: g.name,
                     values: g.values ? g.values.join(', ') : ''
@@ -127,7 +132,7 @@ const ProductForm = () => {
                     return t.startsWith('#') ? t : `#${t}`;
                 }).filter(t => t !== '#')
                 : productData.hashtags,
-            isComplexOptions: combinations.length > 0,
+            isComplexOptions: combinations.filter(c => !c.deleted).length > 0,
             optionGroups: optionGroups.filter(g => g.name.trim() && g.values.trim()).map(g => ({
                 name: g.name.trim(),
                 values: g.values.split(',').map(v => v.trim()).filter(v => v)
@@ -383,7 +388,7 @@ const ProductForm = () => {
                                 <div className="empty-info">옵션이 없는 상품입니다.</div>
                             )}
 
-                            {combinations.length > 0 && (
+                            {combinations.some(c => !c.deleted) && (
                                 <div className="combo-table-wrap">
                                     <table className="admin-form-table">
                                         <thead>
@@ -391,10 +396,11 @@ const ProductForm = () => {
                                                 <th width="50">순서</th>
                                                 <th>옵션 조합</th>
                                                 <th width="150">추가 금액</th>
+                                                <th width="60">삭제</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {combinations.map((c, i) => (
+                                            {combinations.map((c, i) => c.deleted ? null : (
                                                 <tr key={i}>
                                                     <td>
                                                         <div style={{ display: 'flex', gap: '2px' }}>
@@ -403,7 +409,7 @@ const ProductForm = () => {
                                                                 className="mini-add-btn"
                                                                 style={{ padding: '2px 4px' }}
                                                                 onClick={() => {
-                                                                    if (i === 0) return;
+                                                                    if (i === 0 || combinations[i - 1].deleted) return;
                                                                     const updated = [...combinations];
                                                                     [updated[i - 1], updated[i]] = [updated[i], updated[i - 1]];
                                                                     setCombinations(updated);
@@ -414,7 +420,7 @@ const ProductForm = () => {
                                                                 className="mini-add-btn"
                                                                 style={{ padding: '2px 4px' }}
                                                                 onClick={() => {
-                                                                    if (i === combinations.length - 1) return;
+                                                                    if (i === combinations.length - 1 || combinations[i + 1].deleted) return;
                                                                     const updated = [...combinations];
                                                                     [updated[i + 1], updated[i]] = [updated[i], updated[i + 1]];
                                                                     setCombinations(updated);
@@ -435,10 +441,59 @@ const ProductForm = () => {
                                                             }}
                                                         />
                                                     </td>
+                                                    <td>
+                                                        <button
+                                                            type="button"
+                                                            className="icon-btn-del"
+                                                            title="이 옵션 조합 삭제 (소프트삭제: postgres에 보존되며 복구 가능)"
+                                                            onClick={() => {
+                                                                const target = combinations[i];
+                                                                const rest = combinations.filter((_, idx) => idx !== i);
+                                                                if (target.id_db) {
+                                                                    // 이미 저장된 조합: 소프트삭제 플래그만 세우고 목록 끝으로 모은다.
+                                                                    const active = rest.filter(x => !x.deleted);
+                                                                    const removed = rest.filter(x => x.deleted);
+                                                                    setCombinations([...active, ...removed, { ...target, deleted: true }]);
+                                                                } else {
+                                                                    // 아직 저장된 적 없는 조합: DB에 없으므로 그냥 제거.
+                                                                    setCombinations(rest);
+                                                                }
+                                                            }}
+                                                        >
+                                                            삭제
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
+                                </div>
+                            )}
+
+                            {combinations.some(c => c.deleted) && (
+                                <div className="deleted-combo-wrap">
+                                    <div className="deleted-combo-title">
+                                        🗑️ 삭제된 옵션 조합 <span>저장하면 postgres에 보존됩니다 · 복구 가능</span>
+                                    </div>
+                                    {combinations.map((c, i) => c.deleted ? (
+                                        <div key={i} className="deleted-combo-row">
+                                            <span className="deleted-combo-name">{c.name}</span>
+                                            <button
+                                                type="button"
+                                                className="flat-btn border"
+                                                onClick={() => {
+                                                    const target = combinations[i];
+                                                    const rest = combinations.filter((_, idx) => idx !== i);
+                                                    const active = rest.filter(x => !x.deleted);
+                                                    const removed = rest.filter(x => x.deleted);
+                                                    // 복구 시 활성 목록 맨 뒤에 끼워 넣어 활성/삭제 구역을 분리 유지.
+                                                    setCombinations([...active, { ...target, deleted: false }, ...removed]);
+                                                }}
+                                            >
+                                                복구
+                                            </button>
+                                        </div>
+                                    ) : null)}
                                 </div>
                             )}
                         </div>
@@ -617,6 +672,12 @@ const ProductForm = () => {
                 .admin-form-table { width: 100%; border-collapse: collapse; }
                 .admin-form-table th { background: #f1f5f9; padding: 12px; font-size: 0.8rem; text-align: left; color: #64748b; }
                 .admin-form-table td { padding: 10px 12px; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; font-weight: 600; }
+
+                .deleted-combo-wrap { margin-top: 15px; padding: 15px; background: #fff7ed; border: 1px dashed #fdba74; border-radius: 10px; display: flex; flex-direction: column; gap: 8px; }
+                .deleted-combo-title { font-size: 0.85rem; font-weight: 800; color: #c2410c; }
+                .deleted-combo-title span { font-weight: 500; font-size: 0.75rem; color: #ea8a4f; margin-left: 6px; }
+                .deleted-combo-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: white; border-radius: 8px; border: 1px solid #fed7aa; }
+                .deleted-combo-name { font-size: 0.9rem; font-weight: 600; color: #9a3412; text-decoration: line-through; }
 
                 .admin-form-footer {
                     position: fixed;
