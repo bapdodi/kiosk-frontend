@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { getImageUrl, uploadImage } from '../../utils/imageUtils';
 import BulkImageMatchModal from './BulkImageMatchModal';
+import CategoryEditor from './CategoryEditor';
 
 const ProductManagement = () => {
     const navigate = useNavigate();
@@ -17,8 +18,7 @@ const ProductManagement = () => {
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [editingCatId, setEditingCatId] = useState(null);
-    const [tempMainCat, setTempMainCat] = useState('');
-    const [tempSubCat, setTempSubCat] = useState('');
+    const [tempCategories, setTempCategories] = useState([]);
     const [dragOverProductId, setDragOverProductId] = useState(null);
 
     const FALLBACK_IMAGE = '/no-image.png';
@@ -63,8 +63,7 @@ const ProductManagement = () => {
 
     const startEditingCategory = (product) => {
         setEditingCatId(product.id);
-        setTempMainCat(product.mainCategory);
-        setTempSubCat(product.subCategory || '');
+        setTempCategories(product.categories || []);
     };
 
     const saveCategoryUpdate = async (product) => {
@@ -74,8 +73,7 @@ const ProductManagement = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...product,
-                    mainCategory: tempMainCat,
-                    subCategory: tempSubCat
+                    categories: tempCategories
                 })
             });
             if (res.ok) {
@@ -548,30 +546,18 @@ const ProductManagement = () => {
                                         {p.hashtags?.map(tag => <span key={tag} className="tag-badge">{tag}</span>)}
                                     </div>
                                 </td>
-                                <td>
+                                <td style={{ minWidth: '260px' }}>
                                     {editingCatId === p.id ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                            <select
-                                                className="form-select"
-                                                style={{ padding: '4px', fontSize: '0.8rem' }}
-                                                value={tempMainCat}
-                                                onChange={(e) => {
-                                                    const mId = e.target.value;
-                                                    setTempMainCat(mId);
-                                                    setTempSubCat(subCategories[mId]?.[0]?.id || '');
-                                                }}
-                                            >
-                                                {mainCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                            </select>
-                                            <select
-                                                className="form-select"
-                                                style={{ padding: '4px', fontSize: '0.8rem' }}
-                                                value={tempSubCat}
-                                                onChange={(e) => setTempSubCat(e.target.value)}
-                                            >
-                                                <option value="">중분류 없음</option>
-                                                {subCategories[tempMainCat]?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                            </select>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <CategoryEditor
+                                                compact
+                                                value={tempCategories}
+                                                onChange={setTempCategories}
+                                                mainCategories={mainCategories}
+                                                subCategories={subCategories}
+                                                setMainCategories={setMainCategories}
+                                                setSubCategories={setSubCategories}
+                                            />
                                             <div style={{ display: 'flex', gap: '4px' }}>
                                                 <button
                                                     onClick={() => saveCategoryUpdate(p)}
@@ -588,18 +574,21 @@ const ProductManagement = () => {
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="cat-display-cell" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '2px' }}>
-                                                <span className="tag-badge" style={{ background: '#e0f2fe', color: '#0369a1' }}>
-                                                    {mainCategories.find(c => c.id === p.mainCategory)?.name || p.mainCategory}
-                                                </span>
-                                                {p.subCategory && (
-                                                    <>
-                                                        <span style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 5px' }}>›</span>
-                                                        <span className="tag-badge" style={{ background: '#f0fdf4', color: '#15803d' }}>
-                                                            {subCategories[p.mainCategory]?.find(s => s.id === p.subCategory)?.name || p.subCategory}
-                                                        </span>
-                                                    </>
+                                        <div className="cat-display-cell" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                                {(p.categories || []).map((c, ci) => (
+                                                    <span key={ci} className="tag-badge" style={{ background: '#e0f2fe', color: '#0369a1', display: 'inline-flex', alignItems: 'center' }}>
+                                                        {mainCategories.find(m => m.id === c.mainCategory)?.name || c.mainCategory}
+                                                        {c.subCategory && (
+                                                            <>
+                                                                <span style={{ color: '#7dd3fc', margin: '0 4px' }}>›</span>
+                                                                {subCategories[c.mainCategory]?.find(s => s.id === c.subCategory)?.name || c.subCategory}
+                                                            </>
+                                                        )}
+                                                    </span>
+                                                ))}
+                                                {(p.categories || []).length === 0 && (
+                                                    <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>미분류</span>
                                                 )}
                                             </div>
                                             <button

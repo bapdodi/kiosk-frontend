@@ -329,10 +329,13 @@ function KioskView({
       // If actively searching, ignore category filters for global search
       if (searchLower !== "") return true;
 
-      const matchMain = !activeMainCat ? true : product.mainCategory === activeMainCat;
-      const matchSub = !activeSubCat ? true : product.subCategory === activeSubCat;
-
-      return matchMain && matchSub;
+      // 상품은 여러 카테고리에 속할 수 있으므로, 그 중 하나라도 현재 필터와 맞으면 노출한다.
+      if (!activeMainCat) return true;
+      return (product.categories || []).some(c => {
+        if (c.mainCategory !== activeMainCat) return false;
+        if (!activeSubCat || activeSubCat === 'all') return true;
+        return c.subCategory === activeSubCat;
+      });
     }).sort((a, b) => {
       const aOrder = a.sortOrder || "";
       const bOrder = b.sortOrder || "";

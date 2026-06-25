@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { getImageUrl, uploadImage } from '../../utils/imageUtils';
+import CategoryEditor from './CategoryEditor';
 
 const ProductForm = () => {
     const navigate = useNavigate();
@@ -16,8 +17,7 @@ const ProductForm = () => {
     const [productData, setProductData] = useState({
         name: '',
         description: '',
-        mainCategory: '',
-        subCategory: '',
+        categories: [],
         price: 0,
         hashtags: '',
         images: []
@@ -35,6 +35,7 @@ const ProductForm = () => {
                 setProductData(prev => ({
                     ...prev,
                     ...product,
+                    categories: product.categories || [],
                     hashtags: product.hashtags ? product.hashtags.join(', ') : '',
                     images: product.images || (product.image ? [product.image] : [])
                 }));
@@ -48,26 +49,16 @@ const ProductForm = () => {
     }, [isEditMode, id, products]);
 
     useEffect(() => {
-        if (mainCategories.length > 0) {
+        // 신규 상품 등록 시, 카테고리가 비어 있으면 첫 번째 (대분류+중분류)로 한 개 기본 시드.
+        if (!isEditMode && mainCategories.length > 0) {
             setProductData(prev => {
-                // 현재 설정된 대분류가 없거나, 유효하지 않은 항목이면 첫 번째 대분류로 초기화
-                const mId = prev.mainCategory && mainCategories.some(c => c.id === prev.mainCategory)
-                    ? prev.mainCategory
-                    : mainCategories[0].id;
-
-                const currentSubs = subCategories[mId] || [];
-                // 현재 선택된 중분류가 해당 대분류 목록에 없는 항목이거나 비어있으면 첫 번째 중분류로 초기화
-                const sId = prev.subCategory && currentSubs.some(s => s.id === prev.subCategory)
-                    ? prev.subCategory
-                    : (currentSubs.length > 0 ? currentSubs[0].id : '');
-
-                if (prev.mainCategory !== mId || prev.subCategory !== sId) {
-                    return { ...prev, mainCategory: mId, subCategory: sId };
-                }
-                return prev;
+                if (prev.categories && prev.categories.length > 0) return prev;
+                const mId = mainCategories[0].id;
+                const sId = subCategories[mId]?.[0]?.id || '';
+                return { ...prev, categories: [{ mainCategory: mId, subCategory: sId }] };
             });
         }
-    }, [mainCategories, subCategories, productData.mainCategory, productData.subCategory]);
+    }, [mainCategories, subCategories, isEditMode]);
 
 
     const handleImageUpload = async (eOrFiles) => {
@@ -121,57 +112,6 @@ const ProductForm = () => {
         if (files && files.length > 0) {
             handleImageUpload(files);
         }
-    };
-
-    const addMainCategory = async () => {
-        const name = prompt('새 대분류 이름을 입력하세요:');
-        if (!name) return;
-        const id = 'cat_' + Date.now();
-        const catData = { id, name, level: 'main' };
-        try {
-            const res = await fetch('/api/categories/admin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(catData)
-            });
-            if (res.ok) {
-                const saved = await res.json();
-                setMainCategories([...mainCategories, saved]);
-                setSubCategories({ ...subCategories, [saved.id]: [] });
-                setProductData(prev => ({
-                    ...prev,
-                    mainCategory: saved.id,
-                    subCategory: ''
-                }));
-            }
-        } catch (err) { alert('오류 발생'); }
-    };
-
-    const addSubCategory = async () => {
-        if (!productData.mainCategory) return alert('대분류를 먼저 선택해주세요.');
-        const name = prompt('새 중분류 이름을 입력하세요:');
-        if (!name) return;
-        const id = 'sub_' + Date.now();
-        const parentId = productData.mainCategory;
-        const catData = { id, name, parentId, level: 'sub' };
-        try {
-            const res = await fetch('/api/categories/admin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(catData)
-            });
-            if (res.ok) {
-                const saved = await res.json();
-                setSubCategories({
-                    ...subCategories,
-                    [parentId]: [...(subCategories[parentId] || []), saved]
-                });
-                setProductData(prev => ({
-                    ...prev,
-                    subCategory: saved.id
-                }));
-            }
-        } catch (err) { alert('오류 발생'); }
     };
 
     const handleSubmit = async (e) => {
@@ -239,48 +179,16 @@ const ProductForm = () => {
 
                 <form onSubmit={handleSubmit} className="admin-form-layout">
                     <section className="admin-section">
-                        <div className="section-title">📁 카테고리 분류</div>
-                        <div className="section-form compact-row">
-                            <div className="form-item">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <label>대분류</label>
-                                    <button type="button" onClick={addMainCategory} className="mini-add-btn">＋ 추가</button>
-                                </div>
-                                <select
-                                    className="form-select"
-                                    value={productData.mainCategory}
-                                    onChange={(e) => {
-                                        const mId = e.target.value;
-                                        const sId = subCategories[mId]?.[0]?.id;
-                                        setProductData({
-                                            ...productData,
-                                            mainCategory: mId,
-                                            subCategory: sId || ''
-                                        });
-                                    }}
-                                >
-                                    {mainCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="form-item">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <label>중분류</label>
-                                    <button type="button" onClick={addSubCategory} className="mini-add-btn">＋ 추가</button>
-                                </div>
-                                <select
-                                    className="form-select"
-                                    value={productData.subCategory}
-                                    onChange={(e) => {
-                                        const sId = e.target.value;
-                                        setProductData({
-                                            ...productData,
-                                            subCategory: sId
-                                        });
-                                    }}
-                                >
-                                    {subCategories[productData.mainCategory]?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                </select>
-                            </div>
+                        <div className="section-title">📁 카테고리 분류 <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#94a3b8' }}>(여러 카테고리에 동시에 넣을 수 있습니다)</span></div>
+                        <div className="section-form">
+                            <CategoryEditor
+                                value={productData.categories}
+                                onChange={(next) => setProductData(prev => ({ ...prev, categories: next }))}
+                                mainCategories={mainCategories}
+                                subCategories={subCategories}
+                                setMainCategories={setMainCategories}
+                                setSubCategories={setSubCategories}
+                            />
                         </div>
                     </section>
 
