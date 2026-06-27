@@ -13,6 +13,8 @@ const ProductCard = ({ product, onAddClick, onTagClick }) => {
                         src={getImageUrl(product.images[0])}
                         alt={product.name}
                         className="product-image"
+                        loading="lazy"
+                        decoding="async"
                         onError={(e) => {
                             e.target.style.display = 'none';
                             const parent = e.target.parentNode;

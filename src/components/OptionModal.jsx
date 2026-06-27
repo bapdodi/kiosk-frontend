@@ -66,7 +66,18 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     const [failedImages, setFailedImages] = useState({});
     const touchStartX = useRef(null);
 
-    const images = product?.images || [];
+    const optionImages = product?.optionImages || [];
+
+    // 현재 선택된 옵션값들에 등록된 사진을 모으고, 하나도 없으면 메인 사진으로 폴백한다.
+    const matchedOptionImages = [];
+    groups.forEach(g => {
+        const sel = selections[g.name];
+        if (!sel) return;
+        optionImages
+            .filter(oi => oi.groupName === g.name && oi.optionValue === sel)
+            .forEach(oi => matchedOptionImages.push(oi.imageUrl));
+    });
+    const images = matchedOptionImages.length > 0 ? matchedOptionImages : (product?.images || []);
     const hasMultipleImages = images.length > 1;
 
     const moveImage = (dir) => {
@@ -350,7 +361,12 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                             return (
                                                 <button
                                                     key={val}
-                                                    onClick={() => setSelections({ ...selections, [group.name]: val })}
+                                                    onClick={() => {
+                                                        // 옵션을 바꾸면 표시 사진 세트가 달라지므로 첫 장부터 보여준다.
+                                                        setSelections({ ...selections, [group.name]: val });
+                                                        setCurrentImageIndex(0);
+                                                        setFailedImages({});
+                                                    }}
                                                     style={{
                                                         padding: '12px 20px',
                                                         borderRadius: '12px',
