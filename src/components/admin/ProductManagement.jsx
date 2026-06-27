@@ -530,6 +530,8 @@ const ProductManagement = () => {
                                             src={getImageUrl(p.images[0])}
                                             className="product-thumb"
                                             alt={p.name}
+                                            loading="lazy"
+                                            decoding="async"
                                         />
                                     ) : (
                                         <div className="no-image-placeholder" style={{ width: '60px', height: '60px', fontSize: '0.6rem' }}>
