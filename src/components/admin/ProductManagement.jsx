@@ -20,6 +20,14 @@ const ProductManagement = () => {
     const [editingCatId, setEditingCatId] = useState(null);
     const [tempCategories, setTempCategories] = useState([]);
     const [dragOverProductId, setDragOverProductId] = useState(null);
+    // 진입 시 전체 행(최대 2000개)을 한 번에 렌더하면 렉이 심하므로 보이는 만큼만 점진 렌더
+    const PAGE_SIZE = 80;
+    const [visibleCount, setVisibleCount] = useState(() => {
+        const saved = sessionStorage.getItem('adminVisibleCount');
+        return saved ? parseInt(saved, 10) : PAGE_SIZE;
+    });
+    const visibleCountRef = useRef(visibleCount);
+    const filteredLenRef = useRef(0);
 
     const FALLBACK_IMAGE = '/no-image.png';
 
@@ -36,8 +44,13 @@ const ProductManagement = () => {
         if (isFetchingMore) return;
         if (observer.current) observer.current.disconnect();
         observer.current = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && hasMore) {
-                onLoadMore();
+            if (entries[0].isIntersecting) {
+                if (visibleCountRef.current < filteredLenRef.current) {
+                    // 이미 로드된 상품을 먼저 점진적으로 더 그림
+                    setVisibleCount(c => Math.min(c + PAGE_SIZE, filteredLenRef.current));
+                } else if (hasMore) {
+                    onLoadMore();
+                }
             }
         });
         if (node) observer.current.observe(node);
@@ -51,6 +64,7 @@ const ProductManagement = () => {
             const timer = setTimeout(() => {
                 window.scrollTo(0, parseInt(savedScroll));
                 sessionStorage.removeItem('adminScrollPos');
+                sessionStorage.removeItem('adminVisibleCount');
             }, 100);
             return () => clearTimeout(timer);
         }
@@ -58,6 +72,7 @@ const ProductManagement = () => {
 
     const handleEditNavigate = (productId) => {
         sessionStorage.setItem('adminScrollPos', window.scrollY.toString());
+        sessionStorage.setItem('adminVisibleCount', visibleCount.toString());
         navigate(`/admin/products/edit/${productId}`);
     };
 
@@ -332,6 +347,10 @@ const ProductManagement = () => {
             });
     }, [products, searchQuery]);
 
+    const visibleProducts = filteredProducts.slice(0, visibleCount);
+    visibleCountRef.current = visibleCount;
+    filteredLenRef.current = filteredProducts.length;
+
     return (
         <div className="fade-in">
             <div className="admin-header-title">
@@ -479,10 +498,10 @@ const ProductManagement = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredProducts.map((p, index) => (
+                        {visibleProducts.map((p, index) => (
                             <tr
                                 key={p.id}
-                                ref={index === filteredProducts.length - 1 ? lastProductElementRef : null}
+                                ref={index === visibleProducts.length - 1 ? lastProductElementRef : null}
                                 draggable="true"
                                 onDragStart={(e) => handleDragStart(e, p.id)}
                                 onDragOver={(e) => {
