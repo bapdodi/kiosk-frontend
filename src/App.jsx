@@ -503,7 +503,7 @@ function KioskView({
       {/* Floating Cart Button */}
       <div className="floating-cart-btn" onClick={() => setIsCartOpen(true)}>
         <span className="cart-icon">🛒</span>
-        <span className="cart-count">{cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}</span>
+        <span className="cart-count">{cart.length}</span>
       </div>
 
       {/* Cart Modal */}
