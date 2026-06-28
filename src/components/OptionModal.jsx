@@ -407,12 +407,10 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                             <button
                                 className="qty-btn"
                                 style={{ width: '40px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px' }}
-                                onMouseDown={(e) => { e.preventDefault(); startPress(-1); }}
-                                onMouseUp={stopPress}
-                                onMouseLeave={stopPress}
-                                onTouchStart={(e) => { e.preventDefault(); startPress(-1); }}
-                                onTouchEnd={stopPress}
-                                onTouchCancel={stopPress}
+                                onPointerDown={(e) => { e.preventDefault(); startPress(-1); }}
+                                onPointerUp={stopPress}
+                                onPointerLeave={stopPress}
+                                onPointerCancel={stopPress}
                             >
                                 −
                             </button>
@@ -447,12 +445,10 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                             <button
                                 className="qty-btn"
                                 style={{ width: '40px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px' }}
-                                onMouseDown={(e) => { e.preventDefault(); startPress(1); }}
-                                onMouseUp={stopPress}
-                                onMouseLeave={stopPress}
-                                onTouchStart={(e) => { e.preventDefault(); startPress(1); }}
-                                onTouchEnd={stopPress}
-                                onTouchCancel={stopPress}
+                                onPointerDown={(e) => { e.preventDefault(); startPress(1); }}
+                                onPointerUp={stopPress}
+                                onPointerLeave={stopPress}
+                                onPointerCancel={stopPress}
                             >
                                 +
                             </button>
