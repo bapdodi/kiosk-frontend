@@ -13,6 +13,59 @@ import ProductCard from './components/ProductCard';
 
 // ... (KioskView & ProtectedRoute components)
 
+const CHOSUNG_LIST = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+const EN_TO_KO_JAMO = {
+  r: 'ㄱ', R: 'ㄲ', s: 'ㄴ', e: 'ㄷ', E: 'ㄸ', f: 'ㄹ', a: 'ㅁ', q: 'ㅂ', Q: 'ㅃ',
+  t: 'ㅅ', T: 'ㅆ', d: 'ㅇ', w: 'ㅈ', W: 'ㅉ', c: 'ㅊ', z: 'ㅋ', x: 'ㅌ', v: 'ㅍ', g: 'ㅎ',
+  k: 'ㅏ', o: 'ㅐ', O: 'ㅒ', i: 'ㅑ', j: 'ㅓ', p: 'ㅔ', P: 'ㅖ', u: 'ㅕ', h: 'ㅗ', y: 'ㅛ',
+  n: 'ㅜ', b: 'ㅠ', m: 'ㅡ', l: 'ㅣ'
+};
+
+const normalizeSearchText = (value) => (value || '').toLowerCase().replace(/\s+/g, '');
+
+const getChosungChar = (char) => {
+  if (!char) return '';
+  const unicode = char.charCodeAt(0);
+
+  if (unicode >= 0xAC00 && unicode <= 0xD7A3) {
+    const index = Math.floor((unicode - 0xAC00) / 588);
+    return CHOSUNG_LIST[index];
+  }
+
+  if ((unicode >= 65 && unicode <= 90) || (unicode >= 97 && unicode <= 122)) {
+    return char.toUpperCase();
+  }
+
+  return '기타';
+};
+
+const getChosungText = (value) => (value || '')
+  .split('')
+  .map((char) => {
+    const chosung = getChosungChar(char);
+    return chosung === '기타' ? char : chosung;
+  })
+  .join('');
+
+const convertEnglishKeyboardToKorean = (value) => (value || '')
+  .split('')
+  .map((char) => EN_TO_KO_JAMO[char] || char)
+  .join('');
+
+const matchesCustomerSearch = (name, query) => {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return true;
+
+  const normalizedName = normalizeSearchText(name);
+  const nameChosung = normalizeSearchText(getChosungText(name));
+  const keyboardQuery = normalizeSearchText(convertEnglishKeyboardToKorean(query));
+
+  return normalizedName.includes(normalizedQuery) ||
+    nameChosung.includes(normalizedQuery) ||
+    normalizedName.includes(keyboardQuery) ||
+    nameChosung.includes(keyboardQuery);
+};
+
 function App() {
   const [products, setProducts] = useState([]);
   const [mainCategories, setMainCategories] = useState([]);
@@ -246,22 +299,7 @@ function KioskView({
   // 초성 추출 유틸리티
   const getChosung = (str) => {
     if (!str) return '';
-    const firstChar = str.trim().charAt(0);
-    const unicode = firstChar.charCodeAt(0);
-
-    // 한글 유니코드 범위: 0xAC00 ~ 0xD7A3
-    if (unicode >= 0xAC00 && unicode <= 0xD7A3) {
-      const chosungList = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
-      const index = Math.floor((unicode - 0xAC00) / 588);
-      return chosungList[index];
-    }
-
-    // 영어 또는 기타 문자
-    if ((unicode >= 65 && unicode <= 90) || (unicode >= 97 && unicode <= 122)) {
-      return firstChar.toUpperCase();
-    }
-
-    return '기타';
+    return getChosungChar(str.trim().charAt(0));
   };
 
   const chosungTabs = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ', 'A-Z'];
@@ -527,8 +565,13 @@ function KioskView({
 
       {/* Order Name Input Modal */}
       {orderModal.isOpen && (() => {
+        const customerSearchQuery = orderModal.name.trim();
         const filteredCustomers = customers.filter(c => {
           const name = c.NAME?.trim() || '';
+          if (customerSearchQuery) {
+            return matchesCustomerSearch(name, customerSearchQuery);
+          }
+
           if (selectedChosung === 'A-Z') {
             const firstChar = name.charAt(0).toUpperCase();
             return firstChar >= 'A' && firstChar <= 'Z';

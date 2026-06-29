@@ -11,7 +11,7 @@ const CategoryNav = ({
     return (
         <nav className="top-nav">
             <div className="header-top">
-                <div className="logo">동광배관자재</div>
+                <div className="logo">동광배관자재 010-7612-6524</div>
                 <div className="search-container">
                     <span className="search-icon">🔍</span>
                     <input
