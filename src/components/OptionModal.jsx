@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
+import { COMBINATION_GROUP } from '../utils/optionConstants';
 
 const OptionModal = ({ product, onConfirm, onCancel }) => {
     // Normalizing option groups from different data structures
@@ -50,6 +51,8 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         const activeCombos = (product.combinations || []).filter(c => !c.deleted);
         if (groups.length === 0 && activeCombos.length > 1) {
             groups.push({
+                name: COMBINATION_GROUP,
+                label: '',
                 values: activeCombos.map(c => c.name),
                 legacySource: 'combinations'
             });
@@ -352,7 +355,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                             {groups.map((group) => (
                                 <div key={group.name}>
-                                    <div style={{ fontWeight: 700, marginBottom: '12px', fontSize: '0.95rem', color: '#64748b' }}>{group.name}</div>
+                                    <div style={{ fontWeight: 700, marginBottom: '12px', fontSize: '0.95rem', color: '#64748b' }}>{group.label ?? group.name}</div>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                                         {group.values.map(val => {
                                             const isSelected = selections[group.name] === val;
