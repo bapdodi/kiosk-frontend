@@ -39,9 +39,12 @@ function App() {
     const checkAuth = async () => {
       try {
         const res = await fetch('/api/auth/check');
-        if (res.ok) setIsAuthenticated(true);
+        setIsAuthenticated(res.ok);
+        return res.ok;
       } catch (e) {
         console.error('Auth check failed');
+        setIsAuthenticated(false);
+        return false;
       }
     };
 
@@ -75,7 +78,7 @@ function App() {
         await fetchProducts(0, null, null, true);
 
         if (isAuth) {
-          fetchOrders();
+          await fetchOrders();
         }
       } catch (error) {
         console.error('Error fetching initial data:', error);
@@ -537,6 +540,7 @@ function KioskView({
         });
 
         const isValidName = customers.some(c => c.NAME?.trim() === orderModal.name.trim());
+        const defaultCustomer = customers.find(c => c.NAME?.trim() === "1");
         
         return (
           <div className="modal-overlay">
@@ -547,11 +551,14 @@ function KioskView({
               </div>
               
               <div style={{ padding: '20px' }}>
-                {/* 일반 사용자 버튼 */}
+                {/* 1번 고객 버튼 */}
                 <button
                   onClick={() => {
-                    const genCust = customers.find(c => String(c.CODE).trim() === "1");
-                    submitOrder(genCust ? genCust.NAME : '일반', genCust ? String(genCust.CODE) : "1");
+                    if (!defaultCustomer) {
+                      alert('1번 고객 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+                      return;
+                    }
+                    submitOrder(defaultCustomer.NAME, String(defaultCustomer.CODE));
                   }}
                   style={{
                     width: '100%',
@@ -570,7 +577,7 @@ function KioskView({
                     gap: '10px'
                   }}
                 >
-                  👤 일반 사용자는 여기를 눌러주세요
+                  👤 1번 고객으로 주문하기
                 </button>
 
                 {/* 초성 카테고리 탭 */}

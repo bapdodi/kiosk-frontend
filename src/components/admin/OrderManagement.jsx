@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
 const OrderManagement = () => {
@@ -11,45 +11,95 @@ const OrderManagement = () => {
     const [orderSearchQuery, setOrderSearchQuery] = useState('');
 
     const ordersRef = useRef(orders);
+    const orderSoundRef = useRef(null);
+
+    useEffect(() => {
+        const audio = new Audio('/99F0804A5F72109B0D.mp3');
+        audio.preload = 'auto';
+        orderSoundRef.current = audio;
+        audio.load();
+
+        const unlockAudio = () => {
+            const originalVolume = audio.volume;
+            audio.volume = 0;
+            audio.play()
+                .then(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.volume = originalVolume;
+                })
+                .catch(() => {
+                    audio.volume = originalVolume;
+                });
+        };
+
+        window.addEventListener('pointerdown', unlockAudio, { once: true });
+        window.addEventListener('keydown', unlockAudio, { once: true });
+
+        return () => {
+            window.removeEventListener('pointerdown', unlockAudio);
+            window.removeEventListener('keydown', unlockAudio);
+            audio.pause();
+            orderSoundRef.current = null;
+        };
+    }, []);
+
+    const playOrderSound = useCallback(() => {
+        const audio = orderSoundRef.current;
+        if (!audio) return;
+
+        audio.currentTime = 0;
+        audio.play().catch(() => {
+            console.warn('Order notification sound was blocked by the browser.');
+        });
+    }, []);
+
+    const fetchOrders = useCallback(async ({ notify = true } = {}) => {
+        try {
+            const res = await fetch('/api/orders/admin');
+            if (!res.ok) return;
+
+            const fetchedOrders = await res.json();
+            const currentOrders = ordersRef.current;
+
+            const isInitialized = currentOrders.length > 0;
+            const newOrders = fetchedOrders.filter(fo => !currentOrders.some(o => o.id === fo.id));
+
+            if (notify && isInitialized && newOrders.length > 0) {
+                playOrderSound();
+                alert(`새로운 주문이 ${newOrders.length}건 들어왔습니다! 확인해 주세요.`);
+            }
+
+            if (JSON.stringify(currentOrders) !== JSON.stringify(fetchedOrders)) {
+                ordersRef.current = fetchedOrders;
+                setOrders(fetchedOrders);
+            }
+        } catch (err) {
+            console.error("Failed to fetch orders periodically", err);
+        }
+    }, [playOrderSound, setOrders]);
+
     useEffect(() => {
         ordersRef.current = orders;
     }, [orders]);
 
     useEffect(() => {
         let isFetching = false;
-        const interval = setInterval(async () => {
+        const fetchPeriodically = async () => {
             if (isFetching) return;
             isFetching = true;
             try {
-                const res = await fetch('/api/orders/admin');
-                if (res.ok) {
-                    const fetchedOrders = await res.json();
-                    const currentOrders = ordersRef.current;
-
-                    // Find if there are new orders based on ID
-                    const isInitialized = currentOrders.length > 0;
-                    const newOrders = fetchedOrders.filter(fo => !currentOrders.some(o => o.id === fo.id));
-
-                    if (isInitialized && newOrders.length > 0) {
-                        // Play a sound or show alert
-                        alert(`새로운 주문이 ${newOrders.length}건 들어왔습니다! 확인해 주세요.`);
-                    }
-
-                    // To avoid unnecessary re-renders, only update if length differs or status differs
-                    // Using JSON.stringify is a quick way to diff the data safely
-                    if (JSON.stringify(currentOrders) !== JSON.stringify(fetchedOrders)) {
-                        setOrders(fetchedOrders);
-                    }
-                }
-            } catch (err) {
-                console.error("Failed to fetch orders periodically", err);
+                await fetchOrders();
             } finally {
                 isFetching = false;
             }
-        }, 5000);
+        };
+
+        fetchOrders({ notify: false });
+        const interval = setInterval(fetchPeriodically, 5000);
 
         return () => clearInterval(interval);
-    }, [setOrders]);
+    }, [fetchOrders]);
 
     const deleteOrder = async (orderId) => {
         if (!window.confirm('주문 내역을 삭제하시겠습니까?')) return;
@@ -91,24 +141,28 @@ const OrderManagement = () => {
         });
     };
 
-    const filteredOrders = [...orders]
-        .filter(order => {
-            // Status filter
-            const matchStatus = activeOrderTab === 'all' ? true : order.status === activeOrderTab;
+    const uniqueOrders = Array.from(new Map(orders.map(order => [order.id, order])).values());
 
-            // Name filter
-            const matchName = order.customerName.toLowerCase().includes(orderSearchQuery.toLowerCase());
+    const dateAndSearchFilteredOrders = uniqueOrders.filter(order => {
+        const matchName = order.customerName.toLowerCase().includes(orderSearchQuery.toLowerCase());
+        let matchDate = true;
 
-            // Date filter
-            let matchDate = true;
-            if (order.timestamp) {
-                const orderDate = new Date(order.timestamp).toISOString().split('T')[0];
-                if (startDate && orderDate < startDate) matchDate = false;
-                if (endDate && orderDate > endDate) matchDate = false;
-            }
+        if (order.timestamp) {
+            const orderDate = new Date(order.timestamp).toISOString().split('T')[0];
+            if (startDate && orderDate < startDate) matchDate = false;
+            if (endDate && orderDate > endDate) matchDate = false;
+        }
 
-            return matchStatus && matchName && matchDate;
-        })
+        return matchName && matchDate;
+    });
+
+    const getOrderCount = (status) => {
+        if (status === 'all') return dateAndSearchFilteredOrders.length;
+        return dateAndSearchFilteredOrders.filter(order => order.status === status).length;
+    };
+
+    const filteredOrders = dateAndSearchFilteredOrders
+        .filter(order => activeOrderTab === 'all' ? true : order.status === activeOrderTab)
         .reverse();
 
     return (
@@ -235,7 +289,7 @@ const OrderManagement = () => {
                                     marginLeft: '4px',
                                     opacity: 0.8
                                 }}>
-                                    {tab.id === 'all' ? orders.length : orders.filter(o => o.status === tab.id).length}
+                                    {getOrderCount(tab.id)}
                                 </span>
                             </button>
                         ))}
