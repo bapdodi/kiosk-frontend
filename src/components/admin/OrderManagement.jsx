@@ -9,49 +9,41 @@ const OrderManagement = () => {
     const [startDate, setStartDate] = useState(today);
     const [endDate, setEndDate] = useState(today);
     const [orderSearchQuery, setOrderSearchQuery] = useState('');
+    const [isSoundEnabled, setIsSoundEnabled] = useState(false);
+    const [soundError, setSoundError] = useState('');
 
     const ordersRef = useRef(orders);
     const orderSoundRef = useRef(null);
 
     useEffect(() => {
-        const audio = new Audio('/99F0804A5F72109B0D.mp3');
+        const audio = new Audio('/99F0804A5F72109B0D-3x.mp3');
         audio.preload = 'auto';
         orderSoundRef.current = audio;
         audio.load();
 
-        const unlockAudio = () => {
-            const originalVolume = audio.volume;
-            audio.volume = 0;
-            audio.play()
-                .then(() => {
-                    audio.pause();
-                    audio.currentTime = 0;
-                    audio.volume = originalVolume;
-                })
-                .catch(() => {
-                    audio.volume = originalVolume;
-                });
-        };
-
-        window.addEventListener('pointerdown', unlockAudio, { once: true });
-        window.addEventListener('keydown', unlockAudio, { once: true });
-
         return () => {
-            window.removeEventListener('pointerdown', unlockAudio);
-            window.removeEventListener('keydown', unlockAudio);
             audio.pause();
             orderSoundRef.current = null;
         };
     }, []);
 
-    const playOrderSound = useCallback(() => {
+    const playOrderSound = useCallback(async () => {
         const audio = orderSoundRef.current;
-        if (!audio) return;
+        if (!audio) return false;
 
-        audio.currentTime = 0;
-        audio.play().catch(() => {
-            console.warn('Order notification sound was blocked by the browser.');
-        });
+        try {
+            audio.pause();
+            audio.currentTime = 0;
+            await audio.play();
+            setIsSoundEnabled(true);
+            setSoundError('');
+            return true;
+        } catch (err) {
+            setIsSoundEnabled(false);
+            setSoundError('브라우저가 소리 재생을 막았습니다. 알림음 켜기를 눌러주세요.');
+            console.warn('Order notification sound was blocked by the browser.', err);
+            return false;
+        }
     }, []);
 
     const fetchOrders = useCallback(async ({ notify = true } = {}) => {
@@ -67,7 +59,9 @@ const OrderManagement = () => {
 
             if (notify && isInitialized && newOrders.length > 0) {
                 playOrderSound();
-                alert(`새로운 주문이 ${newOrders.length}건 들어왔습니다! 확인해 주세요.`);
+                window.setTimeout(() => {
+                    alert(`새로운 주문이 ${newOrders.length}건 들어왔습니다! 확인해 주세요.`);
+                }, 350);
             }
 
             if (JSON.stringify(currentOrders) !== JSON.stringify(fetchedOrders)) {
@@ -241,7 +235,32 @@ const OrderManagement = () => {
                     </h2>
                     <p style={{ color: '#64748b', fontSize: '1rem', fontWeight: 500 }}>실시간으로 들어오는 주문을 관리하고 처리 상태를 업데이트하세요.</p>
                 </div>
-                <div style={{ display: 'flex', gap: '20px' }}>
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'stretch', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <div className="admin-stat-card" style={{ padding: '15px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '8px', minWidth: '190px' }}>
+                        <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700 }}>
+                            주문 알림음 {isSoundEnabled ? '켜짐' : '꺼짐'}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={playOrderSound}
+                            style={{
+                                border: 'none',
+                                borderRadius: '12px',
+                                padding: '10px 14px',
+                                background: isSoundEnabled ? '#ecfdf5' : 'var(--admin-primary)',
+                                color: isSoundEnabled ? '#047857' : 'white',
+                                fontWeight: 800,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {isSoundEnabled ? '🔊 테스트' : '🔊 알림음 켜기'}
+                        </button>
+                        {soundError && (
+                            <span style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, lineHeight: 1.35 }}>
+                                {soundError}
+                            </span>
+                        )}
+                    </div>
                     <div className="admin-stat-card" style={{ padding: '15px 30px', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: '220px' }}>
                         <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '5px' }}>검색 결과 합계 금액</span>
                         <span style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--admin-primary)' }}>
