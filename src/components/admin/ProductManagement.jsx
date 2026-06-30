@@ -202,42 +202,81 @@ const ProductManagement = () => {
         return result;
     };
 
+    const compareByOrder = (a, b) => {
+        const ao = a.sortOrder || "";
+        const bo = b.sortOrder || "";
+        if (ao < bo) return -1;
+        if (ao > bo) return 1;
+        return (a.id || 0) - (b.id || 0);
+    };
+
+    // Evenly-spaced, fixed-width numeric key for position `i` (lexicographically == numerically ordered).
+    const rankForIndex = (i) => String((i + 1) * 1000).padStart(10, '0');
+
     const moveProduct = async (id, direction) => {
         const index = filteredProducts.findIndex(p => p.id === id);
         if (index < 0) return;
-
-        const newIndex = direction === 'up' ? index - 1 : index + 1;
-        if (newIndex < 0 || newIndex >= filteredProducts.length) return;
-
-        let prevRank = null;
-        let nextRank = null;
-
-        if (direction === 'up') {
-            nextRank = filteredProducts[newIndex].sortOrder;
-            prevRank = newIndex > 0 ? filteredProducts[newIndex - 1].sortOrder : null;
-        } else {
-            prevRank = filteredProducts[newIndex].sortOrder;
-            nextRank = newIndex < filteredProducts.length - 1 ? filteredProducts[newIndex + 1].sortOrder : null;
-        }
-
-        const newSortOrder = generateBetween(prevRank, nextRank);
-        await updateProductOrder(id, newSortOrder);
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        await reorderProduct(id, targetIndex);
     };
 
-    const updateProductOrder = async (id, newSortOrder) => {
-        const product = products.find(p => p.id === id);
-        if (!product) return;
+    // Move `movedId` so it ends up at `targetIndex` within the currently displayed list.
+    const reorderProduct = async (movedId, targetIndex) => {
+        const list = filteredProducts;
+        const fromIndex = list.findIndex(p => p.id === movedId);
+        if (fromIndex < 0) return;
+        if (targetIndex < 0 || targetIndex >= list.length || targetIndex === fromIndex) return;
 
-        const updatedProduct = { ...product, sortOrder: newSortOrder };
+        const desired = [...list];
+        const [moved] = desired.splice(fromIndex, 1);
+        desired.splice(targetIndex, 0, moved);
+
+        const before = desired[targetIndex - 1];
+        const after = desired[targetIndex + 1];
+        const beforeKey = before ? before.sortOrder : null;
+        const afterKey = after ? after.sortOrder : null;
+
+        // Fast path: the two new neighbours have distinct keys, so a single
+        // fractional key between them is enough (one write).
+        if ((beforeKey || '') !== (afterKey || '')) {
+            const newKey = generateBetween(beforeKey, afterKey);
+            if ((!beforeKey || newKey > beforeKey) && (!afterKey || newKey < afterKey)) {
+                await persistOrders([{ id: movedId, sortOrder: newKey }]);
+                return;
+            }
+        }
+
+        // Robust path: neighbours share a key (e.g. the legacy default "80000000"),
+        // which fractional indexing cannot split. Renumber the whole catalogue into
+        // distinct, evenly-spaced keys with `moved` in its new spot, then persist the diff.
+        const full = [...products].sort(compareByOrder).filter(p => p.id !== movedId);
+        let insertAt = after ? full.findIndex(p => p.id === after.id) : full.length;
+        if (insertAt < 0) insertAt = full.length;
+        full.splice(insertAt, 0, moved);
+
+        const updates = [];
+        full.forEach((p, i) => {
+            const key = rankForIndex(i);
+            if (p.sortOrder !== key) updates.push({ id: p.id, sortOrder: key });
+        });
+        await persistOrders(updates);
+    };
+
+    // Apply optimistic UI update, then persist every changed order in ONE atomic request.
+    // updateProductOrders() on the backend wraps the whole batch in a single transaction,
+    // so the catalogue can never end up half-renumbered (the cause of the earlier scramble).
+    const persistOrders = async (updates) => {
+        if (!updates.length) return;
+        const keyById = new Map(updates.map(u => [u.id, u.sortOrder]));
 
         // Optimistic UI update
-        setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
+        setProducts(prev => prev.map(p => keyById.has(p.id) ? { ...p, sortOrder: keyById.get(p.id) } : p));
 
         try {
-            const res = await fetch(`/api/products/admin/${id}`, {
-                method: 'PUT',
+            const res = await fetch('/api/products/admin/reorder', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatedProduct)
+                body: JSON.stringify(updates.map(u => ({ id: u.id, sortOrder: u.sortOrder })))
             });
             if (!res.ok) {
                 alert('순서 저장 실패');
@@ -272,21 +311,10 @@ const ProductManagement = () => {
 
         if (draggedIndex === -1 || targetIndex === -1) return;
 
-        let prevRank = null;
-        let nextRank = null;
-
-        if (draggedIndex < targetIndex) {
-            // dragging down: drop AFTER target
-            prevRank = filteredProducts[targetIndex].sortOrder;
-            nextRank = (targetIndex < filteredProducts.length - 1) ? filteredProducts[targetIndex + 1].sortOrder : null;
-        } else {
-            // dragging up: drop BEFORE target
-            nextRank = filteredProducts[targetIndex].sortOrder;
-            prevRank = (targetIndex > 0) ? filteredProducts[targetIndex - 1].sortOrder : null;
-        }
-
-        const newSortOrder = generateBetween(prevRank, nextRank);
-        await updateProductOrder(draggedId, newSortOrder);
+        // Drop the dragged row into the target row's slot (dragging down lands it
+        // after the target, dragging up lands it before — both collapse to targetIndex
+        // once the dragged item is removed from its original position).
+        await reorderProduct(draggedId, targetIndex);
         setDraggedId(null);
     };
 
