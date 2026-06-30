@@ -130,11 +130,15 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         if (intervalRef.current) clearInterval(intervalRef.current);
     };
 
-    // Initialize selections with the first value of each group
+    // Initialize selections.
+    // 옵션이 2개 이상인 그룹은 사용자가 직접 고르도록 디폴트 선택하지 않는다.
+    // (값이 하나뿐인 그룹은 선택의 여지가 없으므로 그대로 선택해 둔다.)
     useEffect(() => {
         const initial = {};
         groups.forEach(g => {
-            initial[g.name] = g.values[0];
+            if (g.values.length === 1) {
+                initial[g.name] = g.values[0];
+            }
         });
         setSelections(initial);
         setQuantity(1);
@@ -183,6 +187,11 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     const totalPrice = unitPrice * safeQuantity;
     const linesTotalCount = lines.reduce((sum, l) => sum + l.quantity, 0);
 
+    // 모든 옵션 그룹이 선택되어야 담을 수 있다 (자동 디폴트가 없으므로 직접 선택 필수).
+    const allOptionsSelected = groups.every(g => selections[g.name] != null);
+    // 이미 담은 옵션이 있으면 현재 선택이 비어 있어도 확정 가능.
+    const canConfirm = lines.length > 0 || allOptionsSelected;
+
     // Helper to calculate potential price change for an option button
     const getPriceAdjustment = (groupName, value) => {
         const currentPrice = currentExtraPrice;
@@ -214,6 +223,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
 
     // 현재 선택한 옵션을 담기 목록에 추가 (같은 옵션이면 수량 합산)
     const addCurrentSelection = () => {
+        if (!allOptionsSelected) return;
         const qty = safeQuantity < 1 ? 1 : safeQuantity;
         const line = buildLineFromSelections(selections, qty);
         setLines(prev => {
@@ -239,6 +249,8 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     };
 
     const handleConfirm = () => {
+        // 담은 목록도 없고 현재 옵션도 미선택이면 확정 불가.
+        if (lines.length === 0 && !allOptionsSelected) return;
         // 담은 목록이 없으면 현재 선택을 그대로 추가 (단일 담기 호환)
         const finalLines = lines.length > 0
             ? lines
@@ -450,14 +462,19 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                         {/* 이 옵션 담기 버튼 */}
                         <button
                             onClick={addCurrentSelection}
+                            disabled={!allOptionsSelected}
                             style={{
                                 marginTop: '20px', width: '100%', padding: '14px',
                                 borderRadius: '12px', border: '2px dashed var(--accent-color)',
                                 background: '#fff7ed', color: 'var(--accent-color)',
-                                fontWeight: 800, fontSize: '1rem', cursor: 'pointer'
+                                fontWeight: 800, fontSize: '1rem',
+                                cursor: allOptionsSelected ? 'pointer' : 'not-allowed',
+                                opacity: allOptionsSelected ? 1 : 0.5
                             }}
                         >
-                            ➕ 이 옵션 담기 (수량 {safeQuantity < 1 ? 1 : safeQuantity})
+                            {allOptionsSelected
+                                ? `➕ 이 옵션 담기 (수량 ${safeQuantity < 1 ? 1 : safeQuantity})`
+                                : '⚙️ 옵션을 선택해 주세요'}
                         </button>
 
                         {/* 담은 옵션 목록 */}
@@ -574,10 +591,13 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                         </button>
                         <button
                             onClick={handleConfirm}
+                            disabled={!canConfirm}
                             style={{
                                 padding: '16px 20px', borderRadius: '18px', border: 'none',
                                 background: 'var(--accent-color)', color: 'white', fontWeight: 800, fontSize: '1.1rem',
-                                cursor: 'pointer', boxShadow: '0 10px 20px rgba(255, 107, 0, 0.2)',
+                                cursor: canConfirm ? 'pointer' : 'not-allowed',
+                                opacity: canConfirm ? 1 : 0.5,
+                                boxShadow: '0 10px 20px rgba(255, 107, 0, 0.2)',
                                 flex: 2
                             }}
                         >
