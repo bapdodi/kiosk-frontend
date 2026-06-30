@@ -360,15 +360,15 @@ function KioskView({
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const searchLower = searchQuery.toLowerCase().trim();
-      const matchSearch = searchLower === "" ||
-        product.name.toLowerCase().includes(searchLower) ||
-        product.hashtags.some(tag => tag.toLowerCase().includes(searchLower));
+      const isSearching = normalizeSearchText(searchQuery) !== "";
+      const matchSearch = !isSearching ||
+        matchesCustomerSearch(product.name, searchQuery) ||
+        product.hashtags.some(tag => matchesCustomerSearch(tag, searchQuery));
 
       if (!matchSearch) return false;
 
       // If actively searching, ignore category filters for global search
-      if (searchLower !== "") return true;
+      if (isSearching) return true;
 
       // 상품은 여러 카테고리에 속할 수 있으므로, 그 중 하나라도 현재 필터와 맞으면 노출한다.
       if (!activeMainCat) return true;
