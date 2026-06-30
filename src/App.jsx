@@ -445,6 +445,14 @@ function KioskView({
     setCart(cart.filter(item => item.cartId !== cartId));
   };
 
+  const updateCartQuantity = (cartId, delta) => {
+    setCart(prev => prev.map(item =>
+      item.cartId === cartId
+        ? { ...item, quantity: Math.max(1, (item.quantity || 1) + delta) }
+        : item
+    ));
+  };
+
   const handleCheckout = () => {
     if (cart.length === 0) return alert('장바구니가 비어있습니다.');
     setIsCartOpen(false);
@@ -554,6 +562,7 @@ function KioskView({
             <Cart
               items={cart}
               onRemove={removeFromCart}
+              onQuantityChange={updateCartQuantity}
               onCheckout={handleCheckout}
             />
             <button className="modal-close-btn" onClick={() => setIsCartOpen(false)}>×</button>

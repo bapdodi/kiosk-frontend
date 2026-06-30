@@ -63,6 +63,8 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     const groups = getOptionGroups();
     const [selections, setSelections] = useState({});
     const [quantity, setQuantity] = useState(1);
+    // 사용자가 담은 옵션 목록 (여러 옵션을 한 번에 장바구니에 추가하기 위함)
+    const [lines, setLines] = useState([]);
 
     // Image carousel state
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -136,6 +138,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         });
         setSelections(initial);
         setQuantity(1);
+        setLines([]);
         setCurrentImageIndex(0);
         setFailedImages({});
     }, [product]);
@@ -178,6 +181,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     const unitPrice = product.price + currentExtraPrice;
     const safeQuantity = typeof quantity === 'number' ? quantity : parseInt(quantity || '0', 10);
     const totalPrice = unitPrice * safeQuantity;
+    const linesTotalCount = lines.reduce((sum, l) => sum + l.quantity, 0);
 
     // Helper to calculate potential price change for an option button
     const getPriceAdjustment = (groupName, value) => {
@@ -191,17 +195,65 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         return `(${sign}${diff.toLocaleString()}원)`;
     };
 
-    const handleConfirm = () => {
-        const comboName = groups.map(g => selections[g.name]).join(' / ');
+    // 현재 선택값(selections)을 하나의 라인 객체로 변환
+    const buildLineFromSelections = (sel, qty) => {
+        const comboName = groups.map(g => sel[g.name]).join(' / ');
         const foundCombo = (product.combinations || []).filter(c => !c.deleted).find(c => c.name === comboName);
-
-        const combinations = [{
-            id: foundCombo ? foundCombo.id : comboName,
+        const extra = getPriceForSelections(sel);
+        const comboId = foundCombo ? foundCombo.id : comboName;
+        return {
+            lineId: comboId,
+            comboId,
             displayName: comboName,
-            totalExtra: currentExtraPrice,
-            erpCode: foundCombo ? foundCombo.erpCode : (product.erpCode || null)
-        }];
-        const quantities = { [foundCombo ? foundCombo.id : comboName]: safeQuantity === 0 ? 1 : safeQuantity };
+            totalExtra: extra,
+            unitPrice: product.price + extra,
+            erpCode: foundCombo ? foundCombo.erpCode : (product.erpCode || null),
+            quantity: Math.max(1, qty)
+        };
+    };
+
+    // 현재 선택한 옵션을 담기 목록에 추가 (같은 옵션이면 수량 합산)
+    const addCurrentSelection = () => {
+        const qty = safeQuantity < 1 ? 1 : safeQuantity;
+        const line = buildLineFromSelections(selections, qty);
+        setLines(prev => {
+            const idx = prev.findIndex(l => l.lineId === line.lineId);
+            if (idx > -1) {
+                const next = [...prev];
+                next[idx] = { ...next[idx], quantity: next[idx].quantity + qty };
+                return next;
+            }
+            return [...prev, line];
+        });
+        setQuantity(1);
+    };
+
+    const changeLineQty = (lineId, delta) => {
+        setLines(prev => prev.map(l =>
+            l.lineId === lineId ? { ...l, quantity: Math.max(1, l.quantity + delta) } : l
+        ));
+    };
+
+    const removeLine = (lineId) => {
+        setLines(prev => prev.filter(l => l.lineId !== lineId));
+    };
+
+    const handleConfirm = () => {
+        // 담은 목록이 없으면 현재 선택을 그대로 추가 (단일 담기 호환)
+        const finalLines = lines.length > 0
+            ? lines
+            : [buildLineFromSelections(selections, safeQuantity < 1 ? 1 : safeQuantity)];
+
+        const combinations = finalLines.map(l => ({
+            id: l.comboId,
+            displayName: l.displayName,
+            totalExtra: l.totalExtra,
+            erpCode: l.erpCode
+        }));
+        const quantities = {};
+        finalLines.forEach(l => {
+            quantities[l.comboId] = (quantities[l.comboId] || 0) + l.quantity;
+        });
         onConfirm(product, combinations, quantities);
     };
 
@@ -394,6 +446,55 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 </div>
                             ))}
                         </div>
+
+                        {/* 이 옵션 담기 버튼 */}
+                        <button
+                            onClick={addCurrentSelection}
+                            style={{
+                                marginTop: '20px', width: '100%', padding: '14px',
+                                borderRadius: '12px', border: '2px dashed var(--accent-color)',
+                                background: '#fff7ed', color: 'var(--accent-color)',
+                                fontWeight: 800, fontSize: '1rem', cursor: 'pointer'
+                            }}
+                        >
+                            ➕ 이 옵션 담기 (수량 {safeQuantity < 1 ? 1 : safeQuantity})
+                        </button>
+
+                        {/* 담은 옵션 목록 */}
+                        {lines.length > 0 && (
+                            <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <div style={{ fontWeight: 800, color: '#334155', fontSize: '0.95rem' }}>담은 옵션 ({lines.length})</div>
+                                {lines.map(l => (
+                                    <div key={l.lineId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 14px' }}>
+                                        <div style={{ minWidth: 0 }}>
+                                            <div style={{ fontWeight: 700, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.displayName || '기본'}</div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <button
+                                                onClick={() => changeLineQty(l.lineId, -1)}
+                                                disabled={l.quantity <= 1}
+                                                style={{ width: '30px', height: '30px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', fontWeight: 'bold', cursor: l.quantity <= 1 ? 'not-allowed' : 'pointer', opacity: l.quantity <= 1 ? 0.4 : 1 }}
+                                            >
+                                                −
+                                            </button>
+                                            <span style={{ minWidth: '22px', textAlign: 'center', fontWeight: 'bold' }}>{l.quantity}</span>
+                                            <button
+                                                onClick={() => changeLineQty(l.lineId, 1)}
+                                                style={{ width: '30px', height: '30px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', fontWeight: 'bold', cursor: 'pointer' }}
+                                            >
+                                                +
+                                            </button>
+                                            <button
+                                                onClick={() => removeLine(l.lineId)}
+                                                style={{ background: 'none', border: 'none', color: '#ff4444', fontWeight: 'bold', cursor: 'pointer', marginLeft: '4px' }}
+                                            >
+                                                삭제
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -480,7 +581,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 flex: 2
                             }}
                         >
-                            장바구니 담기
+                            장바구니 담기{linesTotalCount > 0 ? ` (${linesTotalCount})` : ''}
                         </button>
                     </div>
                 </div>
