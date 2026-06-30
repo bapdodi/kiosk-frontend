@@ -21,6 +21,24 @@ const EN_TO_KO_JAMO = {
   n: 'ㅜ', b: 'ㅠ', m: 'ㅡ', l: 'ㅣ'
 };
 
+// 영문 알파벳의 한글 발음(예: PB → 피비, LED → 엘이디, PVC → 피브이씨)
+const EN_LETTER_TO_KO_SOUND = {
+  a: '에이', b: '비', c: '씨', d: '디', e: '이', f: '에프', g: '지',
+  h: '에이치', i: '아이', j: '제이', k: '케이', l: '엘', m: '엠', n: '엔',
+  o: '오', p: '피', q: '큐', r: '알', s: '에스', t: '티', u: '유',
+  v: '브이', w: '더블유', x: '엑스', y: '와이', z: '지',
+};
+
+// 읽는 법이 두 가지인 글자의 구어 발음(예: TV → 티비, CCTV → 씨씨티비)
+const EN_LETTER_ALT_SOUND = { v: '비', z: '제트' };
+
+// 문자열 안의 영문 알파벳을 한글 발음으로 펼친다. ("PB파이프" → "피비파이프")
+const expandEnglishToKoreanSound = (value, altMap = {}) => (value || '')
+  .toLowerCase()
+  .split('')
+  .map((char) => altMap[char] ?? EN_LETTER_TO_KO_SOUND[char] ?? char)
+  .join('');
+
 const normalizeSearchText = (value) => (value || '').toLowerCase().replace(/\s+/g, '');
 
 const getChosungChar = (char) => {
@@ -60,10 +78,20 @@ const matchesCustomerSearch = (name, query) => {
   const nameChosung = normalizeSearchText(getChosungText(name));
   const keyboardQuery = normalizeSearchText(convertEnglishKeyboardToKorean(query));
 
+  // 알파벳↔한글 발음 매칭: "PB파이프"를 "피비"로, "피비파이프"를 "pb"로 검색 가능
+  // 정식 발음(PVC→피브이씨)과 구어 발음(TV→티비) 두 변형을 모두 검사한다.
+  const namePhonetic = normalizeSearchText(expandEnglishToKoreanSound(name));
+  const namePhoneticAlt = normalizeSearchText(expandEnglishToKoreanSound(name, EN_LETTER_ALT_SOUND));
+  const queryPhonetic = normalizeSearchText(expandEnglishToKoreanSound(query));
+
   return normalizedName.includes(normalizedQuery) ||
     nameChosung.includes(normalizedQuery) ||
     normalizedName.includes(keyboardQuery) ||
-    nameChosung.includes(keyboardQuery);
+    nameChosung.includes(keyboardQuery) ||
+    namePhonetic.includes(normalizedQuery) ||
+    namePhoneticAlt.includes(normalizedQuery) ||
+    normalizedName.includes(queryPhonetic) ||
+    namePhonetic.includes(queryPhonetic);
 };
 
 function App() {
