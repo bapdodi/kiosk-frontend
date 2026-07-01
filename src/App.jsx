@@ -6,6 +6,7 @@ import OrderManagement from './components/admin/OrderManagement';
 import ProductForm from './components/admin/ProductForm';
 import ProductManagement from './components/admin/ProductManagement';
 import Cart from './components/Cart';
+import CartBar from './components/CartBar';
 import CategoryNav from './components/CategoryNav';
 import LoginPage from './components/LoginPage';
 import OptionModal from './components/OptionModal';
@@ -577,7 +578,15 @@ function KioskView({
         </main>
       </div>
 
-      {/* Floating Cart Button */}
+      {/* 큰 화면(키오스크)용 하단 주문내역 바 */}
+      <CartBar
+        items={cart}
+        onRemove={removeFromCart}
+        onQuantityChange={updateCartQuantity}
+        onCheckout={handleCheckout}
+      />
+
+      {/* Floating Cart Button (작은 화면 전용) */}
       <div className="floating-cart-btn" onClick={() => setIsCartOpen(true)}>
         <span className="cart-icon">🛒</span>
         <span className="cart-count">{cart.length}</span>

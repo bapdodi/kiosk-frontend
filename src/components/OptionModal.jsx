@@ -181,28 +181,13 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         }
     };
 
-    const currentExtraPrice = getPriceForSelections(selections);
-    const unitPrice = product.price + currentExtraPrice;
     const safeQuantity = typeof quantity === 'number' ? quantity : parseInt(quantity || '0', 10);
-    const totalPrice = unitPrice * safeQuantity;
     const linesTotalCount = lines.reduce((sum, l) => sum + l.quantity, 0);
 
     // 모든 옵션 그룹이 선택되어야 담을 수 있다 (자동 디폴트가 없으므로 직접 선택 필수).
     const allOptionsSelected = groups.every(g => selections[g.name] != null);
     // 이미 담은 옵션이 있으면 현재 선택이 비어 있어도 확정 가능.
     const canConfirm = lines.length > 0 || allOptionsSelected;
-
-    // Helper to calculate potential price change for an option button
-    const getPriceAdjustment = (groupName, value) => {
-        const currentPrice = currentExtraPrice;
-        const potentialSelections = { ...selections, [groupName]: value };
-        const potentialPrice = getPriceForSelections(potentialSelections);
-        const diff = potentialPrice - currentPrice;
-
-        if (diff === 0) return null;
-        const sign = diff > 0 ? '+' : '';
-        return `(${sign}${diff.toLocaleString()}원)`;
-    };
 
     // 현재 선택값(selections)을 하나의 라인 객체로 변환
     const buildLineFromSelections = (sel, qty) => {
@@ -423,7 +408,6 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                                         {group.values.map(val => {
                                             const isSelected = selections[group.name] === val;
-                                            const adj = isSelected ? null : getPriceAdjustment(group.name, val);
 
                                             return (
                                                 <button
