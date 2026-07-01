@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import AdminLayout from './components/admin/AdminLayout';
 import CategoryManagement from './components/admin/CategoryManagement';
+import NaverSyncPage from './components/admin/NaverSyncPage';
 import OrderManagement from './components/admin/OrderManagement';
 import ProductForm from './components/admin/ProductForm';
 import ProductManagement from './components/admin/ProductManagement';
@@ -290,6 +291,7 @@ function App() {
           <Route path="products/edit/:id" element={<ProductForm />} />
           <Route path="categories" element={<CategoryManagement />} />
           <Route path="orders" element={<OrderManagement />} />
+          <Route path="naver" element={<NaverSyncPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

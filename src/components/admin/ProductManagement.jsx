@@ -20,6 +20,9 @@ const ProductManagement = () => {
     const [editingCatId, setEditingCatId] = useState(null);
     const [tempCategories, setTempCategories] = useState([]);
     const [dragOverProductId, setDragOverProductId] = useState(null);
+    // 네이버 연동 상태(조회 전용 — 전송/동기화는 "네이버 스토어" 탭에서 처리)
+    // productId -> link(객체) | null(미연동) | undefined(미조회)
+    const [naverLinks, setNaverLinks] = useState({});
     // 진입 시 전체 행(최대 2000개)을 한 번에 렌더하면 렉이 심하므로 보이는 만큼만 점진 렌더
     const PAGE_SIZE = 80;
     const [visibleCount, setVisibleCount] = useState(() => {
@@ -30,6 +33,43 @@ const ProductManagement = () => {
     const filteredLenRef = useRef(0);
 
     const FALLBACK_IMAGE = '/no-image.png';
+
+    // ── 네이버 연동 헬퍼 ──────────────────────────────────────────────────────
+    // 키오스크 기준 유효 재고(복합옵션이면 조합 재고 합, 아니면 단품 재고) — 백엔드 effectiveStock 과 동일 규칙
+    const computeEffectiveStock = (p) => {
+        const combos = (p.combinations || []).filter(c => !c.deleted);
+        if (combos.length > 0) return combos.reduce((s, c) => s + (c.stock || 0), 0);
+        return p.stock || 0;
+    };
+
+    const refreshNaverStatuses = async (ids, { overwrite = false } = {}) => {
+        const target = overwrite ? ids : ids.filter(id => naverLinks[id] === undefined);
+        if (target.length === 0) return;
+        try {
+            const res = await fetch(`/api/channels/naver/admin/products/status?ids=${target.join(',')}`);
+            const links = res.ok ? await res.json() : [];
+            setNaverLinks(prev => {
+                const next = { ...prev };
+                target.forEach(id => { next[id] = null; }); // 조회했으나 링크 없으면 미연동(null)
+                links.forEach(l => { next[l.productId] = l; });
+                return next;
+            });
+        } catch { /* 무시 */ }
+    };
+
+    // link 상태 → 배지 정보
+    const naverBadge = (p) => {
+        const link = naverLinks[p.id];
+        if (link === undefined) return { label: '…', color: '#94a3b8', bg: '#f1f5f9' };
+        if (link === null) return { label: '미연동', color: '#64748b', bg: '#f1f5f9' };
+        if (link.lastError) return { label: '오류', color: '#b91c1c', bg: '#fee2e2', title: link.lastError };
+        if (link.naverStatus === 'SUSPENSION') return { label: '판매중지', color: '#c2410c', bg: '#ffedd5' };
+        const changed = link.lastSyncedName !== p.name
+            || link.lastSyncedPrice !== p.price
+            || link.lastSyncedStock !== computeEffectiveStock(p);
+        if (changed) return { label: '변경있음', color: '#1d4ed8', bg: '#dbeafe' };
+        return { label: '연동됨', color: '#15803d', bg: '#dcfce7' };
+    };
 
     useEffect(() => {
         // Persist filter states
@@ -379,6 +419,13 @@ const ProductManagement = () => {
     visibleCountRef.current = visibleCount;
     filteredLenRef.current = filteredProducts.length;
 
+    // 화면에 보이는 상품들의 네이버 연동 상태를 조회(아직 조회 안 한 것만)
+    const visibleIdsKey = visibleProducts.map(p => p.id).join(',');
+    useEffect(() => {
+        if (visibleProducts.length > 0) refreshNaverStatuses(visibleProducts.map(p => p.id));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visibleIdsKey]);
+
     return (
         <div className="fade-in">
             <div className="admin-header-title">
@@ -522,6 +569,7 @@ const ProductManagement = () => {
                             <th>카테고리</th>
                             <th>기본 판매가</th>
                             <th style={{ width: '80px', textAlign: 'center' }}>순서</th>
+                            <th style={{ width: '110px', textAlign: 'center' }}>네이버</th>
                             <th style={{ textAlign: 'right' }}>관리</th>
                         </tr>
                     </thead>
@@ -666,6 +714,14 @@ const ProductManagement = () => {
                                             style={{ padding: '6px 8px', background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
                                         >▼</button>
                                     </div>
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                    {(() => {
+                                        const b = naverBadge(p);
+                                        return (
+                                            <span title={b.title || ''} style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', color: b.color, background: b.bg, whiteSpace: 'nowrap' }}>{b.label}</span>
+                                        );
+                                    })()}
                                 </td>
                                 <td style={{ textAlign: 'right' }}>
                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
