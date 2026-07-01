@@ -19,6 +19,7 @@ const CartBar = ({ items, onRemove, onQuantityChange, onCheckout }) => {
 
     return (
         <section className="kiosk-cart-bar">
+            <div className="cart-bar-head">장바구니 ({totalCount})</div>
             <div className="cart-bar-items">
                 {items.length === 0 ? (
                     <div className="cart-bar-empty">상품을 선택하면 여기에 표시됩니다.</div>

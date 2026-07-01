@@ -593,7 +593,7 @@ body {
   opacity: 0.7;
 }
 
-/* --- Kiosk 하단 주문내역 바 (세로형 키오스크 전용, 1080x1920 기준) --- */
+/* --- Kiosk 오른쪽 세로 장바구니 사이드바 (세로형 키오스크 전용, 1080x1920 기준) --- */
 /* 모바일 우선: 기본은 숨김. 폭·높이가 모두 큰 화면(키오스크)에서만 노출하고 floating 버튼을 대체한다. */
 /* 폭만 보면 폰 가로(예: 930x430)에서도 떠버리므로, 세로가 긴 화면을 잡기 위해 min-height도 함께 본다. */
 .kiosk-cart-bar {
@@ -601,38 +601,64 @@ body {
 }
 
 @media (min-width: 768px) and (min-height: 900px) {
+  /* 키오스크: 왼쪽 상품 그리드 + 오른쪽 세로 장바구니 사이드바 (전체 높이) */
+  .kiosk-container {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "nav nav"
+      "content cart";
+  }
+
+  .nav-wrapper {
+    grid-area: nav;
+  }
+
+  .content-area {
+    grid-area: content;
+    min-width: 0;
+  }
+
   .kiosk-cart-bar {
+    grid-area: cart;
     display: flex;
-    align-items: stretch;
-    gap: 16px;
+    flex-direction: column;
+    min-height: 0;
     background: #fff;
-    border-top: 1px solid var(--border-color);
-    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.06);
-    padding: 12px 20px;
+    border-left: 1px solid var(--border-color);
+    box-shadow: -6px 0 20px rgba(0, 0, 0, 0.05);
     z-index: 200;
   }
 
-  /* 큰 화면에서는 하단 바를 쓰므로 floating 버튼/모달을 숨긴다 */
+  /* 사이드바를 쓰므로 floating 버튼/모달을 숨긴다 */
   .floating-cart-btn {
     display: none;
   }
 
-  /* 하단 바가 flex 흐름에 포함되어 자리를 차지하므로 여분 패딩 축소 */
   .kiosk-main {
     padding-bottom: 20px;
   }
 }
 
-/* 상품을 한 줄씩 세로로 쌓고, 넘치면 세로 스크롤 */
+/* 사이드바 헤더 */
+.cart-bar-head {
+  flex: 0 0 auto;
+  padding: 22px 22px 18px;
+  font-weight: 800;
+  font-size: 1.35rem;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+/* 상품을 한 줄씩 세로로 쌓고, 넘치면 남는 높이 안에서 세로 스크롤 */
 .cart-bar-items {
   flex: 1;
-  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-height: 220px;
+  gap: 12px;
   overflow-y: auto;
-  padding: 2px 4px 2px 2px;
+  padding: 16px;
 }
 
 .cart-bar-empty {
@@ -731,19 +757,20 @@ body {
   color: #ff4444;
 }
 
+/* 사이드바 하단 푸터: 합계 + 결제 버튼 (세로로 쌓임) */
 .cart-bar-summary {
   flex: 0 0 auto;
   display: flex;
-  align-items: center;
-  gap: 16px;
-  padding-left: 16px;
-  border-left: 1px solid #eef1f4;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  border-top: 1px solid #eef1f4;
+  background: #f8f9fa;
 }
 
 .cart-bar-total {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  justify-content: center;
   line-height: 1.25;
   white-space: nowrap;
 }
@@ -755,12 +782,13 @@ body {
 }
 
 .cart-bar-checkout {
+  width: 100%;
   background: var(--accent-color);
   color: #fff;
   border: none;
-  padding: 14px 32px;
+  padding: 18px;
   border-radius: 14px;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 800;
   cursor: pointer;
   white-space: nowrap;
