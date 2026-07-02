@@ -602,9 +602,10 @@ body {
 
 @media (min-width: 768px) and (min-height: 900px) {
   /* 키오스크: 왼쪽 상품 그리드 + 오른쪽 세로 장바구니 사이드바 (전체 높이) */
+  /* --kiosk-cart-width가 지정되면(드래그로 조절 후 저장된 값) 그 값을, 없으면 기존 기본 폭(380px)을 사용 */
   .kiosk-container {
     display: grid;
-    grid-template-columns: 1fr 380px;
+    grid-template-columns: 1fr var(--kiosk-cart-width, 380px);
     grid-template-rows: auto 1fr;
     grid-template-areas:
       "nav nav"
@@ -622,6 +623,7 @@ body {
 
   .kiosk-cart-bar {
     grid-area: cart;
+    position: relative;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -639,6 +641,34 @@ body {
   .kiosk-main {
     padding-bottom: 20px;
   }
+}
+
+/* 장바구니 폭 조절 핸들 (좌측 경계에 걸쳐서 배치, 터치 타깃 확보용으로 실제 border보다 넓게) */
+.cart-resize-handle {
+  position: absolute;
+  top: 0;
+  left: -6px;
+  width: 12px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 210;
+  touch-action: none;
+}
+
+.cart-resize-handle::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.cart-resize-handle:hover::after,
+.cart-resize-handle.active::after {
+  background: var(--accent-color);
 }
 
 /* 사이드바 헤더 */

@@ -327,6 +327,66 @@ function KioskView({
   const lastScrollTop = useRef(0);
   const observer = useRef();
 
+  // 키오스크 장바구니 사이드바 폭 (드래그로 조절, localStorage에 저장해 새로고침 후에도 유지)
+  const CART_WIDTH_STORAGE_KEY = 'kioskCartWidthPx';
+  const [cartWidth, setCartWidth] = useState(() => {
+    const saved = Number(localStorage.getItem(CART_WIDTH_STORAGE_KEY));
+    return saved > 0 ? saved : null; // null이면 CSS 기본값(2/3 비율) 사용
+  });
+  const cartWidthRef = useRef(cartWidth);
+  const kioskContainerRef = useRef(null);
+  const isResizingCart = useRef(false);
+
+  useEffect(() => {
+    cartWidthRef.current = cartWidth;
+  }, [cartWidth]);
+
+  const handleCartResizeStart = (e) => {
+    e.preventDefault();
+    isResizingCart.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+
+  useEffect(() => {
+    const clampWidth = (raw) => {
+      const rect = kioskContainerRef.current?.getBoundingClientRect();
+      if (!rect) return raw;
+      const min = 280;
+      const max = rect.width - 320; // 상품 그리드가 최소한의 폭을 유지하도록
+      return Math.min(Math.max(raw, min), Math.max(min, max));
+    };
+
+    const handleMove = (e) => {
+      if (!isResizingCart.current || !kioskContainerRef.current) return;
+      if (e.touches) e.preventDefault(); // 드래그 중 화면 스크롤 방지
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const rect = kioskContainerRef.current.getBoundingClientRect();
+      setCartWidth(clampWidth(rect.right - clientX));
+    };
+
+    const handleUp = () => {
+      if (!isResizingCart.current) return;
+      isResizingCart.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      if (cartWidthRef.current != null) {
+        localStorage.setItem(CART_WIDTH_STORAGE_KEY, String(cartWidthRef.current));
+      }
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleUp);
+    };
+  }, []);
+
   // 초성 추출 유틸리티
   const getChosung = (str) => {
     if (!str) return '';
@@ -542,7 +602,11 @@ function KioskView({
   const totalPrice = cart.reduce((sum, item) => sum + item.finalPrice * (item.quantity || 1), 0);
 
   return (
-    <div className="kiosk-container">
+    <div
+      className="kiosk-container"
+      ref={kioskContainerRef}
+      style={cartWidth != null ? { '--kiosk-cart-width': `${cartWidth}px` } : undefined}
+    >
       <div className="nav-wrapper">
         <CategoryNav
           mainCategories={mainCategories}
@@ -586,6 +650,7 @@ function KioskView({
         onRemove={removeFromCart}
         onQuantityChange={updateCartQuantity}
         onCheckout={handleCheckout}
+        onResizeStart={handleCartResizeStart}
       />
 
       {/* Floating Cart Button (작은 화면 전용) */}
