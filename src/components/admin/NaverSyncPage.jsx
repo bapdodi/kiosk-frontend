@@ -30,6 +30,32 @@ const NaverSyncPage = () => {
     const [loadingPreview, setLoadingPreview] = useState(false);
     const [applying, setApplying] = useState(false);
 
+    // ── 최근 판매 ──
+    const [sales, setSales] = useState(null); // null = 아직 안 불러옴
+    const [salesHours, setSalesHours] = useState(24);
+    const [loadingSales, setLoadingSales] = useState(false);
+    const [salesError, setSalesError] = useState('');
+
+    const loadSales = async (hours = salesHours) => {
+        setLoadingSales(true);
+        setSalesError('');
+        try {
+            const res = await fetch(`/api/channels/naver/admin/sales/recent?hours=${hours}`);
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+                setSalesError((data && data.error) || `조회 실패 (${res.status})`);
+                setSales([]);
+                return;
+            }
+            setSales(data.sales || []);
+        } catch {
+            setSalesError('네트워크 오류');
+            setSales([]);
+        } finally {
+            setLoadingSales(false);
+        }
+    };
+
     useEffect(() => {
         fetch('/api/channels/naver/admin/config-status').then(r => r.ok ? r.json() : null).then(d => { if (d) setConfigured(!!d.configured); }).catch(() => { });
         loadMappings();
@@ -445,6 +471,70 @@ const NaverSyncPage = () => {
                         </tbody>
                     </table>
                 )}
+            </div>
+
+            {/* ── 최근 판매 확인 ── */}
+            <div className="admin-card" style={{ marginTop: '30px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>4. 최근 판매 확인</h3>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <select value={salesHours} onChange={e => setSalesHours(Number(e.target.value))} style={selectStyle}>
+                            <option value={1}>최근 1시간</option>
+                            <option value={6}>최근 6시간</option>
+                            <option value={12}>최근 12시간</option>
+                            <option value={24}>최근 24시간</option>
+                        </select>
+                        <button className="apply-btn" style={{ background: '#7c3aed' }} onClick={() => loadSales()} disabled={loadingSales}>
+                            {loadingSales ? '조회 중…' : '💰 판매 조회'}
+                        </button>
+                    </div>
+                </div>
+                <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '16px' }}>
+                    네이버에서 최근 발생한 주문(결제)을 확인합니다. 네이버 API 제한으로 한 번에 최대 24시간 범위까지 조회됩니다.
+                </p>
+
+                {salesError && (
+                    <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '10px 14px', borderRadius: '10px', marginBottom: '14px' }}>
+                        ⚠ {salesError}
+                    </div>
+                )}
+
+                {sales === null ? (
+                    <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px' }}>‘판매 조회’를 눌러 확인하세요.</div>
+                ) : sales.length === 0 && !salesError ? (
+                    <div style={{ textAlign: 'center', color: '#64748b', padding: '40px' }}>선택한 기간에 판매된 상품이 없습니다.</div>
+                ) : sales.length > 0 ? (
+                    <table className="admin-table">
+                        <thead>
+                            <tr>
+                                <th>주문일시</th>
+                                <th>상품명(네이버)</th>
+                                <th>키오스크 상품</th>
+                                <th style={{ textAlign: 'right' }}>수량</th>
+                                <th style={{ textAlign: 'right' }}>결제금액</th>
+                                <th>상태</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {sales.map(s => (
+                                <tr key={s.productOrderId}>
+                                    <td style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                                        {s.orderDate ? s.orderDate.replace('T', ' ').slice(0, 16) : '-'}
+                                    </td>
+                                    <td style={{ fontWeight: 700 }}>{s.naverProductName || '-'}</td>
+                                    <td style={{ fontSize: '0.85rem', color: s.kioskProductName ? '#0f172a' : '#94a3b8' }}>
+                                        {s.kioskProductName || '(매칭 안 됨)'}
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>{s.quantity}</td>
+                                    <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                                        {Number(s.totalPaymentAmount || 0).toLocaleString()}원
+                                    </td>
+                                    <td style={{ fontSize: '0.85rem' }}>{s.orderStatus || '-'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : null}
             </div>
         </div>
     );
