@@ -5,6 +5,17 @@ import { getImageUrl, uploadImage } from '../../utils/imageUtils';
 import { COMBINATION_GROUP } from '../../utils/optionConstants';
 import CategoryEditor from './CategoryEditor';
 
+// 원산지 카테고리(네이버 originAreaInfo.originAreaCode).
+// code 는 네이버가 요구하는 원산지 코드다. 국산(00)은 검증됨.
+// 수입산 국가별 코드는 스마트스토어센터 원산지 선택 시 표시되는 코드를 확인해 아래에 추가하면
+// 즉시 드롭다운 카테고리로 노출된다. (예: { label: '중국산', code: '0200037' })
+// 목록에 없는 코드는 '직접 입력'으로 넣을 수 있다.
+const ORIGIN_OPTIONS = [
+    { label: '기본값 사용 (미지정)', code: '' },
+    { label: '국산', code: '00' },
+    // { label: '중국산', code: '0200037' },  // ← 판매자센터에서 코드 확인 후 주석 해제/추가
+];
+
 const ProductForm = () => {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -32,6 +43,8 @@ const ProductForm = () => {
     const [isDragging, setIsDragging] = useState(false);
     // 어떤 옵션 행에서 "대표 이미지에서 선택" 패널이 열려 있는지: `${groupName}::${value}` 또는 null
     const [imgPickerKey, setImgPickerKey] = useState(null);
+    // 원산지 "직접 입력(코드)" 모드가 사용자 조작으로 열려 있는지
+    const [originCustomOpen, setOriginCustomOpen] = useState(false);
 
     useEffect(() => {
         if (isEditMode) {
@@ -360,6 +373,59 @@ const ProductForm = () => {
                                     value={productData.gyu || ''}
                                     onChange={(e) => setProductData({ ...productData, gyu: e.target.value })}
                                 />
+                            </div>
+                            <div className="form-row">
+                                <div className="form-item">
+                                    <label>브랜드 (네이버 검색품질)</label>
+                                    <input
+                                        className="form-input"
+                                        placeholder="브랜드명을 입력하세요. 비우면 '기타'로 등록됩니다."
+                                        value={productData.brandName || ''}
+                                        onChange={(e) => setProductData({ ...productData, brandName: e.target.value })}
+                                    />
+                                </div>
+                                <div className="form-item">
+                                    <label>원산지</label>
+                                    {(() => {
+                                        const code = productData.originAreaCode || '';
+                                        const knownCodes = ORIGIN_OPTIONS.map(o => o.code);
+                                        // 목록에 없는 코드(수입산 등 직접 입력분)거나 사용자가 직접입력을 연 경우
+                                        const isCustom = originCustomOpen || (code && !knownCodes.includes(code));
+                                        return (
+                                            <>
+                                                <select
+                                                    className="form-input"
+                                                    value={isCustom ? '__custom__' : code}
+                                                    onChange={(e) => {
+                                                        const v = e.target.value;
+                                                        if (v === '__custom__') {
+                                                            setOriginCustomOpen(true);
+                                                        } else {
+                                                            setOriginCustomOpen(false);
+                                                            setProductData({ ...productData, originAreaCode: v });
+                                                        }
+                                                    }}
+                                                >
+                                                    {ORIGIN_OPTIONS.map(o => (
+                                                        <option key={o.code || '__none__'} value={o.code}>
+                                                            {o.label}{o.code ? ` (${o.code})` : ''}
+                                                        </option>
+                                                    ))}
+                                                    <option value="__custom__">직접 입력 (수입산 등 코드)</option>
+                                                </select>
+                                                {isCustom && (
+                                                    <input
+                                                        className="form-input"
+                                                        style={{ marginTop: '8px' }}
+                                                        placeholder="네이버 원산지 코드 (예: 국산=00, 수입산=02…)"
+                                                        value={code}
+                                                        onChange={(e) => setProductData({ ...productData, originAreaCode: e.target.value })}
+                                                    />
+                                                )}
+                                            </>
+                                        );
+                                    })()}
+                                </div>
                             </div>
                             <div className="form-item">
                                 <label>상품 설명</label>
