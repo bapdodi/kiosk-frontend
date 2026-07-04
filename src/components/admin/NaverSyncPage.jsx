@@ -53,6 +53,8 @@ const NaverSyncPage = () => {
     // ── 상품 상태 ── productId -> link(객체) | null(미연동) | undefined(미조회)
     const [naverLinks, setNaverLinks] = useState({});
     const [naverBusyId, setNaverBusyId] = useState(null);
+    const [statusMenuId, setStatusMenuId] = useState(null); // 상태 변경 메뉴가 열린 상품 id
+    const [statusBusyId, setStatusBusyId] = useState(null);  // 상태 변경 요청 중인 상품 id
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [productFilter, setProductFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');    // '' = 전체, 그 외 STATUS_META 키
@@ -151,6 +153,32 @@ const NaverSyncPage = () => {
         }
     };
 
+    // 판매상태 변경(판매중 ↔ 판매중지). status: 'SALE' | 'SUSPENSION'
+    const changeStatus = async (id, status) => {
+        const label = status === 'SUSPENSION' ? '판매중지' : '재판매(판매중)';
+        setStatusMenuId(null);
+        if (!window.confirm(`이 상품을 네이버에서 '${label}' 상태로 변경할까요?`)) return;
+        setStatusBusyId(id);
+        try {
+            const res = await fetch(`/api/channels/naver/admin/products/${id}/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            const data = await res.json().catch(() => null);
+            if (res.ok) {
+                setNaverLinks(prev => ({ ...prev, [id]: data }));
+            } else {
+                alert('상태 변경 실패: ' + ((data && data.error) || `오류 (${res.status})`));
+                await refreshNaverStatuses([id], { overwrite: true });
+            }
+        } catch {
+            alert('네트워크 오류');
+        } finally {
+            setStatusBusyId(null);
+        }
+    };
+
     const bulkPushToNaver = async () => {
         if (selectedProducts.length === 0) return alert('전송할 상품을 먼저 선택하세요.');
         if (!window.confirm(`선택한 ${selectedProducts.length}개 상품을 네이버 스마트스토어로 전송할까요?`)) return;
@@ -191,6 +219,12 @@ const NaverSyncPage = () => {
     const naverBadge = (p) => {
         const key = naverStatusKey(p);
         return key === 'error' ? { ...STATUS_META.error, title: naverLinks[p.id].lastError } : STATUS_META[key];
+    };
+
+    // 판매상태 변경이 가능한(=이미 네이버에 등록된) 링크. 미연동/미조회면 null.
+    const naverLink = (p) => {
+        const l = naverLinks[p.id];
+        return l && l.originProductNo ? l : null;
     };
 
     const filteredProducts = useMemo(() => {
@@ -524,8 +558,40 @@ const NaverSyncPage = () => {
                                             )}
                                         </td>
                                         <td style={{ fontWeight: 600 }}>{priceLabel(p)}</td>
-                                        <td style={{ textAlign: 'center' }}>
-                                            <span title={b.title || ''} style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', color: b.color, background: b.bg, whiteSpace: 'nowrap' }}>{b.label}</span>
+                                        <td style={{ textAlign: 'center', position: 'relative' }}>
+                                            {(() => {
+                                                const badgeStyle = { fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', color: b.color, background: b.bg, whiteSpace: 'nowrap' };
+                                                const link = naverLink(p);
+                                                if (!link) {
+                                                    // 미연동/미조회 상품은 상태 변경 불가 → 정적 배지
+                                                    return <span title={b.title || ''} style={badgeStyle}>{b.label}</span>;
+                                                }
+                                                const busy = statusBusyId === p.id;
+                                                const suspended = link.naverStatus === 'SUSPENSION';
+                                                return (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            title={b.title || '클릭하여 판매상태 변경'}
+                                                            disabled={busy}
+                                                            onClick={() => setStatusMenuId(statusMenuId === p.id ? null : p.id)}
+                                                            style={{ ...badgeStyle, border: 'none', cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.5 : 1 }}
+                                                        >
+                                                            {busy ? '변경중…' : `${b.label} ▾`}
+                                                        </button>
+                                                        {statusMenuId === p.id && (
+                                                            <>
+                                                                {/* 바깥 클릭 시 닫기용 백드롭 */}
+                                                                <div onClick={() => setStatusMenuId(null)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+                                                                <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: '4px', zIndex: 11, background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', overflow: 'hidden', minWidth: '120px' }}>
+                                                                    <button type="button" disabled={!suspended} onClick={() => changeStatus(p.id, 'SALE')} style={statusMenuItemStyle(!suspended)}>▶ 판매중</button>
+                                                                    <button type="button" disabled={suspended} onClick={() => changeStatus(p.id, 'SUSPENSION')} style={statusMenuItemStyle(suspended)}>⏸ 판매중지</button>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                         </td>
                                         <td style={{ textAlign: 'center' }}>
                                             <button
@@ -723,6 +789,13 @@ const NaverSyncPage = () => {
         </div>
     );
 };
+
+// 상태 변경 팝오버 메뉴 항목 스타일. isCurrent=true 면 현재 상태(비활성/회색).
+const statusMenuItemStyle = (isCurrent) => ({
+    display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
+    fontSize: '0.8rem', border: 'none', background: isCurrent ? '#f1f5f9' : 'white',
+    color: isCurrent ? '#94a3b8' : '#0f172a', cursor: isCurrent ? 'default' : 'pointer', whiteSpace: 'nowrap',
+});
 
 const selectStyle = { padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop: '4px', minWidth: '150px' };
 const inputStyle = { padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop: '4px', width: '160px' };
