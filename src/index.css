@@ -854,6 +854,9 @@ body {
   display: flex;
   flex-direction: column;
   box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 100;
+  /* 플라이아웃이 컨텐츠 영역 위로 넘칠 수 있도록 */
 }
 
 .admin-sidebar-header {
@@ -885,6 +888,227 @@ body {
   background: var(--admin-primary);
   color: white;
   box-shadow: 0 4px 12px rgba(0, 199, 60, 0.2);
+}
+
+/* ── 사이드바 호버 플라이아웃 (네이버 스토어 하위 탭) ── */
+.admin-nav-group {
+  position: relative;
+}
+
+.admin-nav-caret {
+  margin-left: auto;
+  font-size: 1.1rem;
+  opacity: 0.5;
+  transition: transform 0.15s;
+}
+
+.admin-nav-group:hover .admin-nav-caret {
+  transform: translateX(3px);
+  opacity: 0.9;
+}
+
+.admin-flyout {
+  position: absolute;
+  left: 100%;
+  top: -6px;
+  margin-left: 12px;
+  min-width: 280px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-6px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+  z-index: 200;
+}
+
+/* 아이템 → 플라이아웃 사이 간격을 메워 hover 가 끊기지 않도록 하는 투명 다리 */
+.admin-flyout::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 0;
+  width: 14px;
+  height: 100%;
+}
+
+.admin-nav-group:hover .admin-flyout {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+.admin-flyout-title {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 6px 12px 2px;
+  text-transform: uppercase;
+}
+
+.admin-flyout-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 18px;
+  border-radius: 10px;
+  color: #cbd5e1;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.admin-flyout-item:hover {
+  background: var(--admin-sidebar-hover);
+  color: white;
+}
+
+.admin-flyout-item.active {
+  background: var(--admin-primary);
+  color: white;
+}
+
+.admin-flyout-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.admin-flyout-item.active .admin-flyout-num {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ── 네이버 페이지 상단 탭 바 ── */
+.naver-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.naver-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.naver-tab:hover {
+  border-color: var(--admin-primary);
+  color: #0f172a;
+}
+
+.naver-tab.active {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 199, 60, 0.25);
+}
+
+.naver-tab-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.08);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.naver-tab.active .naver-tab-num {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ── 상품 탭: 페이지네이션 ── */
+.naver-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 0 6px;
+  flex-wrap: wrap;
+}
+
+.page-btn {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.page-btn:hover:not(:disabled):not(.active) {
+  border-color: var(--admin-primary);
+  color: #0f172a;
+}
+
+.page-btn.active {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 199, 60, 0.25);
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── 상품 탭: 규격 상세(펼침) 테이블 ── */
+.combo-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0 10px;
+}
+
+.combo-detail-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #94a3b8;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.combo-detail-table td {
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.combo-detail-table tr:last-child td {
+  border-bottom: none;
 }
 
 .admin-content {

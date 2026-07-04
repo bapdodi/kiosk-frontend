@@ -1,15 +1,48 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
+
+// 사이드바 플라이아웃과 공유되는 탭 정의 (AdminLayout 의 NAVER_TABS 와 key 동일)
+const TABS = [
+    { key: 'mapping', label: '카테고리 매핑' },
+    { key: 'push', label: '상품' },
+    { key: 'sync', label: '재고·가격 동기화' },
+    { key: 'sales', label: '최근 판매 확인' },
+];
+
+// 네이버 연동 상태 키 → 배지 표시(라벨/색상)
+const STATUS_META = {
+    unknown: { label: '…', color: '#94a3b8', bg: '#f1f5f9' },
+    unlinked: { label: '미연동', color: '#64748b', bg: '#f1f5f9' },
+    error: { label: '오류', color: '#b91c1c', bg: '#fee2e2' },
+    suspended: { label: '판매중지', color: '#c2410c', bg: '#ffedd5' },
+    changed: { label: '변경있음', color: '#1d4ed8', bg: '#dbeafe' },
+    linked: { label: '연동됨', color: '#15803d', bg: '#dcfce7' },
+};
+
+// 상품 탭 상태 필터 드롭다운 옵션
+const STATUS_FILTERS = [
+    { key: '', label: '전체 상태' },
+    { key: 'linked', label: '연동됨' },
+    { key: 'changed', label: '변경있음' },
+    { key: 'unlinked', label: '미연동' },
+    { key: 'suspended', label: '판매중지' },
+    { key: 'error', label: '오류' },
+];
 
 /**
  * 네이버 스마트스토어 연동 관리 페이지.
  *  1) 카테고리 매핑: 키오스크 카테고리(대/중분류) → 네이버 리프 카테고리 ID
  *  2) 동기화: 링크된 상품의 재고/가격/상품명 변경분을 미리보고, 선택 수락 시 반영
  */
-const PRODUCT_PAGE_SIZE = 100;
+const PRODUCT_PAGE_SIZE = 20; // 상품 탭 한 페이지당 상품 수
 
 const NaverSyncPage = () => {
     const { mainCategories, subCategories, products } = useOutletContext();
+
+    // ── 탭 상태 (URL ?tab= 으로 관리 → 사이드바 플라이아웃에서 딥링크 가능) ──
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = TABS.some(t => t.key === searchParams.get('tab')) ? searchParams.get('tab') : 'mapping';
+    const goTab = (key) => setSearchParams(key === 'mapping' ? {} : { tab: key });
 
     const [configured, setConfigured] = useState(true);
 
@@ -17,12 +50,14 @@ const NaverSyncPage = () => {
     const [mappings, setMappings] = useState([]);
     const [form, setForm] = useState({ kioskMainCategory: '', kioskSubCategory: '', naverLeafCategoryId: '', naverCategoryName: '' });
 
-    // ── 상품 전송 상태 ── productId -> link(객체) | null(미연동) | undefined(미조회)
+    // ── 상품 상태 ── productId -> link(객체) | null(미연동) | undefined(미조회)
     const [naverLinks, setNaverLinks] = useState({});
     const [naverBusyId, setNaverBusyId] = useState(null);
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [productFilter, setProductFilter] = useState('');
-    const [productVisibleCount, setProductVisibleCount] = useState(PRODUCT_PAGE_SIZE);
+    const [statusFilter, setStatusFilter] = useState('');    // '' = 전체, 그 외 STATUS_META 키
+    const [productPage, setProductPage] = useState(1);       // 1-based 페이지 번호
+    const [expandedIds, setExpandedIds] = useState([]);      // 규격 펼친 상품 id 목록
 
     // ── 동기화 상태 ──
     const [previews, setPreviews] = useState(null); // null = 아직 안 불러옴
@@ -68,6 +103,18 @@ const NaverSyncPage = () => {
         if (combos.length > 0) return combos.reduce((s, c) => s + (c.stock || 0), 0);
         return p.stock || 0;
     };
+
+    // ── 규격/가격 표시 헬퍼 ──
+    const activeCombos = (p) => (p.combinations || []).filter(c => !c.deleted);
+    const comboPrice = (p, c) => (p.price || 0) + (c.price || 0); // 조합 판매가 = 기본가 + 추가금액
+    const priceLabel = (p) => {
+        const combos = activeCombos(p);
+        if (combos.length === 0) return `${(p.price || 0).toLocaleString()}원`;
+        const prices = combos.map(c => comboPrice(p, c));
+        const min = Math.min(...prices), max = Math.max(...prices);
+        return min === max ? `${min.toLocaleString()}원` : `${min.toLocaleString()} ~ ${max.toLocaleString()}원`;
+    };
+    const toggleExpand = (id) => setExpandedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
     const refreshNaverStatuses = async (ids, { overwrite = false } = {}) => {
         const target = overwrite ? ids : ids.filter(id => naverLinks[id] === undefined);
@@ -127,27 +174,62 @@ const NaverSyncPage = () => {
         }
     };
 
-    // link 상태 → 배지 정보
-    const naverBadge = (p) => {
+    // link 상태 → 상태 키 (필터/배지 공용)
+    const naverStatusKey = (p) => {
         const link = naverLinks[p.id];
-        if (link === undefined) return { label: '…', color: '#94a3b8', bg: '#f1f5f9' };
-        if (link === null) return { label: '미연동', color: '#64748b', bg: '#f1f5f9' };
-        if (link.lastError) return { label: '오류', color: '#b91c1c', bg: '#fee2e2', title: link.lastError };
-        if (link.naverStatus === 'SUSPENSION') return { label: '판매중지', color: '#c2410c', bg: '#ffedd5' };
+        if (link === undefined) return 'unknown';   // 아직 조회 안 됨
+        if (link === null) return 'unlinked';        // 조회했으나 미연동
+        if (link.lastError) return 'error';
+        if (link.naverStatus === 'SUSPENSION') return 'suspended';
         const changed = link.lastSyncedName !== p.name
             || link.lastSyncedPrice !== p.price
             || link.lastSyncedStock !== computeEffectiveStock(p);
-        if (changed) return { label: '변경있음', color: '#1d4ed8', bg: '#dbeafe' };
-        return { label: '연동됨', color: '#15803d', bg: '#dcfce7' };
+        return changed ? 'changed' : 'linked';
+    };
+
+    // 상태 키 → 배지 정보(라벨/색상, 오류는 title 에 상세)
+    const naverBadge = (p) => {
+        const key = naverStatusKey(p);
+        return key === 'error' ? { ...STATUS_META.error, title: naverLinks[p.id].lastError } : STATUS_META[key];
     };
 
     const filteredProducts = useMemo(() => {
         const q = productFilter.toLowerCase().trim();
-        if (!q) return products;
-        return products.filter(p => p.name?.toLowerCase().includes(q) || p.hashtags?.some(t => t.toLowerCase().includes(q)));
-    }, [products, productFilter]);
+        let list = products;
+        if (q) list = list.filter(p => p.name?.toLowerCase().includes(q) || p.hashtags?.some(t => t.toLowerCase().includes(q)));
+        if (statusFilter) list = list.filter(p => naverStatusKey(p) === statusFilter);
+        return list;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [products, productFilter, statusFilter, naverLinks]);
 
-    const visibleProducts = filteredProducts.slice(0, productVisibleCount);
+    // 상태 필터가 켜지면 전체 상품의 연동 상태를 미리 불러온다(페이지 밖 상품도 필터되도록). 100개씩 나눠 조회.
+    useEffect(() => {
+        if (!statusFilter) return;
+        const missing = products.filter(p => naverLinks[p.id] === undefined).map(p => p.id);
+        (async () => {
+            for (let i = 0; i < missing.length; i += 100) {
+                await refreshNaverStatuses(missing.slice(i, i + 100));
+            }
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [statusFilter, products]);
+
+    // ── 페이지네이션 ──
+    const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCT_PAGE_SIZE));
+    const currentPage = Math.min(productPage, totalPages);
+    const visibleProducts = filteredProducts.slice((currentPage - 1) * PRODUCT_PAGE_SIZE, currentPage * PRODUCT_PAGE_SIZE);
+    const pageWindow = useMemo(() => {
+        const maxButtons = 7;
+        let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+        const end = Math.min(totalPages, start + maxButtons - 1);
+        start = Math.max(1, end - maxButtons + 1);
+        return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+    }, [currentPage, totalPages]);
+
+    // 현재 페이지에서 규격(복합옵션)이 있는 상품들 → 전체 펼치기/접기 토글용
+    const combosOnPage = visibleProducts.filter(p => activeCombos(p).length > 0);
+    const allExpanded = combosOnPage.length > 0 && combosOnPage.every(p => expandedIds.includes(p.id));
+    const toggleAll = () => setExpandedIds(allExpanded ? [] : combosOnPage.map(p => p.id));
 
     // 목록에 보이는 상품들의 네이버 연동 상태를 조회(아직 조회 안 한 것만)
     const visibleIdsKey = visibleProducts.map(p => p.id).join(',');
@@ -247,6 +329,20 @@ const NaverSyncPage = () => {
                 <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>🟢 네이버 스마트스토어 연동</h2>
             </div>
 
+            {/* ── 탭 바 ── */}
+            <div className="naver-tabs">
+                {TABS.map((t, i) => (
+                    <button
+                        key={t.key}
+                        className={`naver-tab ${activeTab === t.key ? 'active' : ''}`}
+                        onClick={() => goTab(t.key)}
+                    >
+                        <span className="naver-tab-num">{i + 1}</span>
+                        {t.label}
+                    </button>
+                ))}
+            </div>
+
             {!configured && (
                 <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', padding: '12px 16px', borderRadius: '10px', marginBottom: '20px' }}>
                     ⚠ 네이버 커머스API 자격증명(client_id/secret)이 아직 설정되지 않았습니다. 백엔드 <code>.env</code> 의
@@ -255,8 +351,9 @@ const NaverSyncPage = () => {
             )}
 
             {/* ── 카테고리 매핑 ── */}
-            <div className="admin-card" style={{ marginBottom: '30px' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '6px' }}>1. 카테고리 매핑</h3>
+            {activeTab === 'mapping' && (
+            <div className="admin-card">
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '6px' }}>카테고리 매핑</h3>
                 <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '16px' }}>
                     네이버는 리프(최하위) 카테고리 ID 로만 상품을 등록할 수 있습니다. 키오스크 카테고리를 네이버 카테고리에 매핑하세요.
                     리프 카테고리 ID 는 스마트스토어센터 상품등록 화면에서 카테고리 선택 시 확인할 수 있습니다.
@@ -322,19 +419,34 @@ const NaverSyncPage = () => {
                     </tbody>
                 </table>
             </div>
+            )}
 
             {/* ── 상품 전송(개별/일괄) ── */}
-            <div className="admin-card" style={{ marginBottom: '30px' }}>
+            {activeTab === 'push' && (
+            <div className="admin-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>2. 상품 전송</h3>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>상품</h3>
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <input
                             type="text"
                             placeholder="상품명 또는 해시태그 검색..."
                             value={productFilter}
-                            onChange={e => { setProductFilter(e.target.value); setProductVisibleCount(PRODUCT_PAGE_SIZE); }}
+                            onChange={e => { setProductFilter(e.target.value); setProductPage(1); }}
                             style={{ ...inputStyle, width: '220px' }}
                         />
+                        <select
+                            value={statusFilter}
+                            onChange={e => { setStatusFilter(e.target.value); setProductPage(1); }}
+                            style={{ ...selectStyle, marginTop: 0, minWidth: '120px' }}
+                            title="네이버 연동 상태로 필터"
+                        >
+                            {STATUS_FILTERS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                        </select>
+                        {combosOnPage.length > 0 && (
+                            <button className="action-btn" onClick={toggleAll} title="이 페이지의 모든 규격을 펼치거나 접습니다">
+                                {allExpanded ? '규격 접기' : '규격 펼치기'}
+                            </button>
+                        )}
                         <button
                             className="apply-btn"
                             style={{ background: '#16a34a' }}
@@ -360,63 +472,132 @@ const NaverSyncPage = () => {
                                     style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                                 />
                             </th>
+                            <th style={{ width: '28px' }}></th>
                             <th>상품명</th>
-                            <th style={{ width: '120px' }}>기본 판매가</th>
-                            <th style={{ width: '100px', textAlign: 'center' }}>상태</th>
+                            <th style={{ width: '150px' }}>규격</th>
+                            <th style={{ width: '160px' }}>판매가</th>
+                            <th style={{ width: '90px', textAlign: 'center' }}>상태</th>
                             <th style={{ width: '110px', textAlign: 'center' }}>전송</th>
                         </tr>
                     </thead>
                     <tbody>
                         {visibleProducts.map(p => {
                             const b = naverBadge(p);
+                            const combos = activeCombos(p);
+                            const isExpanded = expandedIds.includes(p.id);
                             return (
-                                <tr key={p.id}>
-                                    <td style={{ textAlign: 'center' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedProducts.includes(p.id)}
-                                            onChange={(e) => {
-                                                if (e.target.checked) setSelectedProducts([...selectedProducts, p.id]);
-                                                else setSelectedProducts(selectedProducts.filter(id => id !== p.id));
-                                            }}
-                                            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                                        />
-                                    </td>
-                                    <td style={{ fontWeight: 700 }}>{p.name}</td>
-                                    <td>{p.price.toLocaleString()}원</td>
-                                    <td style={{ textAlign: 'center' }}>
-                                        <span title={b.title || ''} style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', color: b.color, background: b.bg, whiteSpace: 'nowrap' }}>{b.label}</span>
-                                    </td>
-                                    <td style={{ textAlign: 'center' }}>
-                                        <button
-                                            disabled={naverBusyId === p.id}
-                                            onClick={() => pushToNaver(p.id)}
-                                            style={{ fontSize: '0.72rem', padding: '3px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', color: '#0f172a', cursor: naverBusyId === p.id ? 'default' : 'pointer', opacity: naverBusyId === p.id ? 0.5 : 1, whiteSpace: 'nowrap' }}
-                                        >
-                                            {naverBusyId === p.id ? '전송중…' : '네이버 전송'}
-                                        </button>
-                                    </td>
-                                </tr>
+                                <Fragment key={p.id}>
+                                    <tr>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedProducts.includes(p.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) setSelectedProducts([...selectedProducts, p.id]);
+                                                    else setSelectedProducts(selectedProducts.filter(id => id !== p.id));
+                                                }}
+                                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                            />
+                                        </td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            {combos.length > 0 && (
+                                                <button
+                                                    onClick={() => toggleExpand(p.id)}
+                                                    title="규격 펼치기/접기"
+                                                    style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', fontSize: '0.8rem', padding: 0 }}
+                                                >
+                                                    {isExpanded ? '▾' : '▸'}
+                                                </button>
+                                            )}
+                                        </td>
+                                        <td style={{ fontWeight: 700 }}>{p.name}</td>
+                                        <td>
+                                            {combos.length > 0 ? (
+                                                <button
+                                                    onClick={() => toggleExpand(p.id)}
+                                                    style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb', fontWeight: 600, fontSize: '0.85rem', padding: 0 }}
+                                                >
+                                                    규격 {combos.length}개
+                                                </button>
+                                            ) : (
+                                                <span style={{ color: p.gyu ? '#0f172a' : '#94a3b8' }}>{p.gyu || '-'}</span>
+                                            )}
+                                        </td>
+                                        <td style={{ fontWeight: 600 }}>{priceLabel(p)}</td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <span title={b.title || ''} style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', color: b.color, background: b.bg, whiteSpace: 'nowrap' }}>{b.label}</span>
+                                        </td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <button
+                                                disabled={naverBusyId === p.id}
+                                                onClick={() => pushToNaver(p.id)}
+                                                style={{ fontSize: '0.72rem', padding: '3px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', color: '#0f172a', cursor: naverBusyId === p.id ? 'default' : 'pointer', opacity: naverBusyId === p.id ? 0.5 : 1, whiteSpace: 'nowrap' }}
+                                            >
+                                                {naverBusyId === p.id ? '전송중…' : '네이버 전송'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {isExpanded && combos.length > 0 && (
+                                        <tr>
+                                            <td colSpan={7} style={{ background: '#f8fafc', padding: '0 0 0 68px' }}>
+                                                <table className="combo-detail-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>규격</th>
+                                                            <th style={{ width: '140px', textAlign: 'right' }}>추가금액</th>
+                                                            <th style={{ width: '140px', textAlign: 'right' }}>판매가</th>
+                                                            <th style={{ width: '100px', textAlign: 'right' }}>재고</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {combos.map((c, i) => (
+                                                            <tr key={i}>
+                                                                <td style={{ fontWeight: 600 }}>{c.name}</td>
+                                                                <td style={{ textAlign: 'right', color: '#64748b' }}>
+                                                                    {c.price ? `+${c.price.toLocaleString()}원` : '-'}
+                                                                </td>
+                                                                <td style={{ textAlign: 'right', fontWeight: 700 }}>{comboPrice(p, c).toLocaleString()}원</td>
+                                                                <td style={{ textAlign: 'right' }}>{c.stock ?? 0}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </Fragment>
                             );
                         })}
                         {visibleProducts.length === 0 && (
-                            <tr><td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>표시할 상품이 없습니다.</td></tr>
+                            <tr><td colSpan={7} style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>표시할 상품이 없습니다.</td></tr>
                         )}
                     </tbody>
                 </table>
-                {filteredProducts.length > productVisibleCount && (
-                    <div style={{ textAlign: 'center', padding: '16px 0 4px' }}>
-                        <button className="action-btn" onClick={() => setProductVisibleCount(c => c + PRODUCT_PAGE_SIZE)}>
-                            더 보기 ({filteredProducts.length - productVisibleCount}개 더 있음)
-                        </button>
+                {totalPages > 1 && (
+                    <div className="naver-pagination">
+                        <button className="page-btn" disabled={currentPage === 1} onClick={() => setProductPage(1)}>«</button>
+                        <button className="page-btn" disabled={currentPage === 1} onClick={() => setProductPage(currentPage - 1)}>‹</button>
+                        {pageWindow.map(n => (
+                            <button
+                                key={n}
+                                className={`page-btn ${n === currentPage ? 'active' : ''}`}
+                                onClick={() => setProductPage(n)}
+                            >
+                                {n}
+                            </button>
+                        ))}
+                        <button className="page-btn" disabled={currentPage === totalPages} onClick={() => setProductPage(currentPage + 1)}>›</button>
+                        <button className="page-btn" disabled={currentPage === totalPages} onClick={() => setProductPage(totalPages)}>»</button>
                     </div>
                 )}
             </div>
+            )}
 
             {/* ── 동기화 미리보기/수락 ── */}
+            {activeTab === 'sync' && (
             <div className="admin-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>3. 재고·가격·상품명 동기화</h3>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>재고·가격·상품명 동기화</h3>
                     <div style={{ display: 'flex', gap: '10px' }}>
                         <button className="apply-btn" style={{ background: '#2563eb' }} onClick={loadPreview} disabled={loadingPreview}>
                             {loadingPreview ? '불러오는 중…' : '🔍 변경사항 불러오기'}
@@ -472,11 +653,13 @@ const NaverSyncPage = () => {
                     </table>
                 )}
             </div>
+            )}
 
             {/* ── 최근 판매 확인 ── */}
-            <div className="admin-card" style={{ marginTop: '30px' }}>
+            {activeTab === 'sales' && (
+            <div className="admin-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>4. 최근 판매 확인</h3>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>최근 판매 확인</h3>
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <select value={salesHours} onChange={e => setSalesHours(Number(e.target.value))} style={selectStyle}>
                             <option value={1}>최근 1시간</option>
@@ -536,6 +719,7 @@ const NaverSyncPage = () => {
                     </table>
                 ) : null}
             </div>
+            )}
         </div>
     );
 };
