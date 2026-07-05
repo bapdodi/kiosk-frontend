@@ -653,7 +653,7 @@ const ProductManagement = () => {
                                 </td>
                                 <td>
                                     <div style={{ fontWeight: 800, color: '#1e293b' }}>
-                                        {p.price.toLocaleString()}원
+                                        {p.priceC.toLocaleString()}원
                                     </div>
                                 </td>
                                 <td style={{ textAlign: 'center' }}>

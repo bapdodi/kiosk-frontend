@@ -32,7 +32,7 @@ const ProductForm = () => {
         name: '',
         description: '',
         categories: [],
-        price: 0,
+        priceC: 0,
         hashtags: '',
         images: []
     });
@@ -273,7 +273,7 @@ const ProductForm = () => {
         const payload = {
             ...productData,
             optionImages: cleanedOptionImages,
-            price: parseInt(productData.price || 0),
+            priceC: parseInt(productData.priceC || 0),
             hashtags: typeof productData.hashtags === 'string'
                 ? productData.hashtags.split(',').map(tag => {
                     const t = tag.trim();
@@ -445,8 +445,8 @@ const ProductForm = () => {
                                         type="number"
                                         required
                                         className="form-input"
-                                        value={productData.price}
-                                        onChange={(e) => setProductData({ ...productData, price: e.target.value })}
+                                        value={productData.priceC}
+                                        onChange={(e) => setProductData({ ...productData, priceC: e.target.value })}
                                     />
                                 </div>
                                 <div className="form-item">
@@ -578,7 +578,7 @@ const ProductForm = () => {
                                             setCombinations(results.map((res, i) => ({
                                                 id: `c-${i}`,
                                                 name: Array.isArray(res) ? res.join(' / ') : res,
-                                                price: 0
+                                                priceC: 0
                                             })));
                                         }}
                                     >
@@ -679,10 +679,10 @@ const ProductForm = () => {
                                                         <input
                                                             type="number"
                                                             className="form-input tiny"
-                                                            value={c.price}
+                                                            value={c.priceC}
                                                             onChange={(e) => {
                                                                 const updated = [...combinations];
-                                                                updated[i].price = parseInt(e.target.value || 0);
+                                                                updated[i].priceC = parseInt(e.target.value || 0);
                                                                 setCombinations(updated);
                                                             }}
                                                         />

@@ -159,9 +159,9 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
             // If combination based price exists, it's usually the final price (or extra)
             // But for ERP grouped, it's should be treated as the unit price directly
             if (combo) {
-                // For ERP items synced as combinations, 'price' is the actual unit price, 
-                // not an "extra" fee. We handle that by returning (combo.price - product.price)
-                return combo.price - product.price;
+                // For ERP items synced as combinations, 'priceC' is the actual unit price,
+                // not an "extra" fee. We handle that by returning (combo.priceC - product.priceC)
+                return combo.priceC - product.priceC;
             }
             return 0;
         } else {

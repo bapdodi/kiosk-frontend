@@ -108,12 +108,12 @@ const NaverSyncPage = () => {
 
     // ── 규격/가격 표시 헬퍼 ──
     const activeCombos = (p) => (p.combinations || []).filter(c => !c.deleted);
-    // ERP 동기화 상품은 combination.price 가 각 옵션의 '절대 판매가'다(기본가+추가금이 아님).
+    // ERP 동기화 상품은 combination.priceC 가 각 옵션의 '절대 판매가'다(기본가+추가금이 아님).
     // 손님 키오스크·네이버 모두 이 값을 그대로 청구하므로 표시도 이 값을 그대로 쓴다.
-    const comboPrice = (c) => (c.price || 0);
+    const comboPrice = (c) => (c.priceC || 0);
     const priceLabel = (p) => {
         const combos = activeCombos(p);
-        if (combos.length === 0) return `${(p.price || 0).toLocaleString()}원`;
+        if (combos.length === 0) return `${(p.priceC || 0).toLocaleString()}원`;
         const prices = combos.map(c => comboPrice(c));
         const min = Math.min(...prices), max = Math.max(...prices);
         return min === max ? `${min.toLocaleString()}원` : `${min.toLocaleString()} ~ ${max.toLocaleString()}원`;
@@ -212,7 +212,7 @@ const NaverSyncPage = () => {
         if (link.lastError) return 'error';
         if (link.naverStatus === 'SUSPENSION') return 'suspended';
         const changed = link.lastSyncedName !== p.name
-            || link.lastSyncedPrice !== p.price
+            || link.lastSyncedPrice !== p.priceC
             || link.lastSyncedStock !== computeEffectiveStock(p);
         return changed ? 'changed' : 'linked';
     };
@@ -520,7 +520,7 @@ const NaverSyncPage = () => {
                         {visibleProducts.map(p => {
                             const b = naverBadge(p);
                             const combos = activeCombos(p);
-                            const repPrice = combos.length ? Math.min(...combos.map(c => c.price || 0)) : 0; // 대표(최저) 옵션가 = 추가금 기준
+                            const repPrice = combos.length ? Math.min(...combos.map(c => c.priceC || 0)) : 0; // 대표(최저) 옵션가 = 추가금 기준
                             const isExpanded = expandedIds.includes(p.id);
                             return (
                                 <Fragment key={p.id}>
@@ -623,7 +623,7 @@ const NaverSyncPage = () => {
                                                             <tr key={i}>
                                                                 <td style={{ fontWeight: 600 }}>{c.name}</td>
                                                                 <td style={{ textAlign: 'right', color: '#64748b' }}>
-                                                                    {(c.price || 0) - repPrice > 0 ? `+${((c.price || 0) - repPrice).toLocaleString()}원` : '-'}
+                                                                    {(c.priceC || 0) - repPrice > 0 ? `+${((c.priceC || 0) - repPrice).toLocaleString()}원` : '-'}
                                                                 </td>
                                                                 <td style={{ textAlign: 'right', fontWeight: 700 }}>{comboPrice(c).toLocaleString()}원</td>
                                                                 <td style={{ textAlign: 'right' }}>{c.stock ?? 0}</td>
