@@ -505,7 +505,7 @@ function KioskView({
     Object.entries(quantities).forEach(([comboId, qty]) => {
       if (qty > 0) {
         const combo = combinations.find(c => c.id === comboId);
-        const finalPrice = product.price + (combo ? (combo.totalExtra || combo.price || 0) : 0);
+        const finalPrice = (product.priceC || 0) + (combo ? (combo.totalExtra || combo.price || 0) : 0);
         const selectedOption = combo ? (combo.displayName || combo.name) : null;
 
         const existingIndex = newCart.findIndex(i => i.id === product.id && i.selectedOption === selectedOption);

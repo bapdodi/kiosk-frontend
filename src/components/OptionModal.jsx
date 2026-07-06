@@ -200,7 +200,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
             comboId,
             displayName: comboName,
             totalExtra: extra,
-            unitPrice: product.price + extra,
+            unitPrice: (product.priceC || 0) + extra,
             erpCode: foundCombo ? foundCombo.erpCode : (product.erpCode || null),
             quantity: Math.max(1, qty)
         };
