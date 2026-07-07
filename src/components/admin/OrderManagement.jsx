@@ -188,11 +188,13 @@ const OrderManagement = () => {
                                 {Object.values(
                                     selectedOrder.items.reduce((acc, item) => {
                                         const key = `${item.name}-${item.selectedOption || ''}`;
+                                        // 실청구가(거래처 DANGA 반영) 우선, 없으면 소비자가(finalPrice)로 대체
+                                        const unit = (item.chargedPrice ?? item.finalPrice) || 0;
                                         if (!acc[key]) {
-                                            acc[key] = { ...item, displayQty: item.quantity || 1, displayPrice: item.finalPrice * (item.quantity || 1) };
+                                            acc[key] = { ...item, displayQty: item.quantity || 1, displayPrice: unit * (item.quantity || 1) };
                                         } else {
                                             acc[key].displayQty += (item.quantity || 1);
-                                            acc[key].displayPrice += (item.finalPrice * (item.quantity || 1));
+                                            acc[key].displayPrice += (unit * (item.quantity || 1));
                                         }
                                         return acc;
                                     }, {})
