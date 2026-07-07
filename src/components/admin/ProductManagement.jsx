@@ -388,7 +388,7 @@ const ProductManagement = () => {
                     <div className="search-container" style={{ margin: 0, flex: '0 0 300px' }}>
                         <input
                             className="search-input"
-                            placeholder="상품명 또는 해시태그 검색..."
+                            placeholder="초성 또는 상품명으로 검색해주셔요..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             style={{ padding: '10px 15px 10px 40px' }}

@@ -107,7 +107,7 @@ const CategoryNav = ({
                     <input
                         type="text"
                         className="search-input"
-                        placeholder={isListening ? '듣고 있어요… 말씀해주세요' : '상품명 또는 해시태그 검색'}
+                        placeholder={isListening ? '듣고 있어요… 말씀해주세요' : '초성 또는 상품명으로 검색해주셔요'}
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
                     />

@@ -465,7 +465,7 @@ const NaverSyncPage = () => {
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <input
                             type="text"
-                            placeholder="상품명 또는 해시태그 검색..."
+                            placeholder="초성 또는 상품명으로 검색해주셔요..."
                             value={productFilter}
                             onChange={e => { setProductFilter(e.target.value); setProductPage(1); }}
                             style={{ ...inputStyle, width: '220px' }}
