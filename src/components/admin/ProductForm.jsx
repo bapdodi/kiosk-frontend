@@ -121,6 +121,17 @@ const ProductForm = () => {
         }));
     };
 
+    // 대표 이미지 순서 변경. direction: -1(앞으로) / +1(뒤로). 첫 번째가 대표 사진이다.
+    const moveImage = (index, direction) => {
+        setProductData(prev => {
+            const target = index + direction;
+            if (target < 0 || target >= prev.images.length) return prev;
+            const images = [...prev.images];
+            [images[index], images[target]] = [images[target], images[index]];
+            return { ...prev, images };
+        });
+    };
+
     const getOptionImagesFor = (groupName, optionValue) =>
         optionImages.filter(oi => oi.groupName === groupName && oi.optionValue === optionValue);
 
@@ -486,11 +497,32 @@ const ProductForm = () => {
                                         {productData.images.map((url, idx) => (
                                             <div key={idx} className="img-preview-thumb">
                                                 <img src={getImageUrl(url)} alt="product" />
+                                                {idx === 0 && <span className="img-main-badge">대표</span>}
                                                 <button type="button" onClick={() => removeImage(idx)} className="img-del-mini">×</button>
+                                                <div className="img-move-bar">
+                                                    <button
+                                                        type="button"
+                                                        className="img-move-btn"
+                                                        onClick={() => moveImage(idx, -1)}
+                                                        disabled={idx === 0}
+                                                        title="앞으로 이동"
+                                                    >◀</button>
+                                                    <span className="img-move-pos">{idx + 1}</span>
+                                                    <button
+                                                        type="button"
+                                                        className="img-move-btn"
+                                                        onClick={() => moveImage(idx, 1)}
+                                                        disabled={idx === productData.images.length - 1}
+                                                        title="뒤로 이동"
+                                                    >▶</button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
+                                {productData.images.length > 1 && (
+                                    <p className="img-order-hint">◀ ▶ 로 순서를 바꿀 수 있습니다. 맨 앞(1번)이 대표 사진입니다.</p>
+                                )}
                             </div>
                         </div>
                     </section>
@@ -899,6 +931,47 @@ const ProductForm = () => {
                     justify-content: center;
                     font-size: 14px;
                 }
+                .img-main-badge {
+                    position: absolute;
+                    top: 5px;
+                    left: 5px;
+                    padding: 2px 7px;
+                    background: #00c73c;
+                    color: #fff;
+                    font-size: 0.7rem;
+                    font-weight: 800;
+                    border-radius: 6px;
+                    z-index: 1;
+                }
+                .img-move-bar {
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    height: 26px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 0 4px;
+                    background: rgba(0,0,0,0.55);
+                }
+                .img-move-btn {
+                    width: 22px;
+                    height: 22px;
+                    border: none;
+                    background: transparent;
+                    color: #fff;
+                    cursor: pointer;
+                    font-size: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
+                }
+                .img-move-btn:hover:not(:disabled) { background: rgba(255,255,255,0.25); }
+                .img-move-btn:disabled { opacity: 0.3; cursor: default; }
+                .img-move-pos { color: #fff; font-size: 0.75rem; font-weight: 700; }
+                .img-order-hint { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
 
                 .option-img-section { margin-top: 18px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; display: flex; flex-direction: column; gap: 16px; }
                 .option-img-section-title { font-size: 0.95rem; font-weight: 800; color: #334155; }
