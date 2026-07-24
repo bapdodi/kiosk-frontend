@@ -67,6 +67,7 @@ const NaverSyncPage = () => {
     const [statusFilter, setStatusFilter] = useState('');    // '' = 전체, 그 외 STATUS_META 키
     const [productPage, setProductPage] = useState(1);       // 1-based 페이지 번호
     const [expandedIds, setExpandedIds] = useState([]);      // 규격 펼친 상품 id 목록
+    const [pushModal, setPushModal] = useState(null);        // 전송 전 규격 검토 모달 { product, combos:[{id,name,priceC,stock,include}] }
 
     // ── 동기화 상태 ──
     const [previews, setPreviews] = useState(null); // null = 아직 안 불러옴
@@ -142,11 +143,15 @@ const NaverSyncPage = () => {
         } catch { /* 무시 */ }
     };
 
-    const pushToNaver = async (id) => {
+    // override: null 이면 저장된 조합 그대로 전송, {combinations:[...]} 이면 수정한 규격으로 전송
+    const pushToNaver = async (id, override = null) => {
         if (!configured && !window.confirm('네이버 자격증명이 아직 설정되지 않았을 수 있습니다. 계속할까요?')) return;
         setNaverBusyId(id);
         try {
-            const res = await fetch(`/api/channels/naver/admin/products/${id}/push`, { method: 'POST' });
+            const res = await fetch(`/api/channels/naver/admin/products/${id}/push`, {
+                method: 'POST',
+                ...(override ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(override) } : {}),
+            });
             const data = await res.json();
             if (res.ok) {
                 setNaverLinks(prev => ({ ...prev, [id]: data }));
@@ -160,6 +165,39 @@ const NaverSyncPage = () => {
         } finally {
             setNaverBusyId(null);
         }
+    };
+
+    // 전송 버튼: 규격(옵션)이 있으면 검토 모달을 먼저 띄우고, 단품이면 바로 전송
+    const onPushClick = (p) => {
+        const combos = activeCombos(p);
+        if (combos.length === 0) {
+            pushToNaver(p.id);
+            return;
+        }
+        setStatusMenuId(null);
+        setPushModal({
+            product: p,
+            combos: combos.map(c => ({
+                id: c.id, name: c.name || '', priceC: c.priceC ?? 0, stock: c.stock ?? 0, include: true,
+            })),
+        });
+    };
+
+    const updateModalCombo = (idx, patch) =>
+        setPushModal(m => ({ ...m, combos: m.combos.map((c, i) => i === idx ? { ...c, ...patch } : c) }));
+
+    // 모달에서 수정한 규격으로 전송
+    const confirmPushModal = async () => {
+        const chosen = pushModal.combos.filter(c => c.include);
+        if (chosen.length === 0) return alert('전송할 규격을 최소 1개 선택하세요.');
+        const override = {
+            combinations: chosen.map(c => ({
+                id: c.id, name: c.name.trim(), priceC: Number(c.priceC) || 0, stock: Number(c.stock) || 0,
+            })),
+        };
+        const id = pushModal.product.id;
+        setPushModal(null);
+        await pushToNaver(id, override);
     };
 
     // 판매상태 변경(판매중 ↔ 판매중지). status: 'SALE' | 'SUSPENSION'
@@ -678,10 +716,11 @@ const NaverSyncPage = () => {
                                         <td style={{ textAlign: 'center' }}>
                                             <button
                                                 disabled={naverBusyId === p.id}
-                                                onClick={() => pushToNaver(p.id)}
+                                                onClick={() => onPushClick(p)}
+                                                title={activeCombos(p).length > 0 ? '규격을 검토·수정한 뒤 전송합니다' : '네이버로 전송합니다'}
                                                 style={{ fontSize: '0.72rem', padding: '3px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', color: '#0f172a', cursor: naverBusyId === p.id ? 'default' : 'pointer', opacity: naverBusyId === p.id ? 0.5 : 1, whiteSpace: 'nowrap' }}
                                             >
-                                                {naverBusyId === p.id ? '전송중…' : '네이버 전송'}
+                                                {naverBusyId === p.id ? '전송중…' : (activeCombos(p).length > 0 ? '네이버 전송…' : '네이버 전송')}
                                             </button>
                                         </td>
                                     </tr>
@@ -866,6 +905,66 @@ const NaverSyncPage = () => {
                         </tbody>
                     </table>
                 ) : null}
+            </div>
+            )}
+
+            {/* ── 전송 전 규격(옵션) 검토·수정 모달 ── */}
+            {pushModal && (
+            <div onClick={() => setPushModal(null)}
+                style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                <div onClick={e => e.stopPropagation()}
+                    style={{ background: 'white', borderRadius: '14px', width: 'min(720px, 100%)', maxHeight: '86vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+                    <div style={{ padding: '18px 22px', borderBottom: '1px solid #e2e8f0' }}>
+                        <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>규격 확인 후 전송</h3>
+                        <p style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '4px' }}>
+                            <b>{pushModal.product.name}</b> — 네이버로 보낼 규격을 확인·수정하세요. 여기서 바꾼 값은 이번 전송에만 적용되며 키오스크 상품은 그대로입니다.
+                        </p>
+                    </div>
+                    <table className="admin-table" style={{ margin: 0 }}>
+                        <thead>
+                            <tr>
+                                <th style={{ width: '48px', textAlign: 'center' }}>전송</th>
+                                <th>규격명</th>
+                                <th style={{ width: '150px', textAlign: 'right' }}>판매가(원)</th>
+                                <th style={{ width: '120px', textAlign: 'right' }}>재고</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {pushModal.combos.map((c, i) => (
+                                <tr key={i} style={{ opacity: c.include ? 1 : 0.45 }}>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <input type="checkbox" checked={c.include}
+                                            onChange={e => updateModalCombo(i, { include: e.target.checked })}
+                                            style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+                                    </td>
+                                    <td>
+                                        <input type="text" value={c.name} disabled={!c.include}
+                                            onChange={e => updateModalCombo(i, { name: e.target.value })}
+                                            style={{ ...inputStyle, width: '100%', marginTop: 0 }} />
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>
+                                        <input type="number" value={c.priceC} disabled={!c.include}
+                                            onChange={e => updateModalCombo(i, { priceC: e.target.value })}
+                                            style={{ ...inputStyle, width: '120px', marginTop: 0, textAlign: 'right' }} />
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>
+                                        <input type="number" value={c.stock} disabled={!c.include}
+                                            onChange={e => updateModalCombo(i, { stock: e.target.value })}
+                                            style={{ ...inputStyle, width: '90px', marginTop: 0, textAlign: 'right' }} />
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    <div style={{ padding: '16px 22px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '10px', alignItems: 'center' }}>
+                        <span style={{ color: '#64748b', fontSize: '0.82rem', marginRight: 'auto' }}>
+                            전송할 규격 {pushModal.combos.filter(c => c.include).length} / {pushModal.combos.length}개
+                        </span>
+                        <button className="action-btn" onClick={() => setPushModal(null)}
+                            style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px 16px' }}>취소</button>
+                        <button className="apply-btn" style={{ background: '#16a34a' }} onClick={confirmPushModal}>🟢 이대로 전송</button>
+                    </div>
+                </div>
             </div>
             )}
         </div>
