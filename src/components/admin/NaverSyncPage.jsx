@@ -36,6 +36,10 @@ const STATUS_FILTERS = [
  */
 const PRODUCT_PAGE_SIZE = 20; // 상품 탭 한 페이지당 상품 수
 
+// '기본 카테고리' 매핑의 대분류 특수값(백엔드 NaverConnector.DEFAULT_MAIN_CATEGORY 와 동일).
+// 이 매핑은 특정 카테고리 매핑이 없는 모든 상품에 폴백으로 적용된다.
+const DEFAULT_MAIN = '*';
+
 const NaverSyncPage = () => {
     const { mainCategories, subCategories, products } = useOutletContext();
 
@@ -49,6 +53,9 @@ const NaverSyncPage = () => {
     // ── 카테고리 매핑 상태 ──
     const [mappings, setMappings] = useState([]);
     const [form, setForm] = useState({ kioskMainCategory: '', kioskSubCategory: '', naverLeafCategoryId: '', naverCategoryName: '' });
+    // 기본(전체) 카테고리 입력 — 이 하나만 지정하면 모든 상품이 자동으로 이 카테고리로 등록된다.
+    const [defaultForm, setDefaultForm] = useState({ naverLeafCategoryId: '', naverCategoryName: '' });
+    const [showAdvanced, setShowAdvanced] = useState(false); // 카테고리별 세부 매핑(선택) 펼침 여부
 
     // ── 상품 상태 ── productId -> link(객체) | null(미연동) | undefined(미조회)
     const [naverLinks, setNaverLinks] = useState({});
@@ -281,8 +288,43 @@ const NaverSyncPage = () => {
         } catch { /* 무시 */ }
     };
 
+    // 기본(전체) 매핑과 카테고리별 세부 매핑을 분리
+    const defaultMapping = useMemo(() => mappings.find(m => m.kioskMainCategory === DEFAULT_MAIN) || null, [mappings]);
+    const specificMappings = useMemo(() => mappings.filter(m => m.kioskMainCategory !== DEFAULT_MAIN), [mappings]);
+
+    // 저장된 기본 매핑이 로드되면 입력값에 반영
+    useEffect(() => {
+        setDefaultForm({
+            naverLeafCategoryId: defaultMapping ? String(defaultMapping.naverLeafCategoryId) : '',
+            naverCategoryName: defaultMapping?.naverCategoryName || '',
+        });
+    }, [defaultMapping]);
+
     const mainName = (id) => mainCategories.find(m => m.id === id)?.name || id;
     const subName = (mainId, subId) => subCategories[mainId]?.find(s => s.id === subId)?.name || subId;
+
+    // 기본(전체) 카테고리 저장 — 기존 기본 매핑이 있으면 지우고 새로 등록(중복 방지)
+    const saveDefault = async () => {
+        if (!defaultForm.naverLeafCategoryId) {
+            return alert('네이버 리프 카테고리 ID 를 입력하세요.');
+        }
+        try {
+            if (defaultMapping) {
+                await fetch(`/api/channels/naver/admin/category-mappings/${defaultMapping.id}`, { method: 'DELETE' });
+            }
+            const res = await fetch('/api/channels/naver/admin/category-mappings', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    kioskMainCategory: DEFAULT_MAIN,
+                    kioskSubCategory: null,
+                    naverLeafCategoryId: Number(defaultForm.naverLeafCategoryId),
+                    naverCategoryName: defaultForm.naverCategoryName || null,
+                })
+            });
+            if (res.ok) loadMappings();
+            else alert('저장 실패');
+        } catch { alert('네트워크 오류'); }
+    };
 
     const saveMapping = async () => {
         if (!form.kioskMainCategory || !form.naverLeafCategoryId) {
@@ -389,71 +431,108 @@ const NaverSyncPage = () => {
             {/* ── 카테고리 매핑 ── */}
             {activeTab === 'mapping' && (
             <div className="admin-card">
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '6px' }}>카테고리 매핑</h3>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '6px' }}>기본 네이버 카테고리</h3>
                 <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '16px' }}>
-                    네이버는 리프(최하위) 카테고리 ID 로만 상품을 등록할 수 있습니다. 키오스크 카테고리를 네이버 카테고리에 매핑하세요.
-                    리프 카테고리 ID 는 스마트스토어센터 상품등록 화면에서 카테고리 선택 시 확인할 수 있습니다.
+                    모든 상품은 여기서 지정한 네이버 카테고리로 자동 등록됩니다. 카테고리별로 따로 매핑할 필요 없이,
+                    아래 <b>기본 카테고리</b> 하나만 설정하면 됩니다. 리프(최하위) 카테고리 ID 는 스마트스토어센터
+                    상품등록 화면에서 카테고리 선택 시 확인할 수 있습니다.
                 </p>
 
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '18px' }}>
-                    <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', color: '#475569' }}>
-                        키오스크 대분류
-                        <select value={form.kioskMainCategory}
-                            onChange={e => setForm(f => ({ ...f, kioskMainCategory: e.target.value, kioskSubCategory: '' }))}
-                            style={selectStyle}>
-                            <option value="">선택</option>
-                            {mainCategories.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                        </select>
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', color: '#475569' }}>
-                        키오스크 중분류(선택)
-                        <select value={form.kioskSubCategory}
-                            onChange={e => setForm(f => ({ ...f, kioskSubCategory: e.target.value }))}
-                            style={selectStyle} disabled={!form.kioskMainCategory}>
-                            <option value="">(대분류 전체)</option>
-                            {availableSubs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
-                    </label>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '10px' }}>
                     <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', color: '#475569' }}>
                         네이버 리프 카테고리 ID
-                        <input type="number" value={form.naverLeafCategoryId}
-                            onChange={e => setForm(f => ({ ...f, naverLeafCategoryId: e.target.value }))}
-                            placeholder="예: 50000840" style={inputStyle} />
+                        <input type="number" value={defaultForm.naverLeafCategoryId}
+                            onChange={e => setDefaultForm(f => ({ ...f, naverLeafCategoryId: e.target.value }))}
+                            placeholder="예: 50003288" style={inputStyle} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', color: '#475569' }}>
                         네이버 카테고리명(메모)
-                        <input type="text" value={form.naverCategoryName}
-                            onChange={e => setForm(f => ({ ...f, naverCategoryName: e.target.value }))}
-                            placeholder="예: 생활/건강 > 공구 > 배관공구" style={{ ...inputStyle, width: '260px' }} />
+                        <input type="text" value={defaultForm.naverCategoryName}
+                            onChange={e => setDefaultForm(f => ({ ...f, naverCategoryName: e.target.value }))}
+                            placeholder="예: 생활/건강 > 공구 > 설비공구 > 배관용품" style={{ ...inputStyle, width: '300px' }} />
                     </label>
-                    <button className="apply-btn" onClick={saveMapping}>＋ 매핑 추가</button>
+                    <button className="apply-btn" onClick={saveDefault}>💾 기본 카테고리 저장</button>
+                </div>
+                <div style={{ fontSize: '0.85rem', color: defaultMapping ? '#15803d' : '#b45309', marginBottom: '4px' }}>
+                    {defaultMapping
+                        ? `✔ 현재 기본 카테고리: ${defaultMapping.naverCategoryName || '(메모 없음)'} · 리프 ID ${defaultMapping.naverLeafCategoryId}`
+                        : '⚠ 아직 기본 카테고리가 설정되지 않았습니다. 상품 전송 전에 먼저 저장하세요.'}
                 </div>
 
-                <table className="admin-table">
-                    <thead>
-                        <tr>
-                            <th>키오스크 카테고리</th>
-                            <th>네이버 리프 ID</th>
-                            <th>네이버 카테고리명</th>
-                            <th style={{ textAlign: 'right' }}>관리</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {mappings.map(m => (
-                            <tr key={m.id}>
-                                <td>{mainName(m.kioskMainCategory)}{m.kioskSubCategory ? ` › ${subName(m.kioskMainCategory, m.kioskSubCategory)}` : ' (전체)'}</td>
-                                <td>{m.naverLeafCategoryId}</td>
-                                <td style={{ color: '#64748b' }}>{m.naverCategoryName || '-'}</td>
-                                <td style={{ textAlign: 'right' }}>
-                                    <button className="action-btn" style={{ color: '#ef4444' }} onClick={() => deleteMapping(m.id)}>삭제</button>
-                                </td>
-                            </tr>
-                        ))}
-                        {mappings.length === 0 && (
-                            <tr><td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>아직 매핑이 없습니다.</td></tr>
-                        )}
-                    </tbody>
-                </table>
+                {/* ── 세부 매핑(선택) — 특정 카테고리만 다른 네이버 카테고리로 보낼 때 ── */}
+                <div style={{ marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '14px' }}>
+                    <button className="action-btn" onClick={() => setShowAdvanced(v => !v)}
+                        style={{ fontSize: '0.85rem', color: '#475569' }}>
+                        {showAdvanced ? '▾' : '▸'} 카테고리별 세부 매핑 (선택){specificMappings.length > 0 ? ` · ${specificMappings.length}건` : ''}
+                    </button>
+                    {showAdvanced && (
+                    <>
+                        <p style={{ color: '#64748b', fontSize: '0.82rem', margin: '10px 0 14px' }}>
+                            특정 키오스크 카테고리만 기본과 다른 네이버 카테고리로 보내고 싶을 때만 사용하세요.
+                            여기서 매핑한 카테고리는 기본 카테고리 대신 이 값이 우선 적용됩니다.
+                        </p>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '18px' }}>
+                            <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', color: '#475569' }}>
+                                키오스크 대분류
+                                <select value={form.kioskMainCategory}
+                                    onChange={e => setForm(f => ({ ...f, kioskMainCategory: e.target.value, kioskSubCategory: '' }))}
+                                    style={selectStyle}>
+                                    <option value="">선택</option>
+                                    {mainCategories.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                </select>
+                            </label>
+                            <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', color: '#475569' }}>
+                                키오스크 중분류(선택)
+                                <select value={form.kioskSubCategory}
+                                    onChange={e => setForm(f => ({ ...f, kioskSubCategory: e.target.value }))}
+                                    style={selectStyle} disabled={!form.kioskMainCategory}>
+                                    <option value="">(대분류 전체)</option>
+                                    {availableSubs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </label>
+                            <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', color: '#475569' }}>
+                                네이버 리프 카테고리 ID
+                                <input type="number" value={form.naverLeafCategoryId}
+                                    onChange={e => setForm(f => ({ ...f, naverLeafCategoryId: e.target.value }))}
+                                    placeholder="예: 50000840" style={inputStyle} />
+                            </label>
+                            <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', color: '#475569' }}>
+                                네이버 카테고리명(메모)
+                                <input type="text" value={form.naverCategoryName}
+                                    onChange={e => setForm(f => ({ ...f, naverCategoryName: e.target.value }))}
+                                    placeholder="예: 생활/건강 > 공구 > 배관공구" style={{ ...inputStyle, width: '260px' }} />
+                            </label>
+                            <button className="apply-btn" onClick={saveMapping}>＋ 매핑 추가</button>
+                        </div>
+
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>키오스크 카테고리</th>
+                                    <th>네이버 리프 ID</th>
+                                    <th>네이버 카테고리명</th>
+                                    <th style={{ textAlign: 'right' }}>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {specificMappings.map(m => (
+                                    <tr key={m.id}>
+                                        <td>{mainName(m.kioskMainCategory)}{m.kioskSubCategory ? ` › ${subName(m.kioskMainCategory, m.kioskSubCategory)}` : ' (전체)'}</td>
+                                        <td>{m.naverLeafCategoryId}</td>
+                                        <td style={{ color: '#64748b' }}>{m.naverCategoryName || '-'}</td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            <button className="action-btn" style={{ color: '#ef4444' }} onClick={() => deleteMapping(m.id)}>삭제</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {specificMappings.length === 0 && (
+                                    <tr><td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>세부 매핑이 없습니다. 기본 카테고리만으로 충분합니다.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </>
+                    )}
+                </div>
             </div>
             )}
 
