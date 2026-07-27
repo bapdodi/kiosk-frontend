@@ -272,7 +272,8 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                     ×
                 </button>
 
-                <div className="option-detail-layout" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+                <div className="option-scroll-body">
+                <div className="option-detail-layout">
                     {/* Top Section: Info & Image */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'inherit', background: '#fff' }}>
                         {/* Left: Image carousel */}
@@ -497,6 +498,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                             </div>
                         )}
                     </div>
+                </div>
                 </div>
 
                 {/* Bottom Section: Qty & Footer */}
