@@ -48,13 +48,21 @@ const formatDate = (isoString) => {
 const MIN_ROWS = 12;
 
 export const buildStatementHtml = (order) => {
-    const rows = buildStatementRows(order.items || []);
-    const total = rows.reduce((sum, r) => sum + r.amount, 0);
+    const items = order.items || [];
+    const rows = buildStatementRows(items);
 
-    // 부가세 포함가 기준으로 공급가액/세액을 역산한다. ("0" 손님은 표기 생략)
+    // 단가(chargedPrice)는 ERP 의 거래처 DANGA 단가 = 부가세 별도 공급가액이다.
+    // ERP(ErpSyncService) 는 라인별로 GUM = 단가×수량, VAT = GUM/10 을 적재하므로
+    // 명세서도 라인 단위 절사로 동일하게 계산해 ERP 청구액과 어긋나지 않게 한다.
     const showVat = !isVatExempt(order);
-    const supplyAmount = showVat ? Math.round(total / 1.1) : total;
-    const vatAmount = showVat ? total - supplyAmount : 0;
+    const supplyAmount = rows.reduce((sum, r) => sum + r.amount, 0);
+    const vatAmount = showVat
+        ? items.reduce((sum, item) => {
+            const unitPrice = (item.chargedPrice ?? item.finalPrice) || 0;
+            return sum + Math.floor((unitPrice * (item.quantity || 1)) / 10);
+        }, 0)
+        : 0;
+    const total = supplyAmount + vatAmount;
 
     const bodyRows = rows.map((r) => `
         <tr>
