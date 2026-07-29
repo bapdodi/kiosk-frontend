@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
+import { printStatement } from '../../utils/statement';
+
 const OrderManagement = () => {
     const { orders = [], setOrders } = useOutletContext();
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -123,6 +125,11 @@ const OrderManagement = () => {
         }
     };
 
+    const handlePrintStatement = (order) => {
+        if (!order) return;
+        printStatement(order);
+    };
+
     const formatTime = (isoString) => {
         if (!isoString) return '';
         const date = new Date(isoString);
@@ -222,8 +229,14 @@ const OrderManagement = () => {
                                 <span style={{ fontSize: '1.8rem', fontWeight: 900 }}>₩{selectedOrder.totalAmount.toLocaleString()}</span>
                             </div>
                         </div>
-                        <div style={{ padding: '0 30px 30px 30px' }}>
-                            <button className="apply-btn" style={{ width: '100%', padding: '18px', borderRadius: '18px', fontSize: '1.1rem' }} onClick={() => setSelectedOrder(null)}>확인 및 닫기</button>
+                        <div style={{ padding: '0 30px 30px 30px', display: 'flex', gap: '12px' }}>
+                            <button
+                                onClick={() => handlePrintStatement(selectedOrder)}
+                                style={{ flex: 1, padding: '18px', borderRadius: '18px', border: 'none', background: '#1e293b', color: 'white', fontWeight: 800, fontSize: '1rem', cursor: 'pointer' }}
+                            >
+                                🖨️ 거래명세서 인쇄
+                            </button>
+                            <button className="apply-btn" style={{ flex: 1, padding: '18px', borderRadius: '18px', fontSize: '1.1rem' }} onClick={() => setSelectedOrder(null)}>확인 및 닫기</button>
                         </div>
                     </div>
                 </div>
@@ -424,6 +437,13 @@ const OrderManagement = () => {
                                     </div>
                                 </td>
                                 <td style={{ textAlign: 'right' }}>
+                                    <button
+                                        onClick={() => handlePrintStatement(order)}
+                                        title="거래명세서 인쇄"
+                                        style={{ border: 'none', background: '#eef2ff', color: '#4338ca', padding: '10px 18px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', marginRight: '8px' }}
+                                    >
+                                        🧾 명세서
+                                    </button>
                                     <button
                                         className="action-btn delete"
                                         onClick={() => deleteOrder(order.id)}
