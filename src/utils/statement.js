@@ -1,4 +1,5 @@
 // 거래명세서 생성/인쇄 유틸
+import * as XLSX from 'xlsx';
 
 const SUPPLIER_NAME = '동광배관자재';
 
@@ -47,13 +48,11 @@ const formatDate = (isoString) => {
 
 const MIN_ROWS = 12;
 
-export const buildStatementHtml = (order) => {
+// 단가(chargedPrice)는 ERP 의 거래처 DANGA 단가 = 부가세 별도 공급가액이다.
+// ERP(ErpSyncService) 는 라인별로 GUM = 단가×수량, VAT = GUM/10 을 적재하므로
+// 명세서도 라인 단위 절사로 동일하게 계산해 ERP 청구액과 어긋나지 않게 한다.
+const computeStatementAmounts = (order, rows) => {
     const items = order.items || [];
-    const rows = buildStatementRows(items);
-
-    // 단가(chargedPrice)는 ERP 의 거래처 DANGA 단가 = 부가세 별도 공급가액이다.
-    // ERP(ErpSyncService) 는 라인별로 GUM = 단가×수량, VAT = GUM/10 을 적재하므로
-    // 명세서도 라인 단위 절사로 동일하게 계산해 ERP 청구액과 어긋나지 않게 한다.
     const showVat = !isVatExempt(order);
     const supplyAmount = rows.reduce((sum, r) => sum + r.amount, 0);
     const vatAmount = showVat
@@ -62,7 +61,13 @@ export const buildStatementHtml = (order) => {
             return sum + Math.floor((unitPrice * (item.quantity || 1)) / 10);
         }, 0)
         : 0;
-    const total = supplyAmount + vatAmount;
+    return { showVat, supplyAmount, vatAmount, total: supplyAmount + vatAmount };
+};
+
+export const buildStatementHtml = (order) => {
+    const items = order.items || [];
+    const rows = buildStatementRows(items);
+    const { showVat, supplyAmount, vatAmount, total } = computeStatementAmounts(order, rows);
 
     const bodyRows = rows.map((r) => `
         <tr>
@@ -212,4 +217,32 @@ export const printStatement = (order) => {
     doc.open();
     doc.write(html);
     doc.close();
+};
+
+/**
+ * 거래명세서를 엑셀(.xlsx) 파일로 내려받는다.
+ */
+export const exportStatementXlsx = (order) => {
+    const rows = buildStatementRows(order.items || []);
+    const { showVat, supplyAmount, vatAmount, total } = computeStatementAmounts(order, rows);
+
+    const aoa = [
+        ['거래명세서'],
+        [],
+        ['공급받는자', order.customerName, '', '거래일자', formatDate(order.timestamp)],
+        ['공급자', SUPPLIER_NAME, '', '전표번호', order.id],
+        [],
+        ['품목', '규격/옵션', '수량', '단가', '금액'],
+        ...rows.map((r) => [r.name, r.option, r.quantity, r.unitPrice, r.amount]),
+        [],
+        ...(showVat ? [['', '', '', '공급가액', supplyAmount], ['', '', '', '부가세', vatAmount]] : []),
+        ['', '', '', '합계', total]
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 26 }, { wch: 18 }, { wch: 8 }, { wch: 12 }, { wch: 14 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '거래명세서');
+    XLSX.writeFile(wb, `거래명세서_${order.customerName}_${order.id}.xlsx`);
 };

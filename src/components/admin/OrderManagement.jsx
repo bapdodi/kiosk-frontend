@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
-import { printStatement } from '../../utils/statement';
+import { printStatement, exportStatementXlsx } from '../../utils/statement';
 
 const OrderManagement = () => {
     const { orders = [], setOrders } = useOutletContext();
@@ -130,6 +130,11 @@ const OrderManagement = () => {
         printStatement(order);
     };
 
+    const handleExportStatementXlsx = (order) => {
+        if (!order) return;
+        exportStatementXlsx(order);
+    };
+
     const formatTime = (isoString) => {
         if (!isoString) return '';
         const date = new Date(isoString);
@@ -235,6 +240,12 @@ const OrderManagement = () => {
                                 style={{ flex: 1, padding: '18px', borderRadius: '18px', border: 'none', background: '#1e293b', color: 'white', fontWeight: 800, fontSize: '1rem', cursor: 'pointer' }}
                             >
                                 🖨️ 거래명세서 인쇄
+                            </button>
+                            <button
+                                onClick={() => handleExportStatementXlsx(selectedOrder)}
+                                style={{ flex: 1, padding: '18px', borderRadius: '18px', border: 'none', background: '#15803d', color: 'white', fontWeight: 800, fontSize: '1rem', cursor: 'pointer' }}
+                            >
+                                📊 엑셀 다운로드
                             </button>
                             <button className="apply-btn" style={{ flex: 1, padding: '18px', borderRadius: '18px', fontSize: '1.1rem' }} onClick={() => setSelectedOrder(null)}>확인 및 닫기</button>
                         </div>
@@ -443,6 +454,13 @@ const OrderManagement = () => {
                                         style={{ border: 'none', background: '#eef2ff', color: '#4338ca', padding: '10px 18px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', marginRight: '8px' }}
                                     >
                                         🧾 명세서
+                                    </button>
+                                    <button
+                                        onClick={() => handleExportStatementXlsx(order)}
+                                        title="거래명세서 엑셀 다운로드"
+                                        style={{ border: 'none', background: '#ecfdf5', color: '#15803d', padding: '10px 18px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', marginRight: '8px' }}
+                                    >
+                                        📊 엑셀
                                     </button>
                                     <button
                                         className="action-btn delete"
