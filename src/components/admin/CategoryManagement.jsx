@@ -20,6 +20,9 @@ const CategoryManagement = () => {
     const [catSearchQuery, setCatSearchQuery] = useState('');
     const [catViewMode, setCatViewMode] = useState('grid');
     const [selectedCatId, setSelectedCatId] = useState(null);
+    const [isReordering, setIsReordering] = useState(false);
+    const [draggedCategory, setDraggedCategory] = useState(null);
+    const [dragOverCategory, setDragOverCategory] = useState(null);
 
     useEffect(() => {
         console.log('CategoryManagement loaded with mainCategories:', mainCategories);
@@ -113,7 +116,35 @@ const CategoryManagement = () => {
         } catch (err) { alert('오류 발생'); }
     };
 
+    const persistCategoryOrder = async (type, updatedItems, parentId = null) => {
+        setIsReordering(true);
+        try {
+            const res = await fetch('/api/categories/admin/reorder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedItems)
+            });
+            if (!res.ok) {
+                alert('순서 변경 실패');
+                return;
+            }
+
+            if (type === 'main') {
+                setMainCategories(() => updatedItems);
+            } else {
+                setSubCategories(prev => ({ ...prev, [parentId]: updatedItems }));
+            }
+        } catch (e) {
+            alert('오류 발생');
+        } finally {
+            setIsReordering(false);
+        }
+    };
+
     const moveCategory = async (type, id, direction, parentId = null) => {
+        // 연속 클릭으로 오래된 배열이 뒤늦게 저장되어 순서를 덮어쓰지 않도록 한다.
+        if (isReordering) return;
+
         // search query가 적용된 상태에서는 순서 변경을 막는 것이 안전함
         if (catSearchQuery.trim()) {
             return alert('순서 변경은 검색어가 없을 때만 가능합니다.');
@@ -140,24 +171,47 @@ const CategoryManagement = () => {
         // Assign sortOrder
         const updatedItems = listToUpdate.map((cat, i) => ({ ...cat, sortOrder: i }));
 
-        try {
-            const res = await fetch('/api/categories/admin/reorder', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatedItems)
-            });
-            if (res.ok) {
-                if (type === 'main') {
-                    setMainCategories(updatedItems);
-                } else {
-                    setSubCategories({ ...subCategories, [parentId]: updatedItems });
-                }
-            } else {
-                alert('순서 변경 실패');
-            }
-        } catch (e) {
-            alert('오류 발생');
+        setIsReordering(true);
+        await persistCategoryOrder(type, updatedItems, parentId);
+    };
+
+    const handleCategoryDragStart = (e, type, id, parentId = null) => {
+        if (catSearchQuery.trim() || isReordering) {
+            e.preventDefault();
+            return;
         }
+        setDraggedCategory({ type, id, parentId });
+        setDragOverCategory({ type, id, parentId });
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', id);
+    };
+
+    const handleCategoryDrop = async (e, type, targetId, parentId = null) => {
+        e.preventDefault();
+        setDragOverCategory(null);
+        if (!draggedCategory || draggedCategory.type !== type || draggedCategory.id === targetId) {
+            setDraggedCategory(null);
+            return;
+        }
+        if (type === 'sub' && draggedCategory.parentId !== parentId) {
+            setDraggedCategory(null);
+            return;
+        }
+
+        const source = type === 'main' ? mainCategories : (subCategories[parentId] || []);
+        const fromIndex = source.findIndex(c => c.id === draggedCategory.id);
+        const targetIndex = source.findIndex(c => c.id === targetId);
+        if (fromIndex < 0 || targetIndex < 0) {
+            setDraggedCategory(null);
+            return;
+        }
+
+        const reordered = [...source];
+        const [moved] = reordered.splice(fromIndex, 1);
+        reordered.splice(targetIndex, 0, moved);
+        const updatedItems = reordered.map((cat, i) => ({ ...cat, sortOrder: i }));
+        setDraggedCategory(null);
+        await persistCategoryOrder(type, updatedItems, parentId);
     };
 
     const deleteSubCategory = async (mainId, subId) => {
@@ -280,7 +334,13 @@ const CategoryManagement = () => {
             {catViewMode === 'grid' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '25px' }}>
                     {filteredCats.map(main => (
-                        <div key={main.id} style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column' }}>
+                        <div key={main.id}
+                            draggable={!catSearchQuery.trim()}
+                            onDragStart={(e) => handleCategoryDragStart(e, 'main', main.id)}
+                            onDragOver={(e) => { e.preventDefault(); setDragOverCategory({ type: 'main', id: main.id }); }}
+                            onDragLeave={() => setDragOverCategory(null)}
+                            onDrop={(e) => handleCategoryDrop(e, 'main', main.id)}
+                            style={{ background: 'white', borderRadius: '16px', border: dragOverCategory?.type === 'main' && dragOverCategory.id === main.id ? '2px solid #3b82f6' : '1px solid #e2e8f0', boxShadow: '0 4px 6px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', cursor: catSearchQuery.trim() ? 'default' : 'grab' }}>
                             <div style={{ padding: '20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', borderTopLeftRadius: '16px', borderTopRightRadius: '16px' }}>
                                 <div style={{ fontSize: '1.2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <span style={{ fontSize: '1.5rem' }}>📁</span>
@@ -322,7 +382,13 @@ const CategoryManagement = () => {
                                 </div>
 
                                 {subCategories[main.id]?.map(sub => (
-                                    <div key={sub.id} style={{ background: '#f8fafc', borderRadius: '10px', padding: '15px', marginBottom: '10px' }}>
+                                    <div key={sub.id}
+                                        draggable={!catSearchQuery.trim()}
+                                        onDragStart={(e) => { e.stopPropagation(); handleCategoryDragStart(e, 'sub', sub.id, main.id); }}
+                                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverCategory({ type: 'sub', id: sub.id, parentId: main.id }); }}
+                                        onDragLeave={() => setDragOverCategory(null)}
+                                        onDrop={(e) => { e.stopPropagation(); handleCategoryDrop(e, 'sub', sub.id, main.id); }}
+                                        style={{ background: '#f8fafc', borderRadius: '10px', padding: '15px', marginBottom: '10px', border: dragOverCategory?.type === 'sub' && dragOverCategory.id === sub.id ? '2px solid #3b82f6' : '1px solid transparent', cursor: catSearchQuery.trim() ? 'default' : 'grab' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div style={{ fontWeight: 700, color: '#1e293b' }}>• {sub.name}</div>
                                             <div style={{ display: 'flex', gap: '8px' }}>

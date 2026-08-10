@@ -43,6 +43,7 @@ const ProductForm = () => {
     const [optionImages, setOptionImages] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [dragState, setDragState] = useState(null);
     // 어떤 옵션 행에서 "대표 이미지에서 선택" 패널이 열려 있는지: `${groupName}::${value}` 또는 null
     const [imgPickerKey, setImgPickerKey] = useState(null);
     // 원산지 "직접 입력(코드)" 모드가 사용자 조작으로 열려 있는지
@@ -130,6 +131,34 @@ const ProductForm = () => {
             [images[index], images[target]] = [images[target], images[index]];
             return { ...prev, images };
         });
+    };
+
+    const handleReorderDragStart = (type, index) => setDragState({ type, index });
+
+    const handleReorderDrop = (type, targetIndex) => {
+        if (!dragState || dragState.type !== type || dragState.index === targetIndex) {
+            setDragState(null);
+            return;
+        }
+        const moveItem = (items, from, to) => {
+            const next = [...items];
+            const [item] = next.splice(from, 1);
+            next.splice(to, 0, item);
+            return next;
+        };
+
+        if (type === 'images') {
+            setProductData(prev => ({ ...prev, images: moveItem(prev.images, dragState.index, targetIndex) }));
+        } else if (type === 'groups') {
+            setOptionGroups(prev => moveItem(prev, dragState.index, targetIndex));
+        } else if (type === 'combinations') {
+            setCombinations(prev => {
+                const active = prev.filter(c => !c.deleted);
+                const deleted = prev.filter(c => c.deleted);
+                return [...moveItem(active, dragState.index, targetIndex), ...deleted];
+            });
+        }
+        setDragState(null);
     };
 
     const getOptionImagesFor = (groupName, optionValue) =>
@@ -495,7 +524,12 @@ const ProductForm = () => {
                                     </label>
                                     <div className="img-preview-row">
                                         {productData.images.map((url, idx) => (
-                                            <div key={idx} className="img-preview-thumb">
+                                            <div key={idx} className="img-preview-thumb"
+                                                draggable="true"
+                                                onDragStart={() => handleReorderDragStart('images', idx)}
+                                                onDragOver={(e) => e.preventDefault()}
+                                                onDrop={() => handleReorderDrop('images', idx)}
+                                                style={{ cursor: 'grab' }}>
                                                 <img src={getImageUrl(url)} alt="product" />
                                                 {idx === 0 && <span className="img-main-badge">대표</span>}
                                                 <button type="button" onClick={() => removeImage(idx)} className="img-del-mini">×</button>
@@ -521,7 +555,7 @@ const ProductForm = () => {
                                     </div>
                                 </div>
                                 {productData.images.length > 1 && (
-                                    <p className="img-order-hint">◀ ▶ 로 순서를 바꿀 수 있습니다. 맨 앞(1번)이 대표 사진입니다.</p>
+                                    <p className="img-order-hint">◀ ▶ 또는 드래그로 순서를 바꿀 수 있습니다. 맨 앞(1번)이 대표 사진입니다.</p>
                                 )}
                             </div>
                         </div>
@@ -543,7 +577,12 @@ const ProductForm = () => {
                             {optionGroups.length > 0 ? (
                                 <div className="option-group-wrapper">
                                     {optionGroups.map((group, idx) => (
-                                        <div key={idx} className="option-group-item">
+                                        <div key={idx} className="option-group-item"
+                                            draggable="true"
+                                            onDragStart={() => handleReorderDragStart('groups', idx)}
+                                            onDragOver={(e) => e.preventDefault()}
+                                            onDrop={() => handleReorderDrop('groups', idx)}
+                                            style={{ cursor: 'grab' }}>
                                             <input
                                                 placeholder="옵션명 (예: 색상)"
                                                 value={group.name}
@@ -679,7 +718,12 @@ const ProductForm = () => {
                                         </thead>
                                         <tbody>
                                             {combinations.map((c, i) => c.deleted ? null : (
-                                                <tr key={i}>
+                                                <tr key={i}
+                                                    draggable="true"
+                                                    onDragStart={() => handleReorderDragStart('combinations', combinations.filter(x => !x.deleted).findIndex(x => x === c))}
+                                                    onDragOver={(e) => e.preventDefault()}
+                                                    onDrop={() => handleReorderDrop('combinations', combinations.filter(x => !x.deleted).findIndex(x => x === c))}
+                                                    style={{ cursor: 'grab' }}>
                                                     <td>
                                                         <div style={{ display: 'flex', gap: '2px' }}>
                                                             <button
