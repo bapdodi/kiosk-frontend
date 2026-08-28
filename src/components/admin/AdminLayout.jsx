@@ -15,6 +15,7 @@ const AdminLayout = ({
     setMainCategories,
     subCategories,
     setSubCategories,
+    refreshCategories,
     orders,
     setOrders,
     page,
@@ -106,7 +107,7 @@ const AdminLayout = ({
                     <Outlet context={{
                         products, setProducts,
                         mainCategories, setMainCategories,
-                        subCategories, setSubCategories,
+                        subCategories, setSubCategories, refreshCategories,
                         orders, setOrders,
                         page, hasMore, isFetchingMore, onLoadMore, onRefresh,
                         activeMainCat, setActiveMainCat, activeSubCat, setActiveSubCat, searchQuery, setSearchQuery

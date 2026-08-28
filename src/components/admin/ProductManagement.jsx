@@ -8,8 +8,8 @@ const ProductManagement = () => {
     const navigate = useNavigate();
     const {
         products, setProducts,
-        mainCategories, setMainCategories,
-        subCategories, setSubCategories,
+        mainCategories,
+        subCategories, refreshCategories,
         page, hasMore, isFetchingMore, onLoadMore, onRefresh,
         activeMainCat, setActiveMainCat,
         activeSubCat, setActiveSubCat,
@@ -605,8 +605,7 @@ const ProductManagement = () => {
                                                 onChange={setTempCategories}
                                                 mainCategories={mainCategories}
                                                 subCategories={subCategories}
-                                                setMainCategories={setMainCategories}
-                                                setSubCategories={setSubCategories}
+                                                refreshCategories={refreshCategories}
                                             />
                                             <div style={{ display: 'flex', gap: '4px' }}>
                                                 <button

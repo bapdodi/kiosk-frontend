@@ -115,6 +115,26 @@ function App() {
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
 
+  // 카테고리 순서는 서버(sort_order)가 유일한 기준이다. 생성/이름수정/삭제/재정렬 뒤에
+  // 로컬 state 만 손보면 화면 순서와 서버 순서가 갈라져 새로고침 때 순서가 바뀐 것처럼 보인다.
+  // 그래서 카테고리를 바꾼 모든 경로가 이 함수로 서버 순서를 다시 받아간다.
+  const refreshCategories = useCallback(async () => {
+    const res = await fetch('/api/categories');
+    if (!res.ok) throw new Error('카테고리를 불러오는데 실패했습니다.');
+    const catData = await res.json();
+
+    const mainArr = catData.filter(c => c.level === 'main');
+    const subObj = {};
+    catData.filter(c => c.level === 'sub').forEach(c => {
+      if (!subObj[c.parentId]) subObj[c.parentId] = [];
+      subObj[c.parentId].push(c);
+    });
+
+    setMainCategories(mainArr);
+    setSubCategories(subObj);
+    return catData;
+  }, []);
+
   useEffect(() => {
     // react-snap(prerender) 환경에서는 API 없이 즉시 SEO용 빈 상태로 렌더링
     const isPrerender = navigator.userAgent === 'ReactSnap';
@@ -139,23 +159,10 @@ function App() {
       }
 
       try {
-        const [isAuth, catRes] = await Promise.all([
+        const [isAuth] = await Promise.all([
           checkAuth(),
-          fetch('/api/categories')
+          refreshCategories()
         ]);
-
-        if (!catRes.ok) throw new Error('카테고리를 불러오는데 실패했습니다.');
-        const catData = await catRes.json();
-
-        const mainArr = catData.filter(c => c.level === 'main');
-        const subObj = {};
-        catData.filter(c => c.level === 'sub').forEach(c => {
-          if (!subObj[c.parentId]) subObj[c.parentId] = [];
-          subObj[c.parentId].push(c);
-        });
-
-        setMainCategories(mainArr);
-        setSubCategories(subObj);
 
         // Fetch first page of products
         await fetchProducts(0, null, null, true);
@@ -172,7 +179,7 @@ function App() {
     };
 
     fetchInitialData();
-  }, []);
+  }, [refreshCategories]);
 
 
   const fetchOrders = async () => {
@@ -270,6 +277,7 @@ function App() {
               setMainCategories={setMainCategories}
               subCategories={subCategories}
               setSubCategories={setSubCategories}
+              refreshCategories={refreshCategories}
                orders={orders}
                setOrders={setOrders}
                page={page}

@@ -4,7 +4,7 @@ import { useOutletContext } from 'react-router-dom';
 const CategoryManagement = () => {
     const {
         mainCategories, setMainCategories,
-        subCategories, setSubCategories
+        subCategories, setSubCategories, refreshCategories
     } = useOutletContext();
 
     const [catModal, setCatModal] = useState({
@@ -44,16 +44,18 @@ const CategoryManagement = () => {
             type,
             parentId,
             isEdit: !!editItem,
-            editId: editItem ? editItem.id : null
+            editId: editItem ? editItem.id : null,
+            editSortOrder: editItem ? editItem.sortOrder : null
         });
     };
 
     const handleModalSubmit = async () => {
-        const { type, value, parentId, isEdit, editId } = catModal;
+        const { type, value, parentId, isEdit, editId, editSortOrder } = catModal;
         if (!value.trim()) return alert('이름을 입력해주세요.');
 
         if (isEdit) {
-            const catData = { id: editId, name: value, level: type, parentId };
+            // sortOrder 를 빼고 보내면 서버가 순서를 초기화해 카테고리가 맨 앞으로 튄다.
+            const catData = { id: editId, name: value, level: type, parentId, sortOrder: editSortOrder };
             try {
                 const res = await fetch(`/api/categories/admin/${editId}`, {
                     method: 'PUT',
@@ -61,15 +63,7 @@ const CategoryManagement = () => {
                     body: JSON.stringify(catData)
                 });
                 if (res.ok) {
-                    const updated = await res.json();
-                    if (type === 'main') {
-                        setMainCategories(mainCategories.map(c => c.id === editId ? updated : c));
-                    } else {
-                        setSubCategories({
-                            ...subCategories,
-                            [parentId]: subCategories[parentId].map(s => s.id === editId ? updated : s)
-                        });
-                    }
+                    await refreshCategories();
                     setCatModal({ ...catModal, isOpen: false });
                 } else {
                     const errMsg = await res.text();
@@ -87,16 +81,8 @@ const CategoryManagement = () => {
                     body: JSON.stringify(catData)
                 });
                 if (res.ok) {
-                    const saved = await res.json();
-                    if (type === 'main') {
-                        setMainCategories([...mainCategories, saved]);
-                        setSubCategories({ ...subCategories, [saved.id]: [] });
-                    } else {
-                        setSubCategories({
-                            ...subCategories,
-                            [parentId]: [...(subCategories[parentId] || []), saved]
-                        });
-                    }
+                    // 서버가 그룹 max+1 로 sortOrder 를 정하므로, append 하지 말고 다시 받아온다.
+                    await refreshCategories();
                     setCatModal({ ...catModal, isOpen: false });
                 } else {
                     const errMsg = await res.text();
@@ -111,7 +97,7 @@ const CategoryManagement = () => {
         try {
             const res = await fetch(`/api/categories/admin/${id}`, { method: 'DELETE' });
             if (res.ok) {
-                setMainCategories(mainCategories.filter(c => c.id !== id));
+                await refreshCategories();
             }
         } catch (err) { alert('오류 발생'); }
     };
@@ -129,11 +115,14 @@ const CategoryManagement = () => {
                 return;
             }
 
+            // 낙관적 반영 후, 서버가 실제로 저장한 순서로 확정한다.
             if (type === 'main') {
                 setMainCategories(() => updatedItems);
             } else {
                 setSubCategories(prev => ({ ...prev, [parentId]: updatedItems }));
             }
+            // 저장은 이미 성공했으므로, 재조회가 실패해도 낙관적 순서를 유지하고 넘어간다.
+            await refreshCategories().catch(() => { });
         } catch (e) {
             alert('오류 발생');
         } finally {
@@ -219,10 +208,7 @@ const CategoryManagement = () => {
         try {
             const res = await fetch(`/api/categories/admin/${subId}`, { method: 'DELETE' });
             if (res.ok) {
-                setSubCategories({
-                    ...subCategories,
-                    [mainId]: subCategories[mainId].filter(s => s.id !== subId)
-                });
+                await refreshCategories();
             }
         } catch (err) { alert('오류 발생'); }
     };

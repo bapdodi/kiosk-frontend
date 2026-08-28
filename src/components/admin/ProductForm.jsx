@@ -23,8 +23,8 @@ const ProductForm = () => {
     const { id } = useParams();
     const {
         products, setProducts,
-        mainCategories, setMainCategories,
-        subCategories, setSubCategories
+        mainCategories,
+        subCategories, refreshCategories
     } = useOutletContext();
     const isEditMode = Boolean(id);
 
@@ -379,8 +379,7 @@ const ProductForm = () => {
                                 onChange={(next) => setProductData(prev => ({ ...prev, categories: next }))}
                                 mainCategories={mainCategories}
                                 subCategories={subCategories}
-                                setMainCategories={setMainCategories}
-                                setSubCategories={setSubCategories}
+                                refreshCategories={refreshCategories}
                             />
                         </div>
                     </section>

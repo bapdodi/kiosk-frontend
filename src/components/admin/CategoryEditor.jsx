@@ -3,8 +3,9 @@
  * value: [{ mainCategory, subCategory }] 형태의 배열.
  * 한 상품을 여러 (대분류 + 중분류) 쌍에 동시에 소속시킬 수 있다.
  *
- * mainCategories / subCategories / setMainCategories / setSubCategories 는
- * 상위(App)의 카테고리 컨텍스트를 그대로 전달받아 신규 분류 생성도 지원한다.
+ * mainCategories / subCategories / refreshCategories 는 상위(App)의 카테고리
+ * 컨텍스트를 그대로 전달받는다. 신규 분류를 만들면 refreshCategories 로 서버 순서를
+ * 다시 읽어와, 화면 순서가 항상 서버 sort_order 와 같도록 유지한다.
  */
 
 const createCategory = async (catData) => {
@@ -22,8 +23,7 @@ const CategoryEditor = ({
     onChange,
     mainCategories = [],
     subCategories = {},
-    setMainCategories,
-    setSubCategories,
+    refreshCategories,
     compact = false
 }) => {
     const cats = value || [];
@@ -42,28 +42,28 @@ const CategoryEditor = ({
         onChange(cats.filter((_, i) => i !== idx));
     };
 
+    // 생성 결과를 로컬 배열 끝에 append 하면 화면 순서가 서버 sort_order 와 어긋난다.
+    // (새로고침하면 다른 자리로 옮겨간 것처럼 보임) → 항상 서버에서 다시 받아온다.
     const addMainCategory = async () => {
         const name = prompt('새 대분류 이름을 입력하세요:');
         if (!name) return;
         try {
             const saved = await createCategory({ id: 'cat_' + Date.now(), name, level: 'main' });
-            setMainCategories?.([...mainCategories, saved]);
-            setSubCategories?.({ ...subCategories, [saved.id]: [] });
+            await refreshCategories?.();
+            onChange([...cats, { mainCategory: saved.id, subCategory: '' }]);
         } catch {
             alert('오류 발생');
         }
     };
 
-    const addSubCategory = async (mainId) => {
+    const addSubCategory = async (idx, mainId) => {
         if (!mainId) return alert('대분류를 먼저 선택해주세요.');
         const name = prompt('새 중분류 이름을 입력하세요:');
         if (!name) return;
         try {
             const saved = await createCategory({ id: 'sub_' + Date.now(), name, parentId: mainId, level: 'sub' });
-            setSubCategories?.({
-                ...subCategories,
-                [mainId]: [...(subCategories[mainId] || []), saved]
-            });
+            await refreshCategories?.();
+            updateRow(idx, { subCategory: saved.id });
         } catch {
             alert('오류 발생');
         }
@@ -134,7 +134,7 @@ const CategoryEditor = ({
                             <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
                     </select>
-                    <button type="button" style={miniBtn} onClick={() => addSubCategory(c.mainCategory)} title="이 대분류에 새 중분류 추가">
+                    <button type="button" style={miniBtn} onClick={() => addSubCategory(idx, c.mainCategory)} title="이 대분류에 새 중분류 추가">
                         ＋중분류
                     </button>
                     <button type="button" style={delBtn} onClick={() => removeRow(idx)}>
