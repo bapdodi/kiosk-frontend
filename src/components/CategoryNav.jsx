@@ -130,7 +130,23 @@ const CategoryNav = ({
                 </div>
             </div>
 
-            <div className="categories-scroll" style={{ borderBottom: '1px solid #f1f3f5' }}>
+            <label className="mobile-main-category-picker">
+                <span>대분류</span>
+                <select
+                    value={activeMainCat || ''}
+                    onChange={(e) => onMainCatChange(e.target.value || null)}
+                    aria-label="대분류 선택"
+                >
+                    <option value="">전체 상품</option>
+                    {mainCategories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                        </option>
+                    ))}
+                </select>
+            </label>
+
+            <div className="categories-scroll main-categories" style={{ borderBottom: '1px solid #f1f3f5' }}>
                 <button
                     className={`category-tab ${!activeMainCat ? 'active' : ''}`}
                     onClick={() => onMainCatChange(null)}
