@@ -211,13 +211,13 @@ body {
   cursor: pointer;
   transition: all 0.2s;
   color: #495057;
-  font-size: 0.95rem;
+  font-size: 1.1rem;
 }
 
 .category-tab.sub-tab {
   min-height: 44px;
   padding: 10px 20px;
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 700;
   background: white;
 }
@@ -405,7 +405,7 @@ body {
     background: #f8f9fa;
     color: #343a40;
     font-family: inherit;
-    font-size: 1rem;
+    font-size: 1.15rem;
     font-weight: 700;
   }
 
@@ -416,7 +416,7 @@ body {
   .category-tab.sub-tab {
     min-height: 44px;
     padding: 9px 16px;
-    font-size: 0.95rem;
+    font-size: 1.1rem;
   }
 
   .product-image {
