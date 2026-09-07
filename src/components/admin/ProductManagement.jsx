@@ -17,6 +17,10 @@ const ProductManagement = () => {
     } = useOutletContext();
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+    const [erpPreviews, setErpPreviews] = useState(null);
+    const [selectedErpKeys, setSelectedErpKeys] = useState([]);
+    const [isLoadingErpPreview, setIsLoadingErpPreview] = useState(false);
+    const [isApplyingErpSync, setIsApplyingErpSync] = useState(false);
     const [editingCatId, setEditingCatId] = useState(null);
     const [tempCategories, setTempCategories] = useState([]);
     const [dragOverProductId, setDragOverProductId] = useState(null);
@@ -117,23 +121,48 @@ const ProductManagement = () => {
     };
 
     const syncWithErp = async () => {
-        if (!window.confirm('ERP 시스템의 최신 상품 정보를 가져오시겠습니까?')) return;
+        setIsLoadingErpPreview(true);
         try {
-            const res = await fetch('/api/sync/erp', { method: 'POST' });
+            const res = await fetch('/api/sync/erp/preview');
             if (res.ok) {
-                const updatedProducts = await res.json();
-                const allRes = await fetch('/api/products');
-                if (allRes.ok) {
-                    onRefresh();
-                    alert('ERP 동기화가 완료되어 목록을 갱신했습니다.');
-                }
+                const preview = await res.json();
+                setErpPreviews(preview);
+                setSelectedErpKeys(preview.map(product => product.syncKey));
             } else {
-                alert('동기화 실패: ' + (await res.text()));
+                alert('ERP 상품을 불러오지 못했습니다: ' + (await res.text()));
             }
         } catch (err) {
             alert('네트워크 오류');
+        } finally {
+            setIsLoadingErpPreview(false);
         }
     };
+
+    const applySelectedErpSync = async () => {
+        if (selectedErpKeys.length === 0) return alert('동기화할 상품을 하나 이상 선택해주세요.');
+        if (!window.confirm(`선택한 ${selectedErpKeys.length}개 상품을 ERP 정보로 동기화할까요?`)) return;
+        setIsApplyingErpSync(true);
+        try {
+            const res = await fetch('/api/sync/erp/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(selectedErpKeys)
+            });
+            if (!res.ok) return alert('동기화 실패: ' + (await res.text()));
+            setErpPreviews(null);
+            setSelectedErpKeys([]);
+            await onRefresh();
+            alert(`ERP 동기화가 완료되었습니다. (${selectedErpKeys.length}개 상품)`);
+        } catch (err) {
+            alert('네트워크 오류');
+        } finally {
+            setIsApplyingErpSync(false);
+        }
+    };
+
+    const toggleErpProduct = (syncKey) => setSelectedErpKeys(prev =>
+        prev.includes(syncKey) ? prev.filter(key => key !== syncKey) : [...prev, syncKey]
+    );
 
     const deleteSelectedProducts = async () => {
         if (selectedProducts.length === 0) return alert('삭제할 상품을 선택해주세요.');
@@ -399,8 +428,8 @@ const ProductManagement = () => {
                         <button className="apply-btn" style={{ background: '#3b82f6' }} onClick={() => setIsBulkModalOpen(true)}>
                             📸 이미지 일괄 매칭
                         </button>
-                        <button className="apply-btn" style={{ background: '#2563eb' }} onClick={syncWithErp}>
-                            🔄 ERP 상품 동기화
+                        <button className="apply-btn" style={{ background: '#2563eb' }} onClick={syncWithErp} disabled={isLoadingErpPreview}>
+                            {isLoadingErpPreview ? 'ERP 상품 불러오는 중…' : '🔄 ERP 상품 동기화'}
                         </button>
                         {selectedProducts.length > 0 && (
                             <button className="apply-btn" style={{ background: '#ef4444' }} onClick={deleteSelectedProducts}>
@@ -695,6 +724,43 @@ const ProductManagement = () => {
                 products={products}
                 onUpdateSuccess={refreshProducts}
             />
+
+            {erpPreviews && (
+                <div className="modal-overlay" onClick={() => !isApplyingErpSync && setErpPreviews(null)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '720px', width: '92%', maxHeight: '82vh', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.2rem' }}>ERP 동기화 상품 선택</h3>
+                            <p style={{ margin: '7px 0 0', color: '#64748b', fontSize: '0.9rem' }}>
+                                반영할 상품만 체크하세요. 기존 상품은 가격·재고·규격 등을 ERP 정보로 갱신하고, 신규 상품은 등록합니다.
+                            </p>
+                        </div>
+                        <div style={{ padding: '12px 20px', borderBottom: '1px solid #e2e8f0' }}>
+                            <label style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', fontWeight: 700, cursor: 'pointer' }}>
+                                <input type="checkbox" checked={selectedErpKeys.length === erpPreviews.length}
+                                    onChange={e => setSelectedErpKeys(e.target.checked ? erpPreviews.map(product => product.syncKey) : [])} />
+                                전체 선택 ({selectedErpKeys.length}/{erpPreviews.length})
+                            </label>
+                        </div>
+                        <div style={{ overflowY: 'auto', padding: '8px 20px', flex: 1 }}>
+                            {erpPreviews.map(product => (
+                                <label key={product.syncKey} style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '11px 4px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={selectedErpKeys.includes(product.syncKey)} onChange={() => toggleErpProduct(product.syncKey)} />
+                                    <span style={{ fontWeight: 700, flex: 1 }}>{product.name}</span>
+                                    <span style={{ color: product.existing ? '#2563eb' : '#16a34a', fontSize: '0.8rem' }}>
+                                        {product.existing ? '기존 상품 갱신' : '신규 상품 등록'}
+                                    </span>
+                                </label>
+                            ))}
+                        </div>
+                        <div style={{ padding: '16px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                            <button className="action-btn" onClick={() => setErpPreviews(null)} disabled={isApplyingErpSync}>취소</button>
+                            <button className="apply-btn" style={{ background: '#16a34a' }} onClick={applySelectedErpSync} disabled={isApplyingErpSync || selectedErpKeys.length === 0}>
+                                {isApplyingErpSync ? '동기화 중…' : `선택 동기화 (${selectedErpKeys.length})`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
