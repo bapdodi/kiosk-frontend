@@ -436,12 +436,6 @@ const ProductManagement = () => {
                                 🗑️ 선택 삭제 ({selectedProducts.length})
                             </button>
                         )}
-                        <button className="apply-btn" onClick={() => {
-                            sessionStorage.setItem('adminScrollPos', window.scrollY.toString());
-                            navigate('/admin/products/new');
-                        }}>
-                            ＋ 새로운 상품 등록
-                        </button>
                     </div>
                 </div>
             </div>
