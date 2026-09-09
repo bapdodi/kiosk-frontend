@@ -334,6 +334,9 @@ function KioskView({
   const [customers, setCustomers] = useState([]);
   const lastScrollTop = useRef(0);
   const observer = useRef();
+  // 주문 중복 전송 방지용 키. 전송 성공 전까지 같은 키를 유지해
+  // 재시도/더블클릭이 서버에서 같은 주문으로 합쳐지게 한다.
+  const pendingOrderRequestId = useRef(null);
 
   // 키오스크 장바구니 사이드바 폭 (드래그로 조절, localStorage에 저장해 새로고침 후에도 유지)
   const CART_WIDTH_STORAGE_KEY = 'kioskCartWidthPx';
@@ -586,9 +589,15 @@ function KioskView({
     };
 
     try {
+      if (!pendingOrderRequestId.current) {
+        pendingOrderRequestId.current = crypto.randomUUID();
+      }
       const response = await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': pendingOrderRequestId.current
+        },
         body: JSON.stringify(orderData)
       });
 
@@ -596,6 +605,7 @@ function KioskView({
         const savedOrder = await response.json();
         setOrders([...orders, savedOrder]);
         alert(`${customerName}님, 주문이 완료되었습니다. 이용해주셔서 감사합니다!`);
+        pendingOrderRequestId.current = null;
         setCart([]);
         setOrderModal({ isOpen: false, name: '' });
       } else {
@@ -740,8 +750,69 @@ function KioskView({
                     gap: '10px'
                   }}
                 >
-                  👤 1번 고객으로 주문하기
+                  👤 비회원으로 주문하기
                 </button>
+
+                {/* 두 갈래(비회원 / 상호 선택)를 시각적으로 분리 */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  margin: '18px 0'
+                }}>
+                  <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+                  <span style={{ color: '#94a3b8', fontWeight: 800, fontSize: '0.9rem' }}>또는</span>
+                  <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+                </div>
+
+                {/* 상호명 직접 검색 - 비회원 버튼 바로 아래에 강조 배치 */}
+                <div style={{
+                  marginBottom: '15px',
+                  padding: '14px',
+                  background: '#fff7ed',
+                  border: '2px solid var(--accent-color)',
+                  borderRadius: '14px',
+                  boxShadow: '0 2px 8px rgba(255, 107, 0, 0.15)'
+                }}>
+                  <div style={{
+                    fontWeight: 900,
+                    fontSize: '1.05rem',
+                    color: '#9a3412',
+                    marginBottom: '10px',
+                    textAlign: 'center'
+                  }}>
+                    🔍 상호명 직접 검색
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="admin-input-small"
+                      placeholder="상호명 직접 검색"
+                      value={orderModal.name}
+                      onChange={(e) => setOrderModal({ ...orderModal, name: e.target.value })}
+                      onKeyDown={(e) => e.key === 'Enter' && isValidName && submitOrder()}
+                      style={{
+                        padding: '15px',
+                        fontSize: '1rem',
+                        textAlign: 'center',
+                        borderRadius: '12px',
+                        border: `2px solid ${orderModal.name.trim() === '' ? '#e2e8f0' : (isValidName ? '#10b981' : '#ef4444')}`,
+                        width: '100%',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    {orderModal.name.trim() !== '' && (
+                      <div style={{ 
+                        position: 'absolute', 
+                        right: '15px', 
+                        top: '50%', 
+                        transform: 'translateY(-50%)',
+                        fontSize: '1.1rem'
+                      }}>
+                        {isValidName ? '✅' : '❌'}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* 초성 카테고리 탭 */}
                 <div style={{ 
@@ -828,36 +899,6 @@ function KioskView({
                   )}
                 </div>
 
-                <div style={{ position: 'relative', marginBottom: '20px' }}>
-                  <input
-                    className="admin-input-small"
-                    placeholder="상호명 직접 검색"
-                    value={orderModal.name}
-                    onChange={(e) => setOrderModal({ ...orderModal, name: e.target.value })}
-                    onKeyDown={(e) => e.key === 'Enter' && isValidName && submitOrder()}
-                    style={{
-                      padding: '15px',
-                      fontSize: '1rem',
-                      textAlign: 'center',
-                      borderRadius: '12px',
-                      border: `2px solid ${orderModal.name.trim() === '' ? '#e2e8f0' : (isValidName ? '#10b981' : '#ef4444')}`,
-                      width: '100%',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                  {orderModal.name.trim() !== '' && (
-                    <div style={{ 
-                      position: 'absolute', 
-                      right: '15px', 
-                      top: '50%', 
-                      transform: 'translateY(-50%)',
-                      fontSize: '1.1rem'
-                    }}>
-                      {isValidName ? '✅' : '❌'}
-                    </div>
-                  )}
-                </div>
-
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button
                     className="apply-btn"
@@ -872,7 +913,7 @@ function KioskView({
                     onClick={submitOrder}
                     disabled={!isValidName}
                   >
-                    주문 완료하기
+                    {isValidName ? '주문 완료하기' : '상호를 먼저 선택해주세요'}
                   </button>
                   <button
                     className="action-btn"
