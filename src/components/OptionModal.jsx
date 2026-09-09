@@ -370,14 +370,6 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 {product.name}
                             </h2>
 
-                            <div style={{ marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                {product.hashtags?.map(tag => (
-                                    <span key={tag} style={{ background: '#f1f5f9', color: '#64748b', padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600 }}>
-                                        {tag}
-                                    </span>
-                                ))}
-                            </div>
-
                             {product.gyu && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
                                     <span style={{ fontWeight: 700, color: '#64748b', fontSize: '0.95rem' }}>규격</span>
@@ -513,6 +505,22 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                         <div className="qty-controls" style={{ background: '#f1f5f9', padding: '6px', borderRadius: '16px', display: 'flex', alignItems: 'center' }}>
                             <button
                                 className="qty-btn"
+                                aria-label="50개 줄이기"
+                                style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
+                                onClick={() => handleQuantityChange(-50)}
+                            >
+                                −50
+                            </button>
+                            <button
+                                className="qty-btn"
+                                aria-label="10개 줄이기"
+                                style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
+                                onClick={() => handleQuantityChange(-10)}
+                            >
+                                −10
+                            </button>
+                            <button
+                                className="qty-btn"
                                 style={{ width: '40px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px' }}
                                 onPointerDown={(e) => { e.preventDefault(); startPress(-1); }}
                                 onPointerUp={stopPress}
@@ -558,6 +566,22 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 onPointerCancel={stopPress}
                             >
                                 +
+                            </button>
+                            <button
+                                className="qty-btn"
+                                aria-label="10개 늘리기"
+                                style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
+                                onClick={() => handleQuantityChange(10)}
+                            >
+                                +10
+                            </button>
+                            <button
+                                className="qty-btn"
+                                aria-label="50개 늘리기"
+                                style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
+                                onClick={() => handleQuantityChange(50)}
+                            >
+                                +50
                             </button>
                         </div>
 
