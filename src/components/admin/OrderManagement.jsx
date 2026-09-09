@@ -1,101 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
 import { printStatement, exportStatementXlsx } from '../../utils/statement';
 
 const OrderManagement = () => {
-    const { orders = [], setOrders } = useOutletContext();
+    // 주문 감시(SSE + 예비 폴링)와 알림음은 AdminLayout 에서 관리한다. 여기서는 상태만 읽는다.
+    const { orders = [], setOrders, orderNotifications } = useOutletContext();
+    const { isSoundEnabled = false, soundError = '', playOrderSound = () => {} } = orderNotifications || {};
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [activeOrderTab, setActiveOrderTab] = useState('all'); // all, pending, completed, cancelled
     const today = new Date().toISOString().split('T')[0];
     const [startDate, setStartDate] = useState(today);
     const [endDate, setEndDate] = useState(today);
     const [orderSearchQuery, setOrderSearchQuery] = useState('');
-    const [isSoundEnabled, setIsSoundEnabled] = useState(false);
-    const [soundError, setSoundError] = useState('');
-
-    const ordersRef = useRef(orders);
-    const orderSoundRef = useRef(null);
-
-    useEffect(() => {
-        const audio = new Audio('/99F0804A5F72109B0D-3x.mp3');
-        audio.preload = 'auto';
-        orderSoundRef.current = audio;
-        audio.load();
-
-        return () => {
-            audio.pause();
-            orderSoundRef.current = null;
-        };
-    }, []);
-
-    const playOrderSound = useCallback(async () => {
-        const audio = orderSoundRef.current;
-        if (!audio) return false;
-
-        try {
-            audio.pause();
-            audio.currentTime = 0;
-            await audio.play();
-            setIsSoundEnabled(true);
-            setSoundError('');
-            return true;
-        } catch (err) {
-            setIsSoundEnabled(false);
-            setSoundError('브라우저가 소리 재생을 막았습니다. 알림음 켜기를 눌러주세요.');
-            console.warn('Order notification sound was blocked by the browser.', err);
-            return false;
-        }
-    }, []);
-
-    const fetchOrders = useCallback(async ({ notify = true } = {}) => {
-        try {
-            const res = await fetch('/api/orders/admin');
-            if (!res.ok) return;
-
-            const fetchedOrders = await res.json();
-            const currentOrders = ordersRef.current;
-
-            const isInitialized = currentOrders.length > 0;
-            const newOrders = fetchedOrders.filter(fo => !currentOrders.some(o => o.id === fo.id));
-
-            if (notify && isInitialized && newOrders.length > 0) {
-                playOrderSound();
-                window.setTimeout(() => {
-                    alert(`새로운 주문이 ${newOrders.length}건 들어왔습니다! 확인해 주세요.`);
-                }, 350);
-            }
-
-            if (JSON.stringify(currentOrders) !== JSON.stringify(fetchedOrders)) {
-                ordersRef.current = fetchedOrders;
-                setOrders(fetchedOrders);
-            }
-        } catch (err) {
-            console.error("Failed to fetch orders periodically", err);
-        }
-    }, [playOrderSound, setOrders]);
-
-    useEffect(() => {
-        ordersRef.current = orders;
-    }, [orders]);
-
-    useEffect(() => {
-        let isFetching = false;
-        const fetchPeriodically = async () => {
-            if (isFetching) return;
-            isFetching = true;
-            try {
-                await fetchOrders();
-            } finally {
-                isFetching = false;
-            }
-        };
-
-        fetchOrders({ notify: false });
-        const interval = setInterval(fetchPeriodically, 5000);
-
-        return () => clearInterval(interval);
-    }, [fetchOrders]);
 
     const deleteOrder = async (orderId) => {
         if (!window.confirm('주문 내역을 삭제하시겠습니까?')) return;

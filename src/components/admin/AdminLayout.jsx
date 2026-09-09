@@ -1,5 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
+import useOrderNotifications from '../../hooks/useOrderNotifications';
+
 // NaverSyncPage 의 TABS 와 key 동일하게 유지
 const NAVER_TABS = [
     { key: 'mapping', label: '카테고리 매핑' },
@@ -33,10 +35,42 @@ const AdminLayout = ({
     const navigate = useNavigate();
     const location = useLocation();
     const onNaver = location.pathname.startsWith('/admin/naver');
+    // 주문 감시는 어느 관리 탭에 있든 계속 돌아야 하므로 레이아웃에서 한 번만 건다.
+    const orderNotifications = useOrderNotifications({ orders, setOrders });
+    const { newOrderAlert, dismissAlert, isStreamConnected, fetchError } = orderNotifications;
     const naverTab = new URLSearchParams(location.search).get('tab') || 'mapping';
 
     return (
         <div className="admin-page-container">
+            {newOrderAlert && (
+                <div
+                    role="status"
+                    onClick={() => { dismissAlert(); navigate('/admin/orders'); }}
+                    style={{
+                        position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+                        zIndex: 4000, cursor: 'pointer', padding: '16px 28px', borderRadius: '18px',
+                        background: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)', color: 'white',
+                        fontWeight: 800, fontSize: '1.05rem', boxShadow: '0 12px 30px rgba(0,0,0,0.25)',
+                        display: 'flex', alignItems: 'center', gap: '14px'
+                    }}
+                >
+                    <span style={{ fontSize: '1.3rem' }}>🔔</span>
+                    <span>
+                        새로운 주문 {newOrderAlert.count}건
+                        {newOrderAlert.customerName && ` — ${newOrderAlert.customerName}`}
+                    </span>
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); dismissAlert(); }}
+                        style={{
+                            border: 'none', background: 'rgba(255,255,255,0.25)', color: 'white',
+                            width: '28px', height: '28px', borderRadius: '50%', cursor: 'pointer', fontWeight: 800
+                        }}
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
             <aside className="admin-sidebar">
                 <div className="admin-sidebar-header">
                     <div style={{ color: 'white', fontSize: '0.7rem', opacity: 0.5, marginBottom: '5px', letterSpacing: '0.1em' }}>관리 서비스</div>
@@ -100,7 +134,24 @@ const AdminLayout = ({
             </aside>
 
             <main className="admin-content">
-                <div style={{ position: 'absolute', top: '30px', right: '40px' }}>
+                <div style={{ position: 'absolute', top: '30px', right: '40px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span
+                        title={isStreamConnected
+                            ? '실시간 주문 알림 연결됨'
+                            : '실시간 연결이 끊겨 예비 조회로 동작 중입니다'}
+                        style={{
+                            fontSize: '0.78rem', fontWeight: 700, padding: '6px 12px', borderRadius: '999px',
+                            background: isStreamConnected ? '#ecfdf5' : '#fef2f2',
+                            color: isStreamConnected ? '#047857' : '#b91c1c'
+                        }}
+                    >
+                        {isStreamConnected ? '● 실시간 연결' : '● 예비 조회'}
+                    </span>
+                    {fetchError && (
+                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#b91c1c' }}>
+                            {fetchError}
+                        </span>
+                    )}
                     <button className="back-to-kiosk" onClick={() => navigate('/')}>🏠 키오스크 화면으로 이동</button>
                 </div>
                 <div style={{ maxWidth: '1100px', margin: '60px auto 0 auto' }}>
@@ -110,7 +161,8 @@ const AdminLayout = ({
                         subCategories, setSubCategories, refreshCategories,
                         orders, setOrders,
                         page, hasMore, isFetchingMore, onLoadMore, onRefresh,
-                        activeMainCat, setActiveMainCat, activeSubCat, setActiveSubCat, searchQuery, setSearchQuery
+                        activeMainCat, setActiveMainCat, activeSubCat, setActiveSubCat, searchQuery, setSearchQuery,
+                        orderNotifications
                     }} />
                 </div>
             </main>
