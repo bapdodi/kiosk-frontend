@@ -12,89 +12,9 @@ import CategoryNav from './components/CategoryNav';
 import LoginPage from './components/LoginPage';
 import OptionModal from './components/OptionModal';
 import ProductCard from './components/ProductCard';
+import { getChosungChar, getSearchMatchScore, matchesSearchText, normalizeSearchText } from './utils/search';
 
 // ... (KioskView & ProtectedRoute components)
-
-const CHOSUNG_LIST = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
-const EN_TO_KO_JAMO = {
-  r: 'ㄱ', R: 'ㄲ', s: 'ㄴ', e: 'ㄷ', E: 'ㄸ', f: 'ㄹ', a: 'ㅁ', q: 'ㅂ', Q: 'ㅃ',
-  t: 'ㅅ', T: 'ㅆ', d: 'ㅇ', w: 'ㅈ', W: 'ㅉ', c: 'ㅊ', z: 'ㅋ', x: 'ㅌ', v: 'ㅍ', g: 'ㅎ',
-  k: 'ㅏ', o: 'ㅐ', O: 'ㅒ', i: 'ㅑ', j: 'ㅓ', p: 'ㅔ', P: 'ㅖ', u: 'ㅕ', h: 'ㅗ', y: 'ㅛ',
-  n: 'ㅜ', b: 'ㅠ', m: 'ㅡ', l: 'ㅣ'
-};
-
-// 영문 알파벳의 한글 발음(예: PB → 피비, LED → 엘이디, PVC → 피브이씨)
-const EN_LETTER_TO_KO_SOUND = {
-  a: '에이', b: '비', c: '씨', d: '디', e: '이', f: '에프', g: '지',
-  h: '에이치', i: '아이', j: '제이', k: '케이', l: '엘', m: '엠', n: '엔',
-  o: '오', p: '피', q: '큐', r: '알', s: '에스', t: '티', u: '유',
-  v: '브이', w: '더블유', x: '엑스', y: '와이', z: '지',
-};
-
-// 읽는 법이 두 가지인 글자의 구어 발음(예: TV → 티비, CCTV → 씨씨티비)
-const EN_LETTER_ALT_SOUND = { v: '비', z: '제트' };
-
-// 문자열 안의 영문 알파벳을 한글 발음으로 펼친다. ("PB파이프" → "피비파이프")
-const expandEnglishToKoreanSound = (value, altMap = {}) => (value || '')
-  .toLowerCase()
-  .split('')
-  .map((char) => altMap[char] ?? EN_LETTER_TO_KO_SOUND[char] ?? char)
-  .join('');
-
-const normalizeSearchText = (value) => (value || '').toLowerCase().replace(/\s+/g, '');
-
-const getChosungChar = (char) => {
-  if (!char) return '';
-  const unicode = char.charCodeAt(0);
-
-  if (unicode >= 0xAC00 && unicode <= 0xD7A3) {
-    const index = Math.floor((unicode - 0xAC00) / 588);
-    return CHOSUNG_LIST[index];
-  }
-
-  if ((unicode >= 65 && unicode <= 90) || (unicode >= 97 && unicode <= 122)) {
-    return char.toUpperCase();
-  }
-
-  return '기타';
-};
-
-const getChosungText = (value) => (value || '')
-  .split('')
-  .map((char) => {
-    const chosung = getChosungChar(char);
-    return chosung === '기타' ? char : chosung;
-  })
-  .join('');
-
-const convertEnglishKeyboardToKorean = (value) => (value || '')
-  .split('')
-  .map((char) => EN_TO_KO_JAMO[char] || char)
-  .join('');
-
-const matchesCustomerSearch = (name, query) => {
-  const normalizedQuery = normalizeSearchText(query);
-  if (!normalizedQuery) return true;
-
-  const normalizedName = normalizeSearchText(name);
-  const nameChosung = normalizeSearchText(getChosungText(name));
-  const keyboardQuery = normalizeSearchText(convertEnglishKeyboardToKorean(query));
-
-  // 알파벳↔한글 발음 매칭: "PB파이프"를 "피비"로, "피비파이프"를 "pb"로 검색 가능
-  // 정식 발음(PVC→피브이씨)과 구어 발음(TV→티비) 두 변형을 모두 검사한다.
-  const namePhonetic = normalizeSearchText(expandEnglishToKoreanSound(name));
-  const namePhoneticAlt = normalizeSearchText(expandEnglishToKoreanSound(name, EN_LETTER_ALT_SOUND));
-  const queryPhonetic = normalizeSearchText(expandEnglishToKoreanSound(query));
-
-  return normalizedName.includes(normalizedQuery) ||
-    nameChosung.includes(normalizedQuery) ||
-    normalizedName.includes(keyboardQuery) ||
-    nameChosung.includes(keyboardQuery) ||
-    namePhonetic.includes(normalizedQuery) ||
-    namePhoneticAlt.includes(normalizedQuery) ||
-    normalizedName.includes(queryPhonetic) ||
-    namePhonetic.includes(queryPhonetic);
-};
 
 function App() {
   const [products, setProducts] = useState([]);
@@ -461,31 +381,36 @@ function KioskView({
   };
 
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
+    return products.map((product) => {
       const isSearching = normalizeSearchText(searchQuery) !== "";
-      const matchSearch = !isSearching ||
-        matchesCustomerSearch(product.name, searchQuery) ||
-        product.hashtags.some(tag => matchesCustomerSearch(tag, searchQuery));
+      const searchScore = isSearching
+        ? Math.min(
+          getSearchMatchScore(product.name, searchQuery),
+          ...(product.hashtags || []).map((tag) => getSearchMatchScore(tag, searchQuery)),
+        )
+        : 0;
 
-      if (!matchSearch) return false;
+      if (!Number.isFinite(searchScore)) return null;
 
       // If actively searching, ignore category filters for global search
-      if (isSearching) return true;
+      if (isSearching) return { product, searchScore };
 
       // 상품은 여러 카테고리에 속할 수 있으므로, 그 중 하나라도 현재 필터와 맞으면 노출한다.
-      if (!activeMainCat) return true;
-      return (product.categories || []).some(c => {
+      if (!activeMainCat) return { product, searchScore };
+      const matchesCategory = (product.categories || []).some(c => {
         if (c.mainCategory !== activeMainCat) return false;
         if (!activeSubCat || activeSubCat === 'all') return true;
         return c.subCategory === activeSubCat;
       });
-    }).sort((a, b) => {
-      const aOrder = a.sortOrder || "";
-      const bOrder = b.sortOrder || "";
+      return matchesCategory ? { product, searchScore } : null;
+    }).filter(Boolean).sort((a, b) => {
+      if (a.searchScore !== b.searchScore) return a.searchScore - b.searchScore;
+      const aOrder = a.product.sortOrder || "";
+      const bOrder = b.product.sortOrder || "";
       if (aOrder < bOrder) return -1;
       if (aOrder > bOrder) return 1;
-      return a.id - b.id;
-    });
+      return a.product.id - b.product.id;
+    }).map(({ product }) => product);
   }, [activeMainCat, activeSubCat, products, searchQuery]);
 
   const handleMainCatChange = (id) => {
@@ -699,7 +624,7 @@ function KioskView({
         const filteredCustomers = customers.filter(c => {
           const name = c.NAME?.trim() || '';
           if (customerSearchQuery) {
-            return matchesCustomerSearch(name, customerSearchQuery);
+            return matchesSearchText(name, customerSearchQuery);
           }
 
           if (selectedChosung === 'A-Z') {
