@@ -114,6 +114,16 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         });
     };
 
+    // 묶음 수량 버튼(+10/+50). 아직 수량을 정하지 않은 초기 상태(1)에서 누르면
+    // 1+50=51 이 아니라 눌린 수량 그대로 맞춘다. 손님이 기대하는 "50개 담기"에 맞춘 동작.
+    const handleBulkStep = (step) => {
+        setQuantity(prev => {
+            const val = typeof prev === 'number' ? prev : parseInt(prev || '0', 10);
+            if (val === 1) return step;
+            return Math.max(1, Math.min(val + step, 9999));
+        });
+    };
+
     const startPress = (delta) => {
         // Stop any running intervals first
         stopPress();
@@ -505,14 +515,6 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                         <div className="qty-controls" style={{ background: '#f1f5f9', padding: '6px', borderRadius: '16px', display: 'flex', alignItems: 'center' }}>
                             <button
                                 className="qty-btn"
-                                aria-label="50개 줄이기"
-                                style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
-                                onClick={() => handleQuantityChange(-50)}
-                            >
-                                −50
-                            </button>
-                            <button
-                                className="qty-btn"
                                 aria-label="10개 줄이기"
                                 style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
                                 onClick={() => handleQuantityChange(-10)}
@@ -571,7 +573,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 className="qty-btn"
                                 aria-label="10개 늘리기"
                                 style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
-                                onClick={() => handleQuantityChange(10)}
+                                onClick={() => handleBulkStep(10)}
                             >
                                 +10
                             </button>
@@ -579,7 +581,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 className="qty-btn"
                                 aria-label="50개 늘리기"
                                 style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
-                                onClick={() => handleQuantityChange(50)}
+                                onClick={() => handleBulkStep(50)}
                             >
                                 +50
                             </button>
