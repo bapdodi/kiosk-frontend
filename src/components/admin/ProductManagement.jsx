@@ -21,6 +21,8 @@ const ProductManagement = () => {
     const [selectedErpKeys, setSelectedErpKeys] = useState([]);
     const [isLoadingErpPreview, setIsLoadingErpPreview] = useState(false);
     const [isApplyingErpSync, setIsApplyingErpSync] = useState(false);
+    const [trashProducts, setTrashProducts] = useState(null);
+    const [isLoadingTrash, setIsLoadingTrash] = useState(false);
     const [editingCatId, setEditingCatId] = useState(null);
     const [tempCategories, setTempCategories] = useState([]);
     const [dragOverProductId, setDragOverProductId] = useState(null);
@@ -107,13 +109,22 @@ const ProductManagement = () => {
         }
     };
 
-    const deleteProduct = async (id) => {
-        if (!window.confirm('정말 삭제하시겠습니까?')) return;
+    const isErpProduct = (product) => Boolean(
+        product?.erpCode || product?.combinations?.some(combination => combination.erpCode)
+    );
+
+    const deleteProduct = async (product) => {
+        const erpWarning = isErpProduct(product)
+            ? '\n\nERP 연동 상품이므로 외부 판매 채널은 판매 중지됩니다.'
+            : '';
+        if (!window.confirm(
+            `“${product.name}” 상품을 휴지통으로 이동할까요?${erpWarning}\n30일 동안 원래 상태로 복원할 수 있습니다.`
+        )) return;
         try {
-            const res = await fetch(`/api/products/admin/${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/products/admin/${product.id}`, { method: 'DELETE' });
             if (res.ok) {
-                setProducts(products.filter(p => p.id !== id));
-                setSelectedProducts(selectedProducts.filter(selId => selId !== id));
+                setProducts(products.filter(p => p.id !== product.id));
+                setSelectedProducts(selectedProducts.filter(selId => selId !== product.id));
             }
         } catch (err) {
             alert('삭제 중 오류가 발생했습니다.');
@@ -166,7 +177,12 @@ const ProductManagement = () => {
 
     const deleteSelectedProducts = async () => {
         if (selectedProducts.length === 0) return alert('삭제할 상품을 선택해주세요.');
-        if (!window.confirm(`선택한 ${selectedProducts.length}개의 상품을 정말 삭제하시겠습니까?`)) return;
+        const selectedRows = products.filter(product => selectedProducts.includes(product.id));
+        const erpCount = selectedRows.filter(isErpProduct).length;
+        const erpWarning = erpCount > 0 ? `\nERP 연동 상품 ${erpCount}개는 외부 판매 채널도 판매 중지됩니다.` : '';
+        if (!window.confirm(
+            `선택한 ${selectedProducts.length}개 상품을 휴지통으로 이동할까요?${erpWarning}\n30일 동안 복원할 수 있습니다.`
+        )) return;
 
         try {
             const res = await fetch('/api/products/admin/bulk-delete', {
@@ -178,7 +194,7 @@ const ProductManagement = () => {
             if (res.ok) {
                 setProducts(products.filter(p => !selectedProducts.includes(p.id)));
                 setSelectedProducts([]);
-                alert('선택한 상품들이 삭제되었습니다.');
+                alert('선택한 상품들을 휴지통으로 이동했습니다.');
             } else {
                 alert('삭제 중 오류가 발생했습니다.');
             }
@@ -186,6 +202,38 @@ const ProductManagement = () => {
             alert('삭제 중 오류가 발생했습니다.');
         }
     };
+
+    const openTrash = async () => {
+        setIsLoadingTrash(true);
+        try {
+            const res = await fetch('/api/products/admin/trash');
+            if (!res.ok) throw new Error(await res.text());
+            setTrashProducts(await res.json());
+        } catch (err) {
+            alert('휴지통을 불러오지 못했습니다.');
+        } finally {
+            setIsLoadingTrash(false);
+        }
+    };
+
+    const restoreProduct = async (product) => {
+        const res = await fetch(`/api/products/admin/${product.id}/restore`, { method: 'POST' });
+        if (!res.ok) return alert('상품 복원에 실패했습니다.');
+        setTrashProducts(current => current.filter(item => item.id !== product.id));
+        await onRefresh();
+    };
+
+    const permanentlyDeleteProduct = async (product) => {
+        if (!window.confirm(`“${product.name}”을 영구 삭제할까요? 이 작업은 복구할 수 없습니다.`)) return;
+        const res = await fetch(`/api/products/admin/${product.id}/permanent`, { method: 'DELETE' });
+        if (res.status === 409) return alert('휴지통 이동 후 30일이 지나야 영구 삭제할 수 있습니다.');
+        if (!res.ok) return alert('영구 삭제에 실패했습니다.');
+        setTrashProducts(current => current.filter(item => item.id !== product.id));
+    };
+
+    const canPermanentlyDelete = (product) => (
+        product.deletedAt && Date.now() - new Date(product.deletedAt).getTime() >= 30 * 24 * 60 * 60 * 1000
+    );
 
     const refreshProducts = async () => {
         onRefresh();
@@ -430,6 +478,9 @@ const ProductManagement = () => {
                         </button>
                         <button className="apply-btn" style={{ background: '#2563eb' }} onClick={syncWithErp} disabled={isLoadingErpPreview}>
                             {isLoadingErpPreview ? 'ERP 상품 불러오는 중…' : '🔄 ERP 상품 동기화'}
+                        </button>
+                        <button className="apply-btn" style={{ background: '#64748b' }} onClick={openTrash} disabled={isLoadingTrash}>
+                            {isLoadingTrash ? '불러오는 중…' : '🗑️ 휴지통'}
                         </button>
                         {selectedProducts.length > 0 && (
                             <button className="apply-btn" style={{ background: '#ef4444' }} onClick={deleteSelectedProducts}>
@@ -693,7 +744,7 @@ const ProductManagement = () => {
                                 <td style={{ textAlign: 'right' }}>
                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                         <button className="action-btn" onClick={() => handleEditNavigate(p.id)}>수정</button>
-                                        <button className="action-btn" style={{ color: '#ef4444' }} onClick={() => deleteProduct(p.id)}>삭제</button>
+                                        <button className="action-btn" style={{ color: '#ef4444' }} onClick={() => deleteProduct(p)}>휴지통</button>
                                     </div>
                                 </td>
                             </tr>
@@ -718,6 +769,48 @@ const ProductManagement = () => {
                 products={products}
                 onUpdateSuccess={refreshProducts}
             />
+
+            {trashProducts && (
+                <div className="modal-overlay" onClick={() => setTrashProducts(null)}>
+                    <div className="modal-content" onClick={event => event.stopPropagation()} style={{ maxWidth: '760px', width: '92%', maxHeight: '82vh', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>🗑️ 상품 휴지통</h3>
+                                <p style={{ margin: '7px 0 0', color: '#64748b', fontSize: '0.9rem' }}>상품 ID, 사진, 카테고리와 옵션을 그대로 복원합니다.</p>
+                            </div>
+                            <button className="action-btn" onClick={() => setTrashProducts(null)}>닫기</button>
+                        </div>
+                        <div style={{ overflowY: 'auto', padding: '8px 20px', flex: 1 }}>
+                            {trashProducts.length === 0 ? (
+                                <div style={{ padding: '60px 0', textAlign: 'center', color: '#94a3b8' }}>휴지통이 비어 있습니다.</div>
+                            ) : trashProducts.map(product => (
+                                <div key={product.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 4px', borderBottom: '1px solid #f1f5f9' }}>
+                                    {product.images?.[0] ? (
+                                        <img src={getImageUrl(product.images[0])} alt="" className="product-thumb" style={{ width: '48px', height: '48px' }} />
+                                    ) : (
+                                        <div className="no-image-placeholder" style={{ width: '48px', height: '48px', fontSize: '0.55rem' }}>사진 없음</div>
+                                    )}
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 700 }}>{product.name} <span style={{ color: '#94a3b8', fontWeight: 400 }}>#{product.id}</span></div>
+                                        <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '4px' }}>
+                                            {product.deletedAt ? new Date(product.deletedAt).toLocaleString() : ''} 이동
+                                            {isErpProduct(product) ? ' · ERP 연동' : ''}
+                                        </div>
+                                    </div>
+                                    <button className="action-btn" style={{ color: '#2563eb' }} onClick={() => restoreProduct(product)}>복원</button>
+                                    <button
+                                        className="action-btn"
+                                        style={{ color: canPermanentlyDelete(product) ? '#ef4444' : '#cbd5e1' }}
+                                        disabled={!canPermanentlyDelete(product)}
+                                        title={canPermanentlyDelete(product) ? '영구 삭제' : '30일 후 영구 삭제 가능'}
+                                        onClick={() => permanentlyDeleteProduct(product)}
+                                    >영구 삭제</button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {erpPreviews && (
                 <div className="modal-overlay" onClick={() => !isApplyingErpSync && setErpPreviews(null)}>
