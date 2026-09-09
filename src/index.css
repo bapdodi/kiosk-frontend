@@ -1,5 +1,3 @@
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-
 :root {
   --bg-color: #f8f9fa;
   --surface-color: #ffffff;
@@ -26,8 +24,18 @@
   padding: 0;
 }
 
+/* 전체 폰트: 맑은 고딕 통일 */
+*,
+button,
+input,
+select,
+textarea,
+optgroup {
+  font-family: 'Malgun Gothic', '맑은 고딕', MalgunGothic, AppleGothic, sans-serif;
+}
+
 body {
-  font-family: 'Pretendard', sans-serif;
+  font-family: 'Malgun Gothic', '맑은 고딕', MalgunGothic, AppleGothic, sans-serif;
   background-color: var(--bg-color);
   color: var(--text-primary);
   margin: 0;
@@ -205,7 +213,7 @@ body {
   padding: 8px 20px;
   /* Reduced from 12x24 */
   border-radius: 100px;
-  border: 1px solid #e9ecef;
+  border: 2px solid #868e96;
   background: #f8f9fa;
   font-weight: 600;
   cursor: pointer;
@@ -220,6 +228,7 @@ body {
   font-size: 1.15rem;
   font-weight: 700;
   background: white;
+  border: 2px solid #495057;
 }
 
 .category-tab.detail-tab {
@@ -234,6 +243,7 @@ body {
   color: white;
   border-color: var(--accent-color);
   border-style: solid !important;
+  box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.2);
 }
 
 .content-area {

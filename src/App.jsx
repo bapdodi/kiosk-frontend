@@ -635,7 +635,6 @@ function KioskView({
               <ProductCard
                 product={product}
                 onAddClick={handleAddToCartClick}
-                onTagClick={setSearchQuery}
               />
             </div>
           ))}
