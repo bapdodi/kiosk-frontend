@@ -400,14 +400,14 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                 {/* Middle Section: Options */}
                 <div style={{ padding: '0 40px 40px 40px', background: '#fff' }} className="option-info-padding">
                     <div style={{ padding: '30px', background: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '20px', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '20px', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             ⚙️ 옵션 선택
                         </h3>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                             {groups.map((group) => (
                                 <div key={group.name}>
-                                    <div style={{ fontWeight: 700, marginBottom: '12px', fontSize: '0.95rem', color: '#64748b' }}>{group.label ?? group.name}</div>
+                                    <div style={{ fontWeight: 700, marginBottom: '12px', fontSize: '1.1rem', color: '#64748b' }}>{group.label ?? group.name}</div>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                                         {group.values.map(val => {
                                             const isSelected = selections[group.name] === val;
@@ -422,13 +422,13 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                                         setFailedImages({});
                                                     }}
                                                     style={{
-                                                        padding: '12px 20px',
+                                                        padding: '16px 24px',
                                                         borderRadius: '12px',
                                                         border: isSelected ? '2px solid var(--accent-color)' : '1px solid #cbd5e1',
                                                         background: isSelected ? '#fff' : '#fff',
                                                         color: isSelected ? 'var(--accent-color)' : '#475569',
                                                         fontWeight: 700,
-                                                        fontSize: '0.95rem',
+                                                        fontSize: '1.25rem',
                                                         cursor: 'pointer',
                                                         transition: 'all 0.15s ease',
                                                         display: 'flex',
@@ -454,7 +454,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 marginTop: '20px', width: '100%', padding: '14px',
                                 borderRadius: '12px', border: '2px dashed var(--accent-color)',
                                 background: '#fff7ed', color: 'var(--accent-color)',
-                                fontWeight: 800, fontSize: '1rem',
+                                fontWeight: 800, fontSize: '1.15rem',
                                 cursor: allOptionsSelected ? 'pointer' : 'not-allowed',
                                 opacity: allOptionsSelected ? 1 : 0.5
                             }}
@@ -467,11 +467,11 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                         {/* 담은 옵션 목록 */}
                         {lines.length > 0 && (
                             <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                <div style={{ fontWeight: 800, color: '#334155', fontSize: '0.95rem' }}>담은 옵션 ({lines.length})</div>
+                                <div style={{ fontWeight: 800, color: '#334155', fontSize: '1.1rem' }}>담은 옵션 ({lines.length})</div>
                                 {lines.map(l => (
                                     <div key={l.lineId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 14px' }}>
                                         <div style={{ minWidth: 0 }}>
-                                            <div style={{ fontWeight: 700, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.displayName || '기본'}</div>
+                                            <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.displayName || '기본'}</div>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <button

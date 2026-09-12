@@ -1907,3 +1907,244 @@ body {
   align-items: center;
   justify-content: center;
 }
+
+/* ── 주문 내역 확인 팝업 (결제하기 → 상호 선택 사이) ───────────────── */
+/* 키오스크에서 멀리 서서도 보이도록 사진과 글자를 크게 잡는다. */
+.review-modal {
+  max-width: 900px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.review-head {
+  position: relative;
+  padding: 24px 60px 20px;
+  text-align: center;
+  border-bottom: 1px solid #f1f5f9;
+  flex: 0 0 auto;
+}
+
+.review-title {
+  margin: 0;
+  font-weight: 900;
+  font-size: 1.8rem;
+  color: #0f172a;
+}
+
+.review-sub {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 1.05rem;
+}
+
+.review-sub b {
+  color: var(--accent-color);
+  white-space: nowrap;
+}
+
+.review-close {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.review-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.review-empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 60px 0;
+  font-size: 1.1rem;
+}
+
+.review-row {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: #fff;
+}
+
+.review-thumb {
+  flex: 0 0 auto;
+  width: 130px;
+  height: 130px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.review-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.review-thumb-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.review-detail {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.review-name {
+  font-weight: 900;
+  font-size: 1.25rem;
+  color: #0f172a;
+  margin-bottom: 10px;
+  word-break: break-all;
+}
+
+.review-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.review-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.review-opt {
+  flex: 1 1 120px;
+  min-width: 0;
+  color: #334155;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.review-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-step button {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #334155;
+  font-size: 1.2rem;
+  font-weight: bold;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.review-step button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.review-qty {
+  min-width: 34px;
+  text-align: center;
+  font-weight: 900;
+  font-size: 1.15rem;
+}
+
+.review-remove {
+  border: none;
+  background: none;
+  color: #ef4444;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 6px;
+}
+
+.review-foot {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 12px;
+  padding: 18px 24px;
+  border-top: 1px solid #f1f5f9;
+  background: #fff;
+}
+
+.review-back {
+  flex: 0 0 30%;
+  padding: 18px;
+  border-radius: 16px;
+  border: 2px solid #e2e8f0;
+  background: white;
+  color: #475569;
+  font-weight: 800;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.review-confirm {
+  flex: 1 1 auto;
+  padding: 18px;
+  border-radius: 16px;
+  border: none;
+  background: var(--accent-color);
+  color: white;
+  font-weight: 900;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.review-confirm:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .review-modal {
+    max-height: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+
+  .review-thumb {
+    width: 90px;
+    height: 90px;
+  }
+
+  .review-title {
+    font-size: 1.4rem;
+  }
+
+  .review-back {
+    flex-basis: 34%;
+  }
+}

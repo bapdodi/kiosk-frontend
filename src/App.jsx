@@ -11,6 +11,7 @@ import CartBar from './components/CartBar';
 import CategoryNav from './components/CategoryNav';
 import LoginPage from './components/LoginPage';
 import OptionModal from './components/OptionModal';
+import OrderReviewModal from './components/OrderReviewModal';
 import ProductCard from './components/ProductCard';
 import { getChosungChar, getSearchMatchScore, matchesSearchText, normalizeSearchText } from './utils/search';
 
@@ -249,6 +250,7 @@ function KioskView({
   const [selectingProduct, setSelectingProduct] = useState(null);
   const [optionQuantities, setOptionQuantities] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [orderModal, setOrderModal] = useState({ isOpen: false, name: '' });
   const [customers, setCustomers] = useState([]);
@@ -480,9 +482,16 @@ function KioskView({
     ));
   };
 
+  // 결제하기 → 먼저 사진이 포함된 확인 팝업을 띄우고, 거기서 확정해야 상호 선택으로 넘어간다.
   const handleCheckout = () => {
     if (cart.length === 0) return alert('장바구니가 비어있습니다.');
     setIsCartOpen(false);
+    setIsReviewOpen(true);
+  };
+
+  const handleReviewConfirm = () => {
+    if (cart.length === 0) return;
+    setIsReviewOpen(false);
     setOrderModal({ isOpen: true, name: '' });
   };
 
@@ -617,6 +626,17 @@ function KioskView({
       )}
 
 
+
+      {/* 주문 내역 확인 팝업 (사진 포함) */}
+      {isReviewOpen && (
+        <OrderReviewModal
+          items={cart}
+          onRemove={removeFromCart}
+          onQuantityChange={updateCartQuantity}
+          onClose={() => setIsReviewOpen(false)}
+          onConfirm={handleReviewConfirm}
+        />
+      )}
 
       {/* Order Name Input Modal */}
       {orderModal.isOpen && (() => {
