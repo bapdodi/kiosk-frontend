@@ -166,6 +166,7 @@
 }
 
 .option-reco-name {
+  margin-bottom: auto;
   font-size: .95rem;
   font-weight: 700;
   color: #1e293b;
@@ -177,12 +178,6 @@
   overflow: hidden;
 }
 
-.option-reco-price {
-  font-size: .9rem;
-  font-weight: 800;
-  color: #ff6b00;
-  margin-top: auto;
-}
 
 @media (max-width: 760px) {
   .guided-option-modal .option-reco { padding: 12px 12px 4px; }

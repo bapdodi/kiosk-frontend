@@ -612,7 +612,6 @@ const OptionModal = ({ product, cartItems = [], products = [], onConfirm, onCanc
                                         )}
                                     </div>
                                     <div className="option-reco-name">{item.name}</div>
-                                    <div className="option-reco-price">{(item.priceC || 0).toLocaleString()}원</div>
                                 </button>
                             ))}
                         </div>
