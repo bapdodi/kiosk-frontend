@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import AdminLayout from './components/admin/AdminLayout';
 import CategoryManagement from './components/admin/CategoryManagement';
+import ErpBakImportPage from './components/admin/ErpBakImportPage';
 import NaverSyncPage from './components/admin/NaverSyncPage';
 import OrderManagement from './components/admin/OrderManagement';
 import ProductForm from './components/admin/ProductForm';
@@ -190,6 +191,7 @@ function App() {
           <Route path="categories" element={<CategoryManagement />} />
           <Route path="orders" element={<OrderManagement />} />
           <Route path="naver" element={<NaverSyncPage />} />
+          <Route path="erp-bak" element={<ErpBakImportPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
