@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
+import './OptionModal.css';
 import { COMBINATION_GROUP } from '../utils/optionConstants';
 
 const OptionModal = ({ product, onConfirm, onCancel }) => {
@@ -65,6 +66,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     const [quantity, setQuantity] = useState(1);
     // 사용자가 담은 옵션 목록 (여러 옵션을 한 번에 장바구니에 추가하기 위함)
     const [lines, setLines] = useState([]);
+    const optionSectionRef = useRef(null);
 
     // Image carousel state
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -139,6 +141,8 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         if (intervalRef.current) clearInterval(intervalRef.current);
     };
+
+    useEffect(() => () => stopPress(), []);
 
     // Initialize selections.
     // 옵션이 2개 이상인 그룹은 사용자가 직접 고르도록 디폴트 선택하지 않는다.
@@ -268,10 +272,11 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
 
     return (
         <div className="modal-overlay mobile-bottom" onClick={onCancel}>
-            <div className="modal-content full-mobile mobile-bottom" style={{ maxWidth: '800px' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-content full-mobile mobile-bottom guided-option-modal" role="dialog" aria-modal="true" aria-labelledby="option-product-title" onClick={e => e.stopPropagation()}>
                 {/* Header Close Button */}
                 <button
                     onClick={onCancel}
+                    aria-label="상품 선택 닫기"
                     style={{
                         position: 'absolute', top: '20px', right: '20px', zIndex: 10,
                         width: '40px', height: '40px', borderRadius: '50%', border: 'none',
@@ -376,7 +381,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                             <div style={{ color: 'var(--accent-color)', fontWeight: 800, fontSize: '0.9rem', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                                 상품 상세 정보
                             </div>
-                            <h2 className="option-header-title" style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: '15px', color: '#1e293b', lineHeight: 1.2 }}>
+                            <h2 id="option-product-title" className="option-header-title" style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: '15px', color: '#1e293b', lineHeight: 1.2 }}>
                                 {product.name}
                             </h2>
 
@@ -389,25 +394,27 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 </div>
                             )}
 
-                            <p className="option-description" style={{ color: '#475569', lineHeight: 1.6, fontSize: '1.05rem', marginBottom: '25px' }}>
-                                {product.description || `본 상품은 고품질 자재로 제작된 ${product.name}입니다. 산업 현장 및 일반 가정에서 신뢰하고 사용할 수 있는 내구성을 갖추고 있습니다. 상세 규격은 옵션에서 선택 가능합니다.`}
-                            </p>
+                            {product.description && <details className="option-description">
+                                <summary>상품 설명 보기</summary>
+                                <p>{product.description}</p>
+                            </details>}
 
                         </div>
                     </div>
                 </div>
 
                 {/* Middle Section: Options */}
-                <div style={{ padding: '0 40px 40px 40px', background: '#fff' }} className="option-info-padding">
+                <div ref={optionSectionRef} style={{ padding: '0 40px 40px 40px', background: '#fff' }} className="option-info-padding option-choice-section">
                     <div style={{ padding: '30px', background: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
                         <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '20px', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            ⚙️ 옵션 선택
+                            <span className="option-step">1</span> {groups.length ? '옵션을 먼저 선택해 주세요' : '기본 상품으로 담습니다'}
                         </h3>
 
+                        <p className="option-choice-help">{groups.length ? '아래에서 원하는 규격을 눌러 주세요. 각 항목에서 하나씩 선택합니다.' : '아래에서 필요한 수량을 확인해 주세요.'}</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                             {groups.map((group) => (
-                                <div key={group.name}>
-                                    <div style={{ fontWeight: 700, marginBottom: '12px', fontSize: '1.1rem', color: '#64748b' }}>{group.label ?? group.name}</div>
+                                <div key={group.name} data-option-missing={selections[group.name] == null}>
+                                    <div style={{ fontWeight: 700, marginBottom: '12px', fontSize: '1.1rem', color: '#64748b' }}>{group.label || (group.name === COMBINATION_GROUP ? '규격' : group.name)} <span className="option-required">{selections[group.name] == null ? '선택 필수' : '선택 완료'}</span></div>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                                         {group.values.map(val => {
                                             const isSelected = selections[group.name] === val;
@@ -415,6 +422,8 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                             return (
                                                 <button
                                                     key={val}
+                                                    aria-pressed={isSelected}
+                                                    className="option-choice-button"
                                                     onClick={() => {
                                                         // 옵션을 바꾸면 표시 사진 세트가 달라지므로 첫 장부터 보여준다.
                                                         setSelections({ ...selections, [group.name]: val });
@@ -437,7 +446,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                                         boxShadow: isSelected ? '0 4px 12px rgba(255, 107, 0, 0.1)' : 'none'
                                                     }}
                                                 >
-                                                    <span>{val}</span>
+                                                    <span className="option-choice-check" aria-hidden="true">{isSelected ? '✓' : ''}</span><span>{val}</span>
                                                 </button>
                                             );
                                         })}
@@ -446,23 +455,21 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                             ))}
                         </div>
 
-                        {/* 이 옵션 담기 버튼 */}
-                        <button
-                            onClick={addCurrentSelection}
-                            disabled={!allOptionsSelected}
-                            style={{
-                                marginTop: '20px', width: '100%', padding: '14px',
-                                borderRadius: '12px', border: '2px dashed var(--accent-color)',
-                                background: '#fff7ed', color: 'var(--accent-color)',
-                                fontWeight: 800, fontSize: '1.15rem',
-                                cursor: allOptionsSelected ? 'pointer' : 'not-allowed',
-                                opacity: allOptionsSelected ? 1 : 0.5
-                            }}
-                        >
-                            {allOptionsSelected
-                                ? `➕ 이 옵션 담기 (수량 ${safeQuantity < 1 ? 1 : safeQuantity})`
-                                : '⚙️ 옵션을 선택해 주세요'}
-                        </button>
+                        {/* 여러 규격을 함께 주문할 때 현재 선택을 목록에 추가한다. */}
+                        {groups.length > 0 && <div className="option-multiple">
+                            <div>
+                                <strong>여러 규격을 함께 주문하시나요?</strong>
+                                <span>현재 규격과 수량을 목록에 추가한 뒤 다른 규격을 선택하세요.</span>
+                            </div>
+                            <button
+                                onClick={addCurrentSelection}
+                                disabled={!allOptionsSelected}
+                            >
+                                {allOptionsSelected
+                                    ? `＋ 선택한 옵션 ${safeQuantity < 1 ? 1 : safeQuantity}개 목록에 추가`
+                                    : '옵션 선택 후 목록에 추가할 수 있어요'}
+                            </button>
+                        </div>}
 
                         {/* 담은 옵션 목록 */}
                         {lines.length > 0 && (
@@ -512,6 +519,8 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                     gap: '20px'
                 }}>
                     <div className="option-footer-content" style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
+                        <label className="option-quantity-label" htmlFor="option-quantity"><span className="option-step">2</span> 수량 선택 <small>숫자를 눌러 직접 입력할 수 있어요</small></label>
+                        <div className="option-selection-summary" aria-live="polite">{lines.length > 0 ? `담을 목록: ${lines.length}가지 옵션 · 총 ${linesTotalCount}개` : allOptionsSelected ? `선택: ${groups.map(g => selections[g.name]).join(' / ') || '기본 상품'}` : '아직 옵션을 선택하지 않았어요'}</div>
                         <div className="qty-controls" style={{ background: '#f1f5f9', padding: '6px', borderRadius: '16px', display: 'flex', alignItems: 'center' }}>
                             <button
                                 className="qty-btn"
@@ -522,8 +531,10 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 −10
                             </button>
                             <button
+                                aria-label="1개 줄이기"
                                 className="qty-btn"
                                 style={{ width: '40px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px' }}
+                                onClick={(e) => { if (e.detail === 0) handleQuantityChange(-1); }}
                                 onPointerDown={(e) => { e.preventDefault(); startPress(-1); }}
                                 onPointerUp={stopPress}
                                 onPointerLeave={stopPress}
@@ -532,7 +543,11 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 −
                             </button>
                             <input
+                                id="option-quantity"
                                 type="number"
+                                inputMode="numeric"
+                                min="1"
+                                max="9999"
                                 className="qty-num"
                                 value={quantity}
                                 onChange={(e) => {
@@ -541,7 +556,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                         setQuantity('');
                                     } else {
                                         const parsed = parseInt(val, 10);
-                                        if (!isNaN(parsed)) setQuantity(parsed);
+                                        if (!isNaN(parsed)) setQuantity(Math.max(1, Math.min(parsed, 9999)));
                                     }
                                 }}
                                 onBlur={() => {
@@ -559,9 +574,12 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                     margin: '0 10px'
                                 }}
                             />
+                            <span className="option-quantity-unit">개</span>
                             <button
                                 className="qty-btn"
                                 style={{ width: '40px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px' }}
+                                aria-label="1개 늘리기"
+                                onClick={(e) => { if (e.detail === 0) handleQuantityChange(1); }}
                                 onPointerDown={(e) => { e.preventDefault(); startPress(1); }}
                                 onPointerUp={stopPress}
                                 onPointerLeave={stopPress}
@@ -591,29 +609,23 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
 
                     <div className="option-footer-btns" style={{ display: 'flex', gap: '12px', flex: '1', justifyContent: 'flex-end' }}>
                         <button
-                            className="action-btn"
-                            onClick={onCancel}
-                            style={{
-                                padding: '16px 20px', borderRadius: '18px', height: 'auto',
-                                background: 'white', color: '#64748b', fontWeight: 700, fontSize: '1.1rem',
-                                cursor: 'pointer', flex: 1
+                            onClick={() => {
+                                if (canConfirm) handleConfirm();
+                                else {
+                                    const target = optionSectionRef.current?.querySelector('[data-option-missing="true"]');
+                                    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    target?.querySelector('button')?.focus({ preventScroll: true });
+                                }
                             }}
-                        >
-                            취소
-                        </button>
-                        <button
-                            onClick={handleConfirm}
-                            disabled={!canConfirm}
                             style={{
                                 padding: '16px 20px', borderRadius: '18px', border: 'none',
                                 background: 'var(--accent-color)', color: 'white', fontWeight: 800, fontSize: '1.1rem',
-                                cursor: canConfirm ? 'pointer' : 'not-allowed',
-                                opacity: canConfirm ? 1 : 0.5,
+                                cursor: 'pointer',
                                 boxShadow: '0 10px 20px rgba(255, 107, 0, 0.2)',
                                 flex: 2
                             }}
                         >
-                            장바구니 담기{linesTotalCount > 0 ? ` (${linesTotalCount})` : ''}
+                            {canConfirm ? `${linesTotalCount || Math.max(1, safeQuantity)}개 장바구니 담기` : '① 옵션 선택하러 가기'}
                         </button>
                     </div>
                 </div>

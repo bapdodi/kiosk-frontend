@@ -1,0 +1,82 @@
+.guided-option-modal { display: flex; flex-direction: column; width: min(1120px, calc(100vw - 32px)); max-width: 1120px; height: min(860px, calc(100dvh - 32px)); max-height: none; }
+.guided-option-modal .option-scroll-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); overflow: hidden; }
+.guided-option-modal .option-detail-layout { display: block; min-width: 0; border-right: 1px solid #e2e8f0; }
+.guided-option-modal .option-detail-layout > div { display: flex !important; flex-direction: column; height: 100%; box-sizing: border-box; padding: 24px !important; gap: 20px; align-items: stretch; }
+.guided-option-modal .option-image-area { min-height: 0 !important; height: 250px !important; flex: 0 0 250px; border-radius: 16px; }
+.guided-option-modal .option-image-area img { object-fit: contain !important; }
+.guided-option-modal .option-detail-layout .option-info-padding { padding: 0 !important; }
+.guided-option-modal .option-header-title { font-size: 1.6rem !important; margin: 0 0 10px; overflow-wrap: anywhere; }
+.guided-option-modal .option-description { color: #475569; font-size: 1rem; }
+.guided-option-modal summary { cursor: pointer; padding: 12px 0; font-weight: 700; }
+.guided-option-modal .option-choice-section { min-height: 0; overflow-y: auto; padding: 24px !important; }
+.guided-option-modal .option-choice-section > div { min-height: 100%; box-sizing: border-box; padding: 24px !important; border: 2px solid #fed7aa !important; background: #fffaf5 !important; }
+.guided-option-modal h3 { margin: 0 0 8px !important; }
+.option-step { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; background: #c2410c; color: white; font-size: 1.1rem; font-weight: 800; }
+.option-choice-help { margin: 0 0 24px; color: #475569; line-height: 1.6; }
+.option-required { display: inline-block; font-size: .85rem; color: #9a3412; background: #ffedd5; border-radius: 6px; padding: 4px 8px; margin-left: 8px; }
+.guided-option-modal .option-choice-button { min-height: 64px; flex: 1 1 210px; text-align: left; }
+.guided-option-modal .option-choice-button[aria-pressed="true"] { background: #fff0df !important; border-color: #c2410c !important; color: #9a3412 !important; }
+.option-choice-check { width: 24px; height: 24px; border: 2px solid #94a3b8; border-radius: 50%; flex-shrink: 0; text-align: center; line-height: 20px; }
+[aria-pressed="true"] .option-choice-check { background: #c2410c; border-color: #c2410c; color: white; }
+.option-multiple { margin-top: 20px; padding-top: 18px; border-top: 1px solid #fed7aa; color: #475569; }
+.option-multiple > div { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.option-multiple strong { color: #334155; font-size: 1rem; }
+.option-multiple span { font-size: .88rem; }
+.option-multiple button { width: 100%; min-height: 52px; padding: 12px 16px; border: 2px solid #ea580c; border-radius: 12px; background: #fff; color: #c2410c; font-size: 1rem; font-weight: 800; cursor: pointer; }
+.option-multiple button:disabled { border-color: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
+.guided-option-modal .option-footer { flex: 0 0 auto; display: grid !important; grid-template-columns: minmax(0, 1fr) 320px; padding: 16px 24px !important; gap: 20px !important; }
+.guided-option-modal .option-footer-content { width: 100%; display: grid !important; grid-template-columns: 220px minmax(360px, 1fr); grid-template-rows: auto auto; column-gap: 16px !important; row-gap: 4px !important; }
+.option-quantity-label { font-size: 1.25rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.option-quantity-label small { font-size: .85rem; color: #475569; font-weight: 500; }
+.option-selection-summary { color: #475569; font-size: 1rem; overflow-wrap: anywhere; }
+.guided-option-modal .qty-controls { width: 100%; scale: 1; gap: 8px; justify-content: space-between; box-sizing: border-box; grid-column: 2; grid-row: 1 / span 2; }
+.guided-option-modal .qty-btn { min-width: 48px; height: 52px !important; }
+.guided-option-modal .qty-num { flex: 1; min-width: 48px; max-width: 180px; margin: 0 !important; height: 52px; background: white !important; border: 2px solid #94a3b8 !important; border-radius: 8px; font-size: 1.5rem !important; }
+.option-quantity-unit { font-weight: 800; color: #334155; }
+.guided-option-modal .option-footer-btns { width: 100%; height: 100%; flex: none !important; margin: 0; }
+.guided-option-modal .option-footer-btns button { width: 100%; }
+.guided-option-modal .option-footer-btns button { min-height: 60px; font-size: 1.25rem !important; }
+.guided-option-modal button:focus-visible, .guided-option-modal input:focus-visible, .guided-option-modal summary:focus-visible { outline: 3px solid #2563eb !important; outline-offset: 3px; }
+
+/* 키오스크: 터치 입력을 지원하는 세로형 화면에서만 전용 배치를 적용한다. */
+@media (min-width: 768px) and (min-height: 900px) and (max-aspect-ratio: 4/3) and (any-pointer: coarse) {
+  .guided-option-modal { width: min(800px, calc(100vw - 24px)); max-width: 800px; height: auto; max-height: calc(100dvh - 24px); }
+  .guided-option-modal .option-scroll-body { display: block; overflow-y: auto; }
+  .guided-option-modal .option-detail-layout { border-right: 0; }
+  .guided-option-modal .option-detail-layout > div { display: grid !important; grid-template-columns: 1fr 1fr !important; height: auto; padding: 0 !important; gap: 0; align-items: stretch; }
+  .guided-option-modal .option-image-area { height: 360px !important; flex: none; border-radius: 0; }
+  .guided-option-modal .option-detail-layout .option-info-padding { padding: 40px !important; }
+  .guided-option-modal .option-header-title { font-size: 2rem !important; }
+  .guided-option-modal .option-choice-section { overflow: visible; padding: 0 40px 32px !important; }
+  .guided-option-modal .option-choice-section > div { min-height: 0; padding: 28px !important; }
+  .guided-option-modal .option-choice-button { min-height: 72px; flex-basis: 190px; font-size: 1.2rem !important; }
+  .guided-option-modal .option-footer { display: grid !important; grid-template-columns: minmax(0, 1.4fr) minmax(240px, .6fr); padding: 16px 24px !important; gap: 16px !important; }
+  .guided-option-modal .option-footer-content { grid-template-columns: 1fr; grid-template-rows: auto auto auto; gap: 6px !important; }
+  .guided-option-modal .qty-controls { grid-column: 1; grid-row: auto; }
+}
+
+@media (max-width: 760px) {
+  .guided-option-modal { height: 100dvh; }
+  .guided-option-modal .option-scroll-body { display: block; overflow-y: auto; }
+  .guided-option-modal .option-detail-layout { border-right: 0; }
+  .guided-option-modal .option-detail-layout > div { display: grid !important; grid-template-columns: 100px minmax(0, 1fr) !important; height: auto; padding: 16px 56px 16px 16px !important; gap: 12px; align-items: center; }
+  .guided-option-modal .option-image-area { height: 100px !important; flex: none; }
+  .guided-option-modal .option-choice-section { overflow: visible; padding: 0 12px 16px !important; }
+  .guided-option-modal .option-choice-section > div { min-height: 0; padding: 16px !important; }
+  .guided-option-modal .option-footer { display: flex !important; flex-direction: column; padding: 12px !important; gap: 8px !important; }
+  .guided-option-modal .option-footer-content { grid-template-columns: 1fr; grid-template-rows: auto; gap: 8px !important; }
+  .guided-option-modal .qty-controls { grid-column: 1; grid-row: auto; }
+  .guided-option-modal .option-footer-btns { height: auto; }
+}
+@media (max-width: 480px) {
+  .guided-option-modal .option-detail-layout > div { grid-template-columns: 72px minmax(0, 1fr) !important; padding: 16px 56px 16px 16px; gap: 12px; }
+  .guided-option-modal .option-image-area { height: 80px !important; }
+  .guided-option-modal .option-header-title { font-size: 1.15rem !important; }
+  .guided-option-modal .option-choice-section { padding: 0 12px 16px !important; }
+  .guided-option-modal .option-choice-section > div { padding: 16px !important; }
+  .guided-option-modal .option-choice-button { padding: 14px !important; font-size: 1.1rem !important; }
+  .guided-option-modal .option-footer { padding: 12px !important; gap: 8px !important; }
+  .guided-option-modal .qty-controls { gap: 4px; }
+  .guided-option-modal .qty-btn { min-width: 40px; }
+  .option-quantity-label small { width: 100%; }
+}
