@@ -64,7 +64,8 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     const groups = getOptionGroups();
     const [selections, setSelections] = useState({});
     const [quantity, setQuantity] = useState(1);
-    const [addedCount, setAddedCount] = useState(0);
+    // 모달을 닫지 않고 계속 담은 항목들. 화면에 목록으로 보여주기 위한 값이다.
+    const [addedLines, setAddedLines] = useState([]);
     const optionSectionRef = useRef(null);
     const [showProductPrompt, setShowProductPrompt] = useState(false);
 
@@ -156,7 +157,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         });
         setSelections(initial);
         setQuantity(1);
-        setAddedCount(0);
+        setAddedLines([]);
         setCurrentImageIndex(0);
         setFailedImages({});
         setShowProductPrompt(false);
@@ -197,9 +198,9 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     };
 
     const safeQuantity = typeof quantity === 'number' ? quantity : parseInt(quantity || '0', 10);
+    const addedTotalQuantity = addedLines.reduce((sum, line) => sum + line.quantity, 0);
     // 모든 옵션 그룹이 선택되어야 담을 수 있다 (자동 디폴트가 없으므로 직접 선택 필수).
     const allOptionsSelected = groups.every(g => selections[g.name] != null);
-    const hasMultipleChoices = groups.some(g => g.values.length > 1);
 
     // 현재 선택값(selections)을 하나의 라인 객체로 변환
     const buildLineFromSelections = (sel, qty) => {
@@ -246,7 +247,15 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
             });
             setSelections(initial);
             setQuantity(1);
-            setAddedCount(prev => prev + qty);
+            setAddedLines(prev => {
+                const existing = prev.find(l => l.comboId === line.comboId);
+                if (existing) {
+                    return prev.map(l => (
+                        l.comboId === line.comboId ? { ...l, quantity: l.quantity + qty } : l
+                    ));
+                }
+                return [...prev, line];
+            });
             setShowProductPrompt(true);
         }
     };
@@ -531,6 +540,24 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                 </div>
                 </div>
 
+                {/* 담기만 하고 모달을 닫지 않은 항목 목록. 무엇을 골랐는지 바로 확인할 수 있게 한다. */}
+                {addedLines.length > 0 && (
+                    <div className="option-added-summary">
+                        <div className="option-added-head">
+                            <strong>주문한 항목 {addedLines.length}종</strong>
+                            <span>{addedTotalQuantity}개</span>
+                        </div>
+                        <ul className="option-added-list">
+                            {addedLines.map(line => (
+                                <li key={line.comboId}>
+                                    <span className="option-added-name">{line.displayName}</span>
+                                    <span className="option-added-qty">{line.quantity}개</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
                 {/* Bottom Section: Qty & Footer */}
                 <div className="option-footer" style={{
                     position: 'sticky', bottom: 0, padding: '25px 40px',
@@ -540,26 +567,8 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                     gap: '20px'
                 }}>
                     <div className="option-footer-btns" style={{ display: 'flex', gap: '12px', flex: '1', justifyContent: 'flex-end' }}>
-                        {hasMultipleChoices && allOptionsSelected && (
-                            <button className="option-continue-btn" onClick={() => handleConfirm(true)}>
-                                장바구니 담기 <small>다른 규격 계속 선택</small>
-                            </button>
-                        )}
-                        {addedCount > 0 && !allOptionsSelected && (
-                            <button className="option-continue-btn" onClick={onCancel}>선택 마치고 나가기</button>
-                        )}
-                        <button
-                            onClick={() => handleConfirm(false)}
-                            style={{
-                                padding: '16px 20px', borderRadius: '18px', border: 'none',
-                                background: 'var(--accent-color)', color: 'white', fontWeight: 800, fontSize: '1.1rem',
-                                cursor: 'pointer',
-                                boxShadow: '0 10px 20px rgba(255, 107, 0, 0.2)',
-                                flex: 2
-                            }}
-                        >
-                            {allOptionsSelected ? `${Math.max(1, safeQuantity)}개 장바구니 담고 나가기` : '① 제품 선택하러 가기'}
-                        </button>
+                        <button className="option-order-btn" onClick={() => handleConfirm(true)}>주문하기</button>
+                        <button className="option-exit-btn" onClick={onCancel}>나가기</button>
                     </div>
                 </div>
             </div>

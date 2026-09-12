@@ -39,12 +39,19 @@
 .guided-option-modal .qty-btn { min-width: 48px; height: 52px !important; }
 .guided-option-modal .qty-num { flex: 1; min-width: 48px; max-width: 180px; margin: 0 !important; height: 52px; background: white !important; border: 2px solid #94a3b8 !important; border-radius: 8px; font-size: 1.5rem !important; }
 .option-quantity-unit { font-weight: 800; color: #334155; }
-.guided-option-modal .option-footer-btns { width: 100%; flex: 1 1 auto !important; margin: 0; flex-direction: row; gap: 12px; }
-.guided-option-modal .option-footer-btns button { min-height: 60px; font-size: 1.15rem !important; }
-.guided-option-modal .option-footer-btns .option-continue-btn { flex: 1 1 0 !important; }
-.guided-option-modal .option-footer-btns > button:last-child { flex: 1.6 1 0 !important; }
-.guided-option-modal .option-footer-btns .option-continue-btn { border: 2px solid #94a3b8; border-radius: 16px; background: #fff; color: #334155; font-weight: 800; cursor: pointer; }
-.guided-option-modal .option-continue-btn small { display: block; margin-top: 2px; color: #475569; font-size: .8rem; font-weight: 600; }
+.guided-option-modal .option-footer-btns { width: 100%; flex: 1 1 auto !important; margin: 0; flex-direction: row; gap: 12px; align-items: stretch; }
+/* 나가기는 보조 동작이라 작게, 주문하기는 주 동작이라 크게 잡는다. */
+.guided-option-modal .option-exit-btn { flex: 0 0 auto !important; min-width: 110px; min-height: 60px; padding: 0 18px; border: 2px solid #94a3b8; border-radius: 16px; background: #fff; color: #334155; font-weight: 700; font-size: 1rem; cursor: pointer; }
+.guided-option-modal .option-order-btn { flex: 1 1 auto !important; min-height: 88px; padding: 0 24px; border: none; border-radius: 20px; background: var(--accent-color); color: #fff; font-weight: 900; font-size: 1.6rem; letter-spacing: .02em; cursor: pointer; box-shadow: 0 12px 24px rgba(255, 107, 0, .25); }
+/* 계속 담기로 쌓인 항목 목록. 푸터 바로 위에 붙여 항상 보이게 한다. */
+.guided-option-modal .option-added-summary { flex: 0 0 auto; background: #fff7ed; border-top: 2px solid #fdba74; padding: 12px 24px; }
+.guided-option-modal .option-added-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; color: #9a3412; font-size: 1rem; font-weight: 800; margin-bottom: 8px; }
+.guided-option-modal .option-added-list { list-style: none; margin: 0; padding: 0; max-height: 132px; overflow-y: auto; }
+.guided-option-modal .option-added-list li { display: flex; align-items: baseline; gap: 10px; padding: 6px 0; border-bottom: 1px dashed #fed7aa; font-size: 1.05rem; color: #1e293b; }
+.guided-option-modal .option-added-list li:last-child { border-bottom: none; }
+.guided-option-modal .option-added-name { flex: 1 1 auto; min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
+.guided-option-modal .option-added-qty { flex: 0 0 auto; min-width: 60px; text-align: right; font-weight: 800; color: #c2410c; }
+
 .guided-option-modal button:focus-visible, .guided-option-modal input:focus-visible, .guided-option-modal summary:focus-visible { outline: 3px solid #2563eb !important; outline-offset: 3px; }
 
 /* 키오스크: 터치 입력을 지원하는 세로형 화면에서만 전용 배치를 적용한다. */
@@ -74,8 +81,12 @@
   .guided-option-modal .option-choice-section { overflow: visible; padding: 0 12px 16px !important; }
   .guided-option-modal .option-choice-section > div { min-height: 0; padding: 16px !important; }
   .guided-option-modal .option-footer { padding: 12px !important; gap: 8px !important; }
+  .guided-option-modal .option-added-summary { padding: 10px 12px; }
+  .guided-option-modal .option-added-list { max-height: 96px; }
   .guided-option-modal .option-quantity-block { grid-template-columns: 1fr; margin-top: 16px; padding-top: 14px; }
   .guided-option-modal .option-footer-btns { height: auto; }
+  .guided-option-modal .option-exit-btn { min-width: 88px; min-height: 52px; font-size: .95rem; }
+  .guided-option-modal .option-order-btn { min-height: 72px; font-size: 1.35rem; }
 }
 @media (max-width: 480px) {
   .guided-option-modal .option-detail-layout > div { grid-template-columns: 72px minmax(0, 1fr) !important; padding: 16px 56px 16px 16px; gap: 12px; }
