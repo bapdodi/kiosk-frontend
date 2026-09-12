@@ -64,9 +64,9 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     const groups = getOptionGroups();
     const [selections, setSelections] = useState({});
     const [quantity, setQuantity] = useState(1);
-    // 사용자가 담은 옵션 목록 (여러 옵션을 한 번에 장바구니에 추가하기 위함)
-    const [lines, setLines] = useState([]);
+    const [addedCount, setAddedCount] = useState(0);
     const optionSectionRef = useRef(null);
+    const [showProductPrompt, setShowProductPrompt] = useState(false);
 
     // Image carousel state
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -156,9 +156,10 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         });
         setSelections(initial);
         setQuantity(1);
-        setLines([]);
+        setAddedCount(0);
         setCurrentImageIndex(0);
         setFailedImages({});
+        setShowProductPrompt(false);
     }, [product]);
 
     // All hooks are declared above; safe to bail out for a missing product here.
@@ -196,12 +197,9 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     };
 
     const safeQuantity = typeof quantity === 'number' ? quantity : parseInt(quantity || '0', 10);
-    const linesTotalCount = lines.reduce((sum, l) => sum + l.quantity, 0);
-
     // 모든 옵션 그룹이 선택되어야 담을 수 있다 (자동 디폴트가 없으므로 직접 선택 필수).
     const allOptionsSelected = groups.every(g => selections[g.name] != null);
-    // 이미 담은 옵션이 있으면 현재 선택이 비어 있어도 확정 가능.
-    const canConfirm = lines.length > 0 || allOptionsSelected;
+    const hasMultipleChoices = groups.some(g => g.values.length > 1);
 
     // 현재 선택값(selections)을 하나의 라인 객체로 변환
     const buildLineFromSelections = (sel, qty) => {
@@ -220,52 +218,37 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
         };
     };
 
-    // 현재 선택한 옵션을 담기 목록에 추가 (같은 옵션이면 수량 합산)
-    const addCurrentSelection = () => {
-        if (!allOptionsSelected) return;
+    const focusMissingProduct = () => {
+        setShowProductPrompt(true);
+        const target = optionSectionRef.current?.querySelector('[data-option-missing="true"]');
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target?.querySelector('button')?.focus({ preventScroll: true });
+    };
+
+    const handleConfirm = (stayOpen = false) => {
+        if (!allOptionsSelected) {
+            focusMissingProduct();
+            return;
+        }
         const qty = safeQuantity < 1 ? 1 : safeQuantity;
         const line = buildLineFromSelections(selections, qty);
-        setLines(prev => {
-            const idx = prev.findIndex(l => l.lineId === line.lineId);
-            if (idx > -1) {
-                const next = [...prev];
-                next[idx] = { ...next[idx], quantity: next[idx].quantity + qty };
-                return next;
-            }
-            return [...prev, line];
-        });
-        setQuantity(1);
-    };
+        onConfirm(product, [{
+            id: line.comboId,
+            displayName: line.displayName,
+            totalExtra: line.totalExtra,
+            erpCode: line.erpCode
+        }], { [line.comboId]: qty }, stayOpen);
 
-    const changeLineQty = (lineId, delta) => {
-        setLines(prev => prev.map(l =>
-            l.lineId === lineId ? { ...l, quantity: Math.max(1, l.quantity + delta) } : l
-        ));
-    };
-
-    const removeLine = (lineId) => {
-        setLines(prev => prev.filter(l => l.lineId !== lineId));
-    };
-
-    const handleConfirm = () => {
-        // 담은 목록도 없고 현재 옵션도 미선택이면 확정 불가.
-        if (lines.length === 0 && !allOptionsSelected) return;
-        // 담은 목록이 없으면 현재 선택을 그대로 추가 (단일 담기 호환)
-        const finalLines = lines.length > 0
-            ? lines
-            : [buildLineFromSelections(selections, safeQuantity < 1 ? 1 : safeQuantity)];
-
-        const combinations = finalLines.map(l => ({
-            id: l.comboId,
-            displayName: l.displayName,
-            totalExtra: l.totalExtra,
-            erpCode: l.erpCode
-        }));
-        const quantities = {};
-        finalLines.forEach(l => {
-            quantities[l.comboId] = (quantities[l.comboId] || 0) + l.quantity;
-        });
-        onConfirm(product, combinations, quantities);
+        if (stayOpen) {
+            const initial = {};
+            groups.forEach(g => {
+                if (g.values.length === 1) initial[g.name] = g.values[0];
+            });
+            setSelections(initial);
+            setQuantity(1);
+            setAddedCount(prev => prev + qty);
+            setShowProductPrompt(true);
+        }
     };
 
     const FALLBACK_IMAGE = '/no-image.png';
@@ -404,10 +387,10 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                 </div>
 
                 {/* Middle Section: Options */}
-                <div ref={optionSectionRef} style={{ padding: '0 40px 40px 40px', background: '#fff' }} className="option-info-padding option-choice-section">
+                <div ref={optionSectionRef} style={{ padding: '0 40px 40px 40px', background: '#fff' }} className={`option-info-padding option-choice-section${allOptionsSelected ? ' product-selection-complete' : showProductPrompt ? ' needs-product-selection' : ''}`}>
                     <div style={{ padding: '30px', background: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
                         <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '20px', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span className="option-step">1</span> {groups.length ? '옵션을 먼저 선택해 주세요' : '기본 상품으로 담습니다'}
+                            <span className="option-step">1</span> {groups.length ? (allOptionsSelected ? '제품 선택 완료 · 수량을 정해주세요' : '제품을 먼저 선택해 주세요') : '기본 제품으로 담습니다'}
                         </h3>
 
                         <p className="option-choice-help">{groups.length ? '아래에서 원하는 규격을 눌러 주세요. 각 항목에서 하나씩 선택합니다.' : '아래에서 필요한 수량을 확인해 주세요.'}</p>
@@ -426,7 +409,9 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                                     className="option-choice-button"
                                                     onClick={() => {
                                                         // 옵션을 바꾸면 표시 사진 세트가 달라지므로 첫 장부터 보여준다.
-                                                        setSelections({ ...selections, [group.name]: val });
+                                                        const nextSelections = { ...selections, [group.name]: val };
+                                                        setSelections(nextSelections);
+                                                        setShowProductPrompt(!groups.every(g => nextSelections[g.name] != null));
                                                         setCurrentImageIndex(0);
                                                         setFailedImages({});
                                                     }}
@@ -455,57 +440,6 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                             ))}
                         </div>
 
-                        {/* 여러 규격을 함께 주문할 때 현재 선택을 목록에 추가한다. */}
-                        {groups.length > 0 && <div className="option-multiple">
-                            <div>
-                                <strong>여러 규격을 함께 주문하시나요?</strong>
-                                <span>현재 규격과 수량을 목록에 추가한 뒤 다른 규격을 선택하세요.</span>
-                            </div>
-                            <button
-                                onClick={addCurrentSelection}
-                                disabled={!allOptionsSelected}
-                            >
-                                {allOptionsSelected
-                                    ? `＋ 선택한 옵션 ${safeQuantity < 1 ? 1 : safeQuantity}개 목록에 추가`
-                                    : '옵션 선택 후 목록에 추가할 수 있어요'}
-                            </button>
-                        </div>}
-
-                        {/* 담은 옵션 목록 */}
-                        {lines.length > 0 && (
-                            <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                <div style={{ fontWeight: 800, color: '#334155', fontSize: '1.1rem' }}>담은 옵션 ({lines.length})</div>
-                                {lines.map(l => (
-                                    <div key={l.lineId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 14px' }}>
-                                        <div style={{ minWidth: 0 }}>
-                                            <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.displayName || '기본'}</div>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <button
-                                                onClick={() => changeLineQty(l.lineId, -1)}
-                                                disabled={l.quantity <= 1}
-                                                style={{ width: '30px', height: '30px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', fontWeight: 'bold', cursor: l.quantity <= 1 ? 'not-allowed' : 'pointer', opacity: l.quantity <= 1 ? 0.4 : 1 }}
-                                            >
-                                                −
-                                            </button>
-                                            <span style={{ minWidth: '22px', textAlign: 'center', fontWeight: 'bold' }}>{l.quantity}</span>
-                                            <button
-                                                onClick={() => changeLineQty(l.lineId, 1)}
-                                                style={{ width: '30px', height: '30px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', fontWeight: 'bold', cursor: 'pointer' }}
-                                            >
-                                                +
-                                            </button>
-                                            <button
-                                                onClick={() => removeLine(l.lineId)}
-                                                style={{ background: 'none', border: 'none', color: '#ff4444', fontWeight: 'bold', cursor: 'pointer', marginLeft: '4px' }}
-                                            >
-                                                삭제
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                     </div>
                 </div>
                 </div>
@@ -518,9 +452,9 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                     justifyContent: 'space-between', alignItems: 'center',
                     gap: '20px'
                 }}>
-                    <div className="option-footer-content" style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
+                    <div className={`option-footer-content${allOptionsSelected ? ' ready-for-quantity' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
                         <label className="option-quantity-label" htmlFor="option-quantity"><span className="option-step">2</span> 수량 선택 <small>숫자를 눌러 직접 입력할 수 있어요</small></label>
-                        <div className="option-selection-summary" aria-live="polite">{lines.length > 0 ? `담을 목록: ${lines.length}가지 옵션 · 총 ${linesTotalCount}개` : allOptionsSelected ? `선택: ${groups.map(g => selections[g.name]).join(' / ') || '기본 상품'}` : '아직 옵션을 선택하지 않았어요'}</div>
+                        <div className="option-selection-summary" aria-live="polite">{addedCount > 0 ? `${addedCount}개 장바구니에 담았어요 · ` : ''}{allOptionsSelected ? `현재 선택: ${groups.map(g => selections[g.name]).join(' / ') || '기본 제품'}` : '제품을 선택해 주세요'}</div>
                         <div className="qty-controls" style={{ background: '#f1f5f9', padding: '6px', borderRadius: '16px', display: 'flex', alignItems: 'center' }}>
                             <button
                                 className="qty-btn"
@@ -608,15 +542,16 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                     </div>
 
                     <div className="option-footer-btns" style={{ display: 'flex', gap: '12px', flex: '1', justifyContent: 'flex-end' }}>
+                        {hasMultipleChoices && allOptionsSelected && (
+                            <button className="option-continue-btn" onClick={() => handleConfirm(true)}>
+                                장바구니 담기 <small>다른 규격 계속 선택</small>
+                            </button>
+                        )}
+                        {addedCount > 0 && !allOptionsSelected && (
+                            <button className="option-continue-btn" onClick={onCancel}>선택 마치고 나가기</button>
+                        )}
                         <button
-                            onClick={() => {
-                                if (canConfirm) handleConfirm();
-                                else {
-                                    const target = optionSectionRef.current?.querySelector('[data-option-missing="true"]');
-                                    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                    target?.querySelector('button')?.focus({ preventScroll: true });
-                                }
-                            }}
+                            onClick={() => handleConfirm(false)}
                             style={{
                                 padding: '16px 20px', borderRadius: '18px', border: 'none',
                                 background: 'var(--accent-color)', color: 'white', fontWeight: 800, fontSize: '1.1rem',
@@ -625,7 +560,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 flex: 2
                             }}
                         >
-                            {canConfirm ? `${linesTotalCount || Math.max(1, safeQuantity)}개 장바구니 담기` : '① 옵션 선택하러 가기'}
+                            {allOptionsSelected ? `${Math.max(1, safeQuantity)}개 장바구니 담고 나가기` : '① 제품 선택하러 가기'}
                         </button>
                     </div>
                 </div>

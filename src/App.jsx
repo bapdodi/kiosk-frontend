@@ -438,35 +438,37 @@ function KioskView({
     }));
   };
 
-  const confirmAddToCart = (product, combinations, quantities) => {
-    let newCart = [...cart];
-    Object.entries(quantities).forEach(([comboId, qty]) => {
-      if (qty > 0) {
-        const combo = combinations.find(c => c.id === comboId);
-        const finalPrice = (product.priceC || 0) + (combo ? (combo.totalExtra || combo.price || 0) : 0);
-        const selectedOption = combo ? (combo.displayName || combo.name) : null;
+  const confirmAddToCart = (product, combinations, quantities, stayOpen = false) => {
+    setCart(previousCart => {
+      const newCart = [...previousCart];
+      Object.entries(quantities).forEach(([comboId, qty]) => {
+        if (qty > 0) {
+          const combo = combinations.find(c => String(c.id) === comboId);
+          const finalPrice = (product.priceC || 0) + (combo ? (combo.totalExtra || combo.price || 0) : 0);
+          const selectedOption = combo ? (combo.displayName || combo.name) : null;
 
-        const existingIndex = newCart.findIndex(i => i.id === product.id && i.selectedOption === selectedOption);
-        if (existingIndex > -1) {
-          newCart[existingIndex] = {
-            ...newCart[existingIndex],
-            quantity: (newCart[existingIndex].quantity || 1) + qty
-          };
-        } else {
-          newCart.push({
-            ...product,
-            selectedOption,
-            finalPrice,
-            erpCode: combo ? (combo.erpCode || combo.id) : product.erpCode, // use specific erpCode from combo
-            quantity: qty,
-            cartId: Date.now() + Math.random()
-          });
+          const existingIndex = newCart.findIndex(i => i.id === product.id && i.selectedOption === selectedOption);
+          if (existingIndex > -1) {
+            newCart[existingIndex] = {
+              ...newCart[existingIndex],
+              quantity: (newCart[existingIndex].quantity || 1) + qty
+            };
+          } else {
+            newCart.push({
+              ...product,
+              selectedOption,
+              finalPrice,
+              erpCode: combo ? (combo.erpCode || combo.id) : product.erpCode,
+              quantity: qty,
+              cartId: Date.now() + Math.random()
+            });
+          }
         }
-      }
+      });
+      return newCart;
     });
 
-    setCart(newCart);
-    setSelectingProduct(null);
+    if (!stayOpen) setSelectingProduct(null);
     setOptionQuantities({});
   };
 

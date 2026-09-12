@@ -10,6 +10,12 @@
 .guided-option-modal summary { cursor: pointer; padding: 12px 0; font-weight: 700; }
 .guided-option-modal .option-choice-section { min-height: 0; overflow-y: auto; padding: 24px !important; }
 .guided-option-modal .option-choice-section > div { min-height: 100%; box-sizing: border-box; padding: 24px !important; border: 2px solid #fed7aa !important; background: #fffaf5 !important; }
+.guided-option-modal .option-choice-section.needs-product-selection > div { border-color: #ea580c !important; box-shadow: inset 0 0 0 2px #ea580c, 0 0 0 5px #ffedd5; }
+.guided-option-modal .option-choice-section.product-selection-complete > div { border-color: #cbd5e1 !important; background: #fff !important; box-shadow: none; }
+.guided-option-modal .product-selection-complete .option-step { background: #475569; }
+.guided-option-modal .product-selection-complete .option-required { color: #475569; background: #f1f5f9; }
+.guided-option-modal .product-selection-complete .option-choice-button[aria-pressed="true"] { background: #f1f5f9 !important; border-color: #64748b !important; color: #1e293b !important; box-shadow: none !important; }
+.guided-option-modal .product-selection-complete .option-choice-button[aria-pressed="true"] .option-choice-check { background: #475569; border-color: #475569; }
 .guided-option-modal h3 { margin: 0 0 8px !important; }
 .option-step { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; background: #c2410c; color: white; font-size: 1.1rem; font-weight: 800; }
 .option-choice-help { margin: 0 0 24px; color: #475569; line-height: 1.6; }
@@ -18,24 +24,22 @@
 .guided-option-modal .option-choice-button[aria-pressed="true"] { background: #fff0df !important; border-color: #c2410c !important; color: #9a3412 !important; }
 .option-choice-check { width: 24px; height: 24px; border: 2px solid #94a3b8; border-radius: 50%; flex-shrink: 0; text-align: center; line-height: 20px; }
 [aria-pressed="true"] .option-choice-check { background: #c2410c; border-color: #c2410c; color: white; }
-.option-multiple { margin-top: 20px; padding-top: 18px; border-top: 1px solid #fed7aa; color: #475569; }
-.option-multiple > div { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-.option-multiple strong { color: #334155; font-size: 1rem; }
-.option-multiple span { font-size: .88rem; }
-.option-multiple button { width: 100%; min-height: 52px; padding: 12px 16px; border: 2px solid #ea580c; border-radius: 12px; background: #fff; color: #c2410c; font-size: 1rem; font-weight: 800; cursor: pointer; }
-.option-multiple button:disabled { border-color: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
 .guided-option-modal .option-footer { flex: 0 0 auto; display: grid !important; grid-template-columns: minmax(0, 1fr) 320px; padding: 16px 24px !important; gap: 20px !important; }
 .guided-option-modal .option-footer-content { width: 100%; display: grid !important; grid-template-columns: 220px minmax(360px, 1fr); grid-template-rows: auto auto; column-gap: 16px !important; row-gap: 4px !important; }
 .option-quantity-label { font-size: 1.25rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .option-quantity-label small { font-size: .85rem; color: #475569; font-weight: 500; }
 .option-selection-summary { color: #475569; font-size: 1rem; overflow-wrap: anywhere; }
 .guided-option-modal .qty-controls { width: 100%; scale: 1; gap: 8px; justify-content: space-between; box-sizing: border-box; grid-column: 2; grid-row: 1 / span 2; }
+.guided-option-modal .ready-for-quantity .option-quantity-label { color: #c2410c; }
+.guided-option-modal .ready-for-quantity .qty-controls { outline: 3px solid #ea580c; box-shadow: 0 0 0 6px #ffedd5; }
 .guided-option-modal .qty-btn { min-width: 48px; height: 52px !important; }
 .guided-option-modal .qty-num { flex: 1; min-width: 48px; max-width: 180px; margin: 0 !important; height: 52px; background: white !important; border: 2px solid #94a3b8 !important; border-radius: 8px; font-size: 1.5rem !important; }
 .option-quantity-unit { font-weight: 800; color: #334155; }
-.guided-option-modal .option-footer-btns { width: 100%; height: 100%; flex: none !important; margin: 0; }
+.guided-option-modal .option-footer-btns { width: 100%; height: 100%; flex: none !important; margin: 0; flex-direction: column; }
 .guided-option-modal .option-footer-btns button { width: 100%; }
-.guided-option-modal .option-footer-btns button { min-height: 60px; font-size: 1.25rem !important; }
+.guided-option-modal .option-footer-btns button { min-height: 60px; flex: none !important; font-size: 1.15rem !important; }
+.guided-option-modal .option-footer-btns .option-continue-btn { border: 2px solid #94a3b8; border-radius: 16px; background: #fff; color: #334155; font-weight: 800; cursor: pointer; }
+.guided-option-modal .option-continue-btn small { display: block; margin-top: 2px; color: #475569; font-size: .8rem; font-weight: 600; }
 .guided-option-modal button:focus-visible, .guided-option-modal input:focus-visible, .guided-option-modal summary:focus-visible { outline: 3px solid #2563eb !important; outline-offset: 3px; }
 
 /* 키오스크: 터치 입력을 지원하는 세로형 화면에서만 전용 배치를 적용한다. */
