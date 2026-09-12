@@ -112,8 +112,14 @@ const getSearchVariants = (name, query) => {
   };
 };
 
-// 0은 정확/부분 일치, 1~3은 오타 개수, Infinity는 불일치다.
-export const getSearchMatchScore = (name, query) => {
+// 검색어를 공백 단위 단어로 나눈다. 공백만 있으면 빈 배열이다.
+const tokenizeQuery = (query) => (query || '')
+  .split(/\s+/)
+  .map((token) => token.trim())
+  .filter((token) => normalizeSearchText(token) !== '');
+
+// 단어 하나에 대한 점수다. 0은 정확/부분 일치, 1~3은 오타 개수, Infinity는 불일치다.
+const getTokenMatchScore = (name, query) => {
   const { haystacks, needles, normalizedQuery } = getSearchVariants(name, query);
   if (!normalizedQuery) return 0;
 
@@ -133,6 +139,30 @@ export const getSearchMatchScore = (name, query) => {
   }
 
   return best <= maxDistance ? best : Number.POSITIVE_INFINITY;
+};
+
+// 놓친 단어 하나가 오타 penalty(최대 3)보다 항상 크도록 잡은 가중치다.
+const MISSING_TOKEN_PENALTY = 10;
+
+// 여러 단어로 검색하면 단어가 떨어져 있어도(예: "스텐 20A" → "스텐 파이프 20A") 찾고,
+// 일부 단어만 겹쳐도 결과에 남긴다. 다만 모두 맞은 상품보다 뒤로 정렬된다.
+// 0은 모든 단어가 정확히 일치, 클수록 오타·미일치가 많고, Infinity는 겹치는 단어가 없는 경우다.
+export const getSearchMatchScore = (name, query) => {
+  const tokens = tokenizeQuery(query);
+  if (tokens.length === 0) return 0;
+
+  const scores = tokens.map((token) => getTokenMatchScore(name, token));
+  const matched = scores.filter((score) => Number.isFinite(score));
+  if (matched.length === 0) return Number.POSITIVE_INFINITY;
+
+  // 한 글자 단어는 거의 모든 상품에 걸리므로, 그것만 겹쳤을 때는 결과에 넣지 않는다.
+  const hasMeaningfulMatch = tokens.some(
+    (token, index) => Number.isFinite(scores[index]) && normalizeSearchText(token).length >= 2,
+  );
+  if (matched.length < tokens.length && !hasMeaningfulMatch) return Number.POSITIVE_INFINITY;
+
+  const typoPenalty = matched.reduce((sum, score) => sum + score, 0) / matched.length;
+  return (tokens.length - matched.length) * MISSING_TOKEN_PENALTY + typoPenalty;
 };
 
 export const matchesSearchText = (name, query) => Number.isFinite(getSearchMatchScore(name, query));
