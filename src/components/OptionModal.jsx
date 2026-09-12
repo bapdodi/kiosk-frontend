@@ -262,9 +262,10 @@ const OptionModal = ({ product, cartItems = [], onConfirm, onCancel }) => {
                     aria-label="상품 선택 닫기"
                     style={{
                         position: 'absolute', top: '20px', right: '20px', zIndex: 10,
-                        width: '40px', height: '40px', borderRadius: '50%', border: 'none',
-                        background: 'rgba(255,255,255,0.9)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                        fontSize: '1.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        width: '52px', height: '52px', borderRadius: '50%', border: '2px solid #b91c1c',
+                        background: '#dc2626', color: '#fff', boxShadow: '0 4px 12px rgba(185,28,28,0.35)',
+                        fontSize: '2rem', fontWeight: 900, lineHeight: 1,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}
                 >
                     ×

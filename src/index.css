@@ -93,17 +93,17 @@ body {
 
 .search-container {
   position: relative;
-  flex: 0 1 350px;
+  flex: 0 1 700px;
 }
 
 .search-input {
   width: 100%;
   background: #f1f3f5;
   border: 2px solid transparent;
-  border-radius: 10px;
-  padding: 8px 44px 8px 40px;
-  /* More compact search */
-  font-size: 0.9rem;
+  border-radius: 14px;
+  /* 키오스크에서 잘 보이도록 기존의 약 2배 크기 */
+  padding: 16px 76px 16px 64px;
+  font-size: 1.8rem;
   transition: all 0.2s;
 }
 
@@ -120,27 +120,27 @@ body {
 
 .search-icon {
   position: absolute;
-  left: 12px;
+  left: 20px;
   top: 50%;
   transform: translateY(-50%);
   color: #adb5bd;
-  font-size: 0.9rem;
+  font-size: 1.8rem;
 }
 
 .voice-search-btn {
   position: absolute;
-  right: 6px;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
   border-radius: 50%;
   background: transparent;
-  font-size: 1.1rem;
+  font-size: 2rem;
   line-height: 1;
   cursor: pointer;
   transition: background 0.2s;
@@ -384,8 +384,8 @@ body {
   }
 
   .search-input {
-    padding: 6px 40px 6px 32px;
-    font-size: 0.85rem;
+    padding: 12px 62px 12px 50px;
+    font-size: 1.5rem;
   }
 
   .category-tab {
