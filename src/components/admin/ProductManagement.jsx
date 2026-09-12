@@ -10,7 +10,7 @@ const ProductManagement = () => {
         products, setProducts,
         mainCategories,
         subCategories, refreshCategories,
-        page, hasMore, isFetchingMore, onLoadMore, onRefresh,
+        isRefreshing, onRefresh,
         activeMainCat, setActiveMainCat,
         activeSubCat, setActiveSubCat,
         searchQuery, setSearchQuery
@@ -47,20 +47,16 @@ const ProductManagement = () => {
     // Infinite Scroll logic
     const observer = useRef();
     const lastProductElementRef = useCallback(node => {
-        if (isFetchingMore) return;
+        if (isRefreshing) return;
         if (observer.current) observer.current.disconnect();
         observer.current = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting) {
-                if (visibleCountRef.current < filteredLenRef.current) {
-                    // 이미 로드된 상품을 먼저 점진적으로 더 그림
-                    setVisibleCount(c => Math.min(c + PAGE_SIZE, filteredLenRef.current));
-                } else if (hasMore) {
-                    onLoadMore();
-                }
+            if (entries[0].isIntersecting && visibleCountRef.current < filteredLenRef.current) {
+                // 상품은 전부 받아둔 상태라 화면에 그리는 개수만 점진적으로 늘린다.
+                setVisibleCount(c => Math.min(c + PAGE_SIZE, filteredLenRef.current));
             }
         });
         if (node) observer.current.observe(node);
-    }, [isFetchingMore, hasMore, onLoadMore]);
+    }, [isRefreshing]);
 
     useEffect(() => {
         // Restore scroll position
@@ -439,9 +435,18 @@ const ProductManagement = () => {
         const query = searchQuery.toLowerCase().trim();
         return [...products]
             .filter(p => {
-                if (!query) return true;
-                return p.name?.toLowerCase().includes(query) ||
-                    p.hashtags?.some(t => t.toLowerCase().includes(query));
+                // 검색 중에는 카테고리 필터를 무시하고 전체 상품에서 찾는다.
+                if (query) {
+                    return p.name?.toLowerCase().includes(query) ||
+                        p.hashtags?.some(t => t.toLowerCase().includes(query));
+                }
+                if (!activeMainCat) return true;
+                // 상품은 여러 카테고리에 속할 수 있어 하나라도 맞으면 노출한다.
+                return (p.categories || []).some(c => {
+                    if (c.mainCategory !== activeMainCat) return false;
+                    if (!activeSubCat || activeSubCat === 'all') return true;
+                    return c.subCategory === activeSubCat;
+                });
             })
             .sort((a, b) => {
                 const aOrder = a.sortOrder || "";
@@ -450,7 +455,7 @@ const ProductManagement = () => {
                 if (aOrder > bOrder) return 1;
                 return (a.id || 0) - (b.id || 0);
             });
-    }, [products, searchQuery]);
+    }, [activeMainCat, activeSubCat, products, searchQuery]);
 
     const visibleProducts = filteredProducts.slice(0, visibleCount);
     visibleCountRef.current = visibleCount;
@@ -751,12 +756,12 @@ const ProductManagement = () => {
                         ))}
                     </tbody>
                 </table>
-                {isFetchingMore && (
+                {isRefreshing && (
                     <div style={{ textAlign: 'center', padding: '20px', color: '#64748b', fontSize: '0.9rem' }}>
                         데이터를 불러오는 중...
                     </div>
                 )}
-                {filteredProducts.length === 0 && !isFetchingMore && (
+                {filteredProducts.length === 0 && !isRefreshing && (
                     <div style={{ textAlign: 'center', padding: '100px 0', color: '#94a3b8' }}>
                         검색 결과가 없습니다.
                     </div>

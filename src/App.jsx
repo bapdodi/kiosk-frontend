@@ -31,14 +31,8 @@ function App() {
   const [error, setError] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Pagination states
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // 카테고리 순서는 서버(sort_order)가 유일한 기준이다. 생성/이름수정/삭제/재정렬 뒤에
-  // 로컬 state 만 손보면 화면 순서와 서버 순서가 갈라져 새로고침 때 순서가 바뀐 것처럼 보인다.
-  // 그래서 카테고리를 바꾼 모든 경로가 이 함수로 서버 순서를 다시 받아간다.
   const refreshCategories = useCallback(async () => {
     const res = await fetch('/api/categories');
     if (!res.ok) throw new Error('카테고리를 불러오는데 실패했습니다.');
@@ -85,8 +79,7 @@ function App() {
           refreshCategories()
         ]);
 
-        // Fetch first page of products
-        await fetchProducts(0, null, null, true);
+        await fetchProducts(true);
 
         if (isAuth) {
           await fetchOrders();
@@ -115,43 +108,24 @@ function App() {
     }
   };
 
-  const fetchProducts = async (pageNumber, mainCat, subCat, query = '', isInitial = false) => {
+  // 상품은 1천 건 남짓이라 전체를 한 번에 받아 카테고리 필터와 검색을 모두 화면에서 처리한다.
+  // 덕분에 검색은 항상 전체 상품이 대상이 되고, 서버 응답은 캐싱돼 있어 DB 를 다시 읽지 않는다.
+  const fetchProducts = async (isInitial = false) => {
     try {
-      if (!isInitial) setIsFetchingMore(true);
-      
-      let url = `/api/products?page=${pageNumber}&size=2000`;
-      if (mainCat) url += `&mainCategory=${mainCat}`;
-      if (subCat && subCat !== 'all') url += `&subCategory=${subCat}`;
-      // search is handled client-side only (backend does not support search param)
+      if (!isInitial) setIsRefreshing(true);
 
-      const res = await fetch(url);
+      const res = await fetch('/api/products/all');
       if (!res.ok) throw new Error('상품 데이터를 불러오는데 실패했습니다.');
-      
+
       const data = await res.json();
-      const newProducts = data.content || [];
-
-      if (isInitial || pageNumber === 0) {
-        setProducts(newProducts);
-      } else {
-        setProducts(prev => [...prev, ...newProducts]);
-      }
-
-      setHasMore(!data.last);
-      setPage(pageNumber);
+      setProducts(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('Fetch products failed:', e);
       setError(e.message);
     } finally {
-      setIsFetchingMore(false);
+      setIsRefreshing(false);
     }
   };
-
-  // Reset and fetch when category filter changes (search is handled client-side)
-  useEffect(() => {
-    if (!loading) {
-        fetchProducts(0, activeMainCat, activeSubCat, '', true);
-    }
-  }, [activeMainCat, activeSubCat]);
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '2rem' }}>로딩 중...</div>;
   if (error) return <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', padding: '20px', textAlign: 'center' }}>
@@ -180,10 +154,7 @@ function App() {
             setActiveSubCat={setActiveSubCat}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
-            page={page}
-            hasMore={hasMore}
-            isFetchingMore={isFetchingMore}
-            onLoadMore={() => fetchProducts(page + 1, activeMainCat, activeSubCat, searchQuery)}
+            isRefreshing={isRefreshing}
           />
         } />
         <Route path="/login" element={<LoginPage />} />
@@ -201,10 +172,8 @@ function App() {
               refreshCategories={refreshCategories}
                orders={orders}
                setOrders={setOrders}
-               page={page}
-               hasMore={hasMore}
-               onLoadMore={() => fetchProducts(page + 1, activeMainCat, activeSubCat, searchQuery)}
-               onRefresh={() => fetchProducts(0, activeMainCat, activeSubCat, searchQuery, true)}
+               isRefreshing={isRefreshing}
+               onRefresh={() => fetchProducts()}
                activeMainCat={activeMainCat}
                setActiveMainCat={setActiveMainCat}
                activeSubCat={activeSubCat}
@@ -241,10 +210,7 @@ function KioskView({
   setActiveSubCat,
   searchQuery,
   setSearchQuery,
-  page,
-  hasMore,
-  isFetchingMore,
-  onLoadMore
+  isRefreshing
 }) {
   const navigate = useNavigate();
   const [selectingProduct, setSelectingProduct] = useState(null);
@@ -255,7 +221,6 @@ function KioskView({
   const [orderModal, setOrderModal] = useState({ isOpen: false, name: '' });
   const [customers, setCustomers] = useState([]);
   const lastScrollTop = useRef(0);
-  const observer = useRef();
   // 주문 중복 전송 방지용 키. 전송 성공 전까지 같은 키를 유지해
   // 재시도/더블클릭이 서버에서 같은 주문으로 합쳐지게 한다.
   const pendingOrderRequestId = useRef(null);
@@ -329,17 +294,6 @@ function KioskView({
   const chosungTabs = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ', 'A-Z'];
   const [selectedChosung, setSelectedChosung] = useState('ㄱ');
 
-  const lastProductElementRef = useCallback(node => {
-    if (isFetchingMore) return;
-    if (observer.current) observer.current.disconnect();
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
-        onLoadMore();
-      }
-    });
-    if (node) observer.current.observe(node);
-  }, [isFetchingMore, hasMore, onLoadMore]);
-
   useEffect(() => {
     fetch('/api/customers')
       .then(res => res.json())
@@ -382,9 +336,10 @@ function KioskView({
     lastScrollTop.current = currentScrollTop;
   };
 
+  const isSearching = normalizeSearchText(searchQuery) !== "";
+
   const filteredProducts = useMemo(() => {
     return products.map((product) => {
-      const isSearching = normalizeSearchText(searchQuery) !== "";
       const searchScore = isSearching
         ? Math.min(
           getSearchMatchScore(product.name, searchQuery),
@@ -413,7 +368,7 @@ function KioskView({
       if (aOrder > bOrder) return 1;
       return a.product.id - b.product.id;
     }).map(({ product }) => product);
-  }, [activeMainCat, activeSubCat, products, searchQuery]);
+  }, [activeMainCat, activeSubCat, isSearching, products, searchQuery]);
 
   const handleMainCatChange = (id) => {
     setActiveMainCat(id);
@@ -583,20 +538,20 @@ function KioskView({
 
       <div className="content-area">
         <main className="kiosk-main" onScroll={handleScroll}>
-          {filteredProducts.map((product, index) => (
-            <div key={product.id} ref={index === filteredProducts.length - 1 ? lastProductElementRef : null}>
+          {filteredProducts.map((product) => (
+            <div key={product.id}>
               <ProductCard
                 product={product}
                 onAddClick={handleAddToCartClick}
               />
             </div>
           ))}
-          {isFetchingMore && (
+          {isRefreshing && (
             <div style={{ textAlign: 'center', gridColumn: '1/-1', padding: '20px', color: '#667085' }}>
-              더 불러오는 중...
+              불러오는 중...
             </div>
           )}
-          {filteredProducts.length === 0 && !isFetchingMore && (
+          {filteredProducts.length === 0 && !isRefreshing && (
             <div className="empty-cart-message" style={{ textAlign: 'center', gridColumn: '1/-1', padding: '50px' }}>
               검색 결과가 없습니다.
             </div>

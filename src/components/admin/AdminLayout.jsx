@@ -20,10 +20,7 @@ const AdminLayout = ({
     refreshCategories,
     orders,
     setOrders,
-    page,
-    hasMore,
-    isFetchingMore,
-    onLoadMore,
+    isRefreshing,
     onRefresh,
     activeMainCat,
     setActiveMainCat,
@@ -160,7 +157,7 @@ const AdminLayout = ({
                         mainCategories, setMainCategories,
                         subCategories, setSubCategories, refreshCategories,
                         orders, setOrders,
-                        page, hasMore, isFetchingMore, onLoadMore, onRefresh,
+                        isRefreshing, onRefresh,
                         activeMainCat, setActiveMainCat, activeSubCat, setActiveSubCat, searchQuery, setSearchQuery,
                         orderNotifications
                     }} />
