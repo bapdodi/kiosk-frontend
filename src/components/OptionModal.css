@@ -59,10 +59,8 @@
   .guided-option-modal .option-choice-button { min-height: 72px; flex-basis: 190px; font-size: 1.2rem !important; }
   .guided-option-modal .option-footer { padding: 16px 24px !important; gap: 12px !important; }
   .guided-option-modal .option-quantity-block { grid-template-columns: 1fr; row-gap: 12px; }
-  /* 키오스크는 눈높이가 화면 위쪽이라 모달을 가운데가 아닌 위 1/4 지점에 붙인다. */
-  .modal-overlay.option-modal-overlay { flex-direction: column; align-items: center; justify-content: flex-start; }
-  .modal-overlay.option-modal-overlay::before { content: ''; flex: 1 1 0; min-height: 12px; }
-  .modal-overlay.option-modal-overlay::after { content: ''; flex: 3 1 0; }
+  /* 키오스크는 눈높이가 화면 위쪽이라 모달을 가운데가 아닌 화면 맨 위에 붙인다. */
+  .modal-overlay.option-modal-overlay { align-items: flex-start; padding-top: 12px; }
 }
 
 @media (max-width: 760px) {

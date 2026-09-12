@@ -476,6 +476,13 @@ function KioskView({
     setCart(cart.filter(item => item.cartId !== cartId));
   };
 
+  // 장바구니 전체 비우기. 실수로 눌러 주문을 날리는 일이 없게 한 번 확인한다.
+  const clearCart = () => {
+    if (cart.length === 0) return;
+    if (!window.confirm('장바구니를 모두 비울까요?')) return;
+    setCart([]);
+  };
+
   const updateCartQuantity = (cartId, delta) => {
     setCart(prev => prev.map(item =>
       item.cartId === cartId
@@ -603,6 +610,7 @@ function KioskView({
         onRemove={removeFromCart}
         onQuantityChange={updateCartQuantity}
         onCheckout={handleCheckout}
+        onClear={clearCart}
         onResizeStart={handleCartResizeStart}
       />
 
@@ -621,6 +629,7 @@ function KioskView({
               onRemove={removeFromCart}
               onQuantityChange={updateCartQuantity}
               onCheckout={handleCheckout}
+              onClear={clearCart}
             />
             <button className="modal-close-btn" onClick={() => setIsCartOpen(false)}>×</button>
           </div>

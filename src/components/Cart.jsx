@@ -1,5 +1,5 @@
 
-const Cart = ({ items, onRemove, onQuantityChange, onCheckout }) => {
+const Cart = ({ items, onRemove, onQuantityChange, onCheckout, onClear }) => {
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
     // 같은 상품(id)끼리 묶어서 하나의 헤더 아래 옵션별 서브항목으로 표시
@@ -30,7 +30,16 @@ const Cart = ({ items, onRemove, onQuantityChange, onCheckout }) => {
 
     return (
         <section className="kiosk-cart">
-            <div className="cart-header">장바구니 ({totalCount})</div>
+            <div className="cart-header">
+                <span>장바구니 ({totalCount})</span>
+                <button
+                    className="cart-clear-btn"
+                    onClick={onClear}
+                    disabled={items.length === 0}
+                >
+                    전체 비우기
+                </button>
+            </div>
             <div className="cart-items">
                 {items.length === 0 ? (
                     <div className="empty-cart-message">상품을 선택해주세요.</div>

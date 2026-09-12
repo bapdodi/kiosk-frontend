@@ -2,7 +2,7 @@
 // 동일 상품(id)은 하나로 묶고 규격(옵션)별로 하위 줄에 표시한다. (기존 장바구니 모달과 동일)
 // 상품은 한 줄씩 세로로 쌓이고, 넘치면 세로 스크롤한다.
 // 작은 화면(폰)에서는 CSS(min-width:601px)로 숨겨지고, 기존 floating 버튼 + 모달을 사용한다.
-const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onResizeStart }) => {
+const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onResizeStart }) => {
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
     // 같은 상품(id)끼리 묶어서 하나의 헤더 아래 옵션별 서브항목으로 표시
@@ -24,7 +24,16 @@ const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onResizeStart 
                 onMouseDown={onResizeStart}
                 onTouchStart={onResizeStart}
             />
-            <div className="cart-bar-head">장바구니 ({totalCount})</div>
+            <div className="cart-bar-head">
+                <span>장바구니 ({totalCount})</span>
+                <button
+                    className="cart-clear-btn"
+                    onClick={onClear}
+                    disabled={items.length === 0}
+                >
+                    전체 비우기
+                </button>
+            </div>
             <div className="cart-bar-items">
                 {items.length === 0 ? (
                     <div className="cart-bar-empty">상품을 선택하면 여기에 표시됩니다.</div>

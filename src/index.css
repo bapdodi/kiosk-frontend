@@ -589,6 +589,36 @@ body {
   border-bottom: 1px solid #f1f3f5;
   font-weight: 800;
   font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* 장바구니 전체 비우기: 실수 방지를 위해 눈에 띄되 결제 버튼보다는 약하게. */
+.cart-clear-btn {
+  flex: 0 0 auto;
+  background: #fff;
+  color: #b91c1c;
+  border: 2px solid #fecaca;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.cart-clear-btn:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.cart-clear-btn:disabled {
+  color: #adb5bd;
+  border-color: #e9ecef;
+  cursor: not-allowed;
 }
 
 .cart-items {
@@ -743,6 +773,10 @@ body {
   font-weight: 800;
   font-size: 1.35rem;
   border-bottom: 1px solid #f1f3f5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 /* 상품을 한 줄씩 세로로 쌓고, 넘치면 남는 높이 안에서 세로 스크롤 */
