@@ -386,6 +386,14 @@ function KioskView({
     setOptionQuantities({});
   };
 
+  // 장바구니의 항목을 누르면 해당 상품의 주문(옵션 선택) 화면을 다시 연다.
+  const openProductFromCart = (item) => {
+    const target = products.find(p => p.id === item.id) || item;
+    setIsCartOpen(false);
+    setSelectingProduct(target);
+    setOptionQuantities({});
+  };
+
   const updateQty = (comboId, delta) => {
     setOptionQuantities(prev => ({
       ...prev,
@@ -567,6 +575,7 @@ function KioskView({
         onCheckout={handleCheckout}
         onClear={clearCart}
         onResizeStart={handleCartResizeStart}
+        onSelectProduct={openProductFromCart}
       />
 
       {/* Floating Cart Button (작은 화면 전용) */}
@@ -585,6 +594,7 @@ function KioskView({
               onQuantityChange={updateCartQuantity}
               onCheckout={handleCheckout}
               onClear={clearCart}
+              onSelectProduct={openProductFromCart}
             />
             <button className="modal-close-btn" onClick={() => setIsCartOpen(false)}>×</button>
           </div>
@@ -842,6 +852,7 @@ function KioskView({
 
       <OptionModal
         product={selectingProduct}
+        cartItems={cart}
         quantities={optionQuantities}
         onUpdateQty={updateQty}
         onConfirm={confirmAddToCart}

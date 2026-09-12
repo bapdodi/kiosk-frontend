@@ -2,7 +2,7 @@
 // 동일 상품(id)은 하나로 묶고 규격(옵션)별로 하위 줄에 표시한다. (기존 장바구니 모달과 동일)
 // 상품은 한 줄씩 세로로 쌓이고, 넘치면 세로 스크롤한다.
 // 작은 화면(폰)에서는 CSS(min-width:601px)로 숨겨지고, 기존 floating 버튼 + 모달을 사용한다.
-const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onResizeStart }) => {
+const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onResizeStart, onSelectProduct }) => {
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
     // 같은 상품(id)끼리 묶어서 하나의 헤더 아래 옵션별 서브항목으로 표시
@@ -40,13 +40,24 @@ const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onRes
                 ) : (
                     groups.map((group) => (
                         <div key={group.id} className="cart-bar-chip">
-                            <div className="cart-bar-chip-name">{group.name}</div>
+                            <button
+                                type="button"
+                                className="cart-bar-chip-name cart-bar-chip-name-btn"
+                                onClick={() => onSelectProduct && onSelectProduct(group.items[0])}
+                                title="이 상품을 다시 주문하기"
+                            >
+                                {group.name}
+                            </button>
                             <div className="cart-bar-group-lines">
                                 {group.items.map((item) => {
                                     const quantity = item.quantity || 1;
                                     return (
                                         <div key={item.cartId} className="cart-bar-line">
-                                            <span className="cart-bar-line-opt">
+                                            <span
+                                                className="cart-bar-line-opt"
+                                                style={{ cursor: onSelectProduct ? 'pointer' : 'default' }}
+                                                onClick={() => onSelectProduct && onSelectProduct(item)}
+                                            >
                                                 {item.selectedOption || '기본'}
                                             </span>
                                             <div className="cart-bar-step">

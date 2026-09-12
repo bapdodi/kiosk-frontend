@@ -1,5 +1,5 @@
 
-const Cart = ({ items, onRemove, onQuantityChange, onCheckout, onClear }) => {
+const Cart = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onSelectProduct }) => {
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
     // 같은 상품(id)끼리 묶어서 하나의 헤더 아래 옵션별 서브항목으로 표시
@@ -46,16 +46,27 @@ const Cart = ({ items, onRemove, onQuantityChange, onCheckout, onClear }) => {
                 ) : (
                     groups.map((group) => (
                         <div key={group.id} className="cart-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
-                            <div className="cart-item-name">{group.name}</div>
+                            <button
+                                type="button"
+                                className="cart-item-name cart-item-name-btn"
+                                onClick={() => onSelectProduct && onSelectProduct(group.items[0])}
+                                title="이 상품을 다시 주문하기"
+                            >
+                                {group.name}
+                            </button>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '10px', borderLeft: '2px solid #f1f5f9' }}>
                                 {group.items.map((item) => {
                                     const quantity = item.quantity || 1;
                                     return (
                                         <div key={item.cartId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                                             <div style={{ minWidth: 0 }}>
-                                                {item.selectedOption
-                                                    ? <div className="cart-item-opt">{item.selectedOption}</div>
-                                                    : <div className="cart-item-opt" style={{ color: '#94a3b8' }}>기본</div>}
+                                                <div
+                                                    className="cart-item-opt"
+                                                    style={{ color: item.selectedOption ? undefined : '#94a3b8', cursor: onSelectProduct ? 'pointer' : 'default' }}
+                                                    onClick={() => onSelectProduct && onSelectProduct(item)}
+                                                >
+                                                    {item.selectedOption || '기본'}
+                                                </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
                                                     <button
                                                         onClick={() => onQuantityChange(item.cartId, -1)}

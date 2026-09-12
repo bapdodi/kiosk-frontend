@@ -213,7 +213,7 @@ body {
   padding: 8px 20px;
   /* Reduced from 12x24 */
   border-radius: 100px;
-  border: 2px solid #74c0fc;
+  border: 2px solid #63e6be;
   background: #f8f9fa;
   font-weight: 600;
   cursor: pointer;
@@ -228,7 +228,7 @@ body {
   font-size: 1.15rem;
   font-weight: 700;
   background: white;
-  border: 2px solid #4dabf7;
+  border: 2px solid #38d9a9;
 }
 
 .category-tab.detail-tab {
@@ -2182,4 +2182,29 @@ body {
   .review-back {
     flex-basis: 34%;
   }
+}
+
+/* 장바구니에서 상품명을 누르면 그 상품 주문 화면으로 돌아간다 */
+.cart-item-name-btn,
+.cart-bar-chip-name-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: #cbd5e1;
+  text-underline-offset: 3px;
+}
+
+.cart-item-name-btn:hover,
+.cart-bar-chip-name-btn:hover {
+  color: #2563eb;
+  text-decoration-color: #2563eb;
 }
