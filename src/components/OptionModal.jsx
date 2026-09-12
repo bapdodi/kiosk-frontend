@@ -3,7 +3,12 @@ import { getImageUrl } from '../utils/imageUtils';
 import './OptionModal.css';
 import { COMBINATION_GROUP } from '../utils/optionConstants';
 
-const OptionModal = ({ product, cartItems = [], onConfirm, onCancel }) => {
+// 복합옵션 상품은 규격이 수십 개일 수 있어, 추천 기준으로 보낼 ERP 코드 수를 제한한다.
+const MAX_RECOMMENDATION_SOURCE_CODES = 30;
+// 키오스크 화면에서 한 줄로 훑을 수 있는 개수. 더 늘리면 스크롤해야 보여서 눌리지 않는다.
+const VISIBLE_RECOMMENDATIONS = 6;
+
+const OptionModal = ({ product, cartItems = [], products = [], onConfirm, onCancel, onSelectProduct }) => {
     // Normalizing option groups from different data structures
     const getOptionGroups = () => {
         if (!product) return [];
@@ -70,6 +75,8 @@ const OptionModal = ({ product, cartItems = [], onConfirm, onCancel }) => {
     // Image carousel state
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [failedImages, setFailedImages] = useState({});
+    // 어떤 상품의 추천인지 함께 들고 있어야, 다른 상품으로 갈아탄 순간 이전 추천이 잠깐 비치지 않는다.
+    const [recommendations, setRecommendations] = useState({ productId: null, items: [] });
     const touchStartX = useRef(null);
 
     const optionImages = product?.optionImages || [];
@@ -160,6 +167,34 @@ const OptionModal = ({ product, cartItems = [], onConfirm, onCancel }) => {
         setShowProductPrompt(false);
     }, [product]);
 
+    // 동시구매 추천. ERP 거래이력에서 집계한 "이 상품 주문한 전표에 함께 담긴 상품"을 가져온다.
+    // 복합옵션 상품은 규격마다 ERP 코드가 달라서, 규격을 고르기 전에도 추천이 보이도록 전 규격의
+    // 코드를 함께 보내고 서버가 합산한 결과를 돌려준다.
+    useEffect(() => {
+        const codes = (!product ? [] : [
+            product.erpCode,
+            ...(product.combinations || []).filter(c => !c.deleted).map(c => c.erpCode)
+        ]).filter(Boolean).slice(0, MAX_RECOMMENDATION_SOURCE_CODES);
+
+        if (codes.length === 0) return;
+
+        let cancelled = false;
+        const productId = product.id;
+        fetch(`/api/recommendations?codes=${encodeURIComponent(codes.join(','))}&limit=8`)
+            .then(res => (res.ok ? res.json() : []))
+            .then(data => {
+                if (!cancelled) {
+                    setRecommendations({ productId, items: Array.isArray(data) ? data : [] });
+                }
+            })
+            .catch(() => {
+                // 추천은 주문에 필수가 아니므로 실패하면 조용히 숨긴다.
+                if (!cancelled) setRecommendations({ productId, items: [] });
+            });
+
+        return () => { cancelled = true; };
+    }, [product]);
+
     // All hooks are declared above; safe to bail out for a missing product here.
     if (!product) return null;
 
@@ -199,6 +234,13 @@ const OptionModal = ({ product, cartItems = [], onConfirm, onCancel }) => {
     // 모달 내부 상태가 아니라 장바구니에서 직접 가져온다.
     const addedLines = (cartItems || []).filter(i => i.id === product.id);
     const addedTotalQuantity = addedLines.reduce((sum, line) => sum + (line.quantity || 1), 0);
+
+    // 서버는 상품 id 만 돌려준다. 사진·가격은 이미 메모리에 있는 전체 상품 목록에서 찾아 쓰고,
+    // 목록에 없는(삭제됐거나 아직 동기화 전인) 상품은 버린다.
+    const recommendedProducts = (recommendations.productId === product.id ? recommendations.items : [])
+        .map(reco => products.find(p => p.id === reco.productId))
+        .filter(Boolean)
+        .slice(0, VISIBLE_RECOMMENDATIONS);
     // 모든 옵션 그룹이 선택되어야 담을 수 있다 (자동 디폴트가 없으므로 직접 선택 필수).
     const allOptionsSelected = groups.every(g => selections[g.name] != null);
 
@@ -547,6 +589,33 @@ const OptionModal = ({ product, cartItems = [], onConfirm, onCancel }) => {
                                 </li>
                             ))}
                         </ul>
+                    </div>
+                )}
+
+                {/* 같은 전표에 함께 담긴 적이 많은 상품. 누르면 그 상품의 주문 화면으로 바로 넘어간다. */}
+                {recommendedProducts.length > 0 && (
+                    <div className="option-reco">
+                        <div className="option-reco-head">이 상품을 주문한 분들이 함께 주문한 상품</div>
+                        <div className="option-reco-list">
+                            {recommendedProducts.map(item => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    className="option-reco-card"
+                                    onClick={() => onSelectProduct && onSelectProduct(item)}
+                                >
+                                    <div className="option-reco-thumb">
+                                        {item.images && item.images.length > 0 ? (
+                                            <img src={getImageUrl(item.images[0])} alt={item.name} />
+                                        ) : (
+                                            <span className="option-reco-thumb-empty">이미지 준비 중</span>
+                                        )}
+                                    </div>
+                                    <div className="option-reco-name">{item.name}</div>
+                                    <div className="option-reco-price">{(item.priceC || 0).toLocaleString()}원</div>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 )}
 

@@ -394,6 +394,13 @@ function KioskView({
     setOptionQuantities({});
   };
 
+  // 추천 상품을 누르면 지금 모달을 그 상품으로 바꿔 연다. 모달을 닫았다가 목록에서 다시 찾는
+  // 왕복이 없어야 추천이 실제로 눌린다.
+  const openRecommendedProduct = (product) => {
+    setSelectingProduct(product);
+    setOptionQuantities({});
+  };
+
   const updateQty = (comboId, delta) => {
     setOptionQuantities(prev => ({
       ...prev,
@@ -853,6 +860,8 @@ function KioskView({
       <OptionModal
         product={selectingProduct}
         cartItems={cart}
+        products={products}
+        onSelectProduct={openRecommendedProduct}
         quantities={optionQuantities}
         onUpdateQty={updateQty}
         onConfirm={confirmAddToCart}
