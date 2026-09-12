@@ -6,8 +6,10 @@
 .guided-option-modal .option-image-area img { object-fit: contain !important; }
 .guided-option-modal .option-detail-layout .option-info-padding { padding: 0 !important; }
 .guided-option-modal .option-header-title { font-size: 1.6rem !important; margin: 0 0 10px; overflow-wrap: anywhere; }
-.guided-option-modal .option-description { color: #475569; font-size: 1rem; }
-.guided-option-modal summary { cursor: pointer; padding: 12px 0; font-weight: 700; }
+/* 상품 설명은 접지 않고 항상 펼쳐서 보여준다. */
+.guided-option-modal .option-description { color: #475569; font-size: 1rem; line-height: 1.6; }
+.guided-option-modal .option-description p { margin: 0; overflow-wrap: anywhere; }
+.option-description-title { font-weight: 800; color: #334155; margin-bottom: 6px; }
 .guided-option-modal .option-choice-section { min-height: 0; overflow-y: auto; padding: 24px !important; }
 .guided-option-modal .option-choice-section > div { min-height: 100%; box-sizing: border-box; padding: 24px !important; border: 2px solid #fed7aa !important; background: #fffaf5 !important; }
 .guided-option-modal .option-choice-section.needs-product-selection > div { border-color: #ea580c !important; box-shadow: inset 0 0 0 2px #ea580c, 0 0 0 5px #ffedd5; }

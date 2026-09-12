@@ -377,10 +377,10 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                                 </div>
                             )}
 
-                            {product.description && <details className="option-description">
-                                <summary>상품 설명 보기</summary>
+                            {product.description && <div className="option-description">
+                                <div className="option-description-title">상품 설명</div>
                                 <p>{product.description}</p>
-                            </details>}
+                            </div>}
 
                         </div>
                     </div>
