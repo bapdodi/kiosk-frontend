@@ -213,7 +213,7 @@ body {
   padding: 8px 20px;
   /* Reduced from 12x24 */
   border-radius: 100px;
-  border: 2px solid #868e96;
+  border: 2px solid #74c0fc;
   background: #f8f9fa;
   font-weight: 600;
   cursor: pointer;
@@ -228,7 +228,7 @@ body {
   font-size: 1.15rem;
   font-weight: 700;
   background: white;
-  border: 2px solid #495057;
+  border: 2px solid #4dabf7;
 }
 
 .category-tab.detail-tab {
