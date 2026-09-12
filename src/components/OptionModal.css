@@ -24,20 +24,23 @@
 .guided-option-modal .option-choice-button[aria-pressed="true"] { background: #fff0df !important; border-color: #c2410c !important; color: #9a3412 !important; }
 .option-choice-check { width: 24px; height: 24px; border: 2px solid #94a3b8; border-radius: 50%; flex-shrink: 0; text-align: center; line-height: 20px; }
 [aria-pressed="true"] .option-choice-check { background: #c2410c; border-color: #c2410c; color: white; }
-.guided-option-modal .option-footer { flex: 0 0 auto; display: grid !important; grid-template-columns: minmax(0, 1fr) 320px; padding: 16px 24px !important; gap: 20px !important; }
-.guided-option-modal .option-footer-content { width: 100%; display: grid !important; grid-template-columns: 220px minmax(360px, 1fr); grid-template-rows: auto auto; column-gap: 16px !important; row-gap: 4px !important; }
+.guided-option-modal .option-footer { flex: 0 0 auto; display: flex !important; padding: 16px 24px !important; gap: 12px !important; }
 .option-quantity-label { font-size: 1.25rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .option-quantity-label small { font-size: .85rem; color: #475569; font-weight: 500; }
-.option-selection-summary { color: #475569; font-size: 1rem; overflow-wrap: anywhere; }
-.guided-option-modal .qty-controls { width: 100%; scale: 1; gap: 8px; justify-content: space-between; box-sizing: border-box; grid-column: 2; grid-row: 1 / span 2; }
+.guided-option-modal .qty-controls { width: 100%; scale: 1; gap: 8px; justify-content: space-between; box-sizing: border-box; }
+/* 2단계 수량은 제품 선택과 같은 카드 안에서 바로 이어 붙인다. */
+.guided-option-modal .option-quantity-block { margin-top: 24px; padding-top: 20px; border-top: 2px dashed #e2e8f0; display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); align-items: center; column-gap: 16px; row-gap: 10px; }
+.guided-option-modal .ready-for-quantity { border-top-color: #fdba74; }
 .guided-option-modal .ready-for-quantity .option-quantity-label { color: #c2410c; }
+.guided-option-modal .ready-for-quantity .option-step { background: #c2410c; }
 .guided-option-modal .ready-for-quantity .qty-controls { outline: 3px solid #ea580c; box-shadow: 0 0 0 6px #ffedd5; }
 .guided-option-modal .qty-btn { min-width: 48px; height: 52px !important; }
 .guided-option-modal .qty-num { flex: 1; min-width: 48px; max-width: 180px; margin: 0 !important; height: 52px; background: white !important; border: 2px solid #94a3b8 !important; border-radius: 8px; font-size: 1.5rem !important; }
 .option-quantity-unit { font-weight: 800; color: #334155; }
-.guided-option-modal .option-footer-btns { width: 100%; height: 100%; flex: none !important; margin: 0; flex-direction: column; }
-.guided-option-modal .option-footer-btns button { width: 100%; }
-.guided-option-modal .option-footer-btns button { min-height: 60px; flex: none !important; font-size: 1.15rem !important; }
+.guided-option-modal .option-footer-btns { width: 100%; flex: 1 1 auto !important; margin: 0; flex-direction: row; gap: 12px; }
+.guided-option-modal .option-footer-btns button { min-height: 60px; font-size: 1.15rem !important; }
+.guided-option-modal .option-footer-btns .option-continue-btn { flex: 1 1 0 !important; }
+.guided-option-modal .option-footer-btns > button:last-child { flex: 1.6 1 0 !important; }
 .guided-option-modal .option-footer-btns .option-continue-btn { border: 2px solid #94a3b8; border-radius: 16px; background: #fff; color: #334155; font-weight: 800; cursor: pointer; }
 .guided-option-modal .option-continue-btn small { display: block; margin-top: 2px; color: #475569; font-size: .8rem; font-weight: 600; }
 .guided-option-modal button:focus-visible, .guided-option-modal input:focus-visible, .guided-option-modal summary:focus-visible { outline: 3px solid #2563eb !important; outline-offset: 3px; }
@@ -54,9 +57,12 @@
   .guided-option-modal .option-choice-section { overflow: visible; padding: 0 40px 32px !important; }
   .guided-option-modal .option-choice-section > div { min-height: 0; padding: 28px !important; }
   .guided-option-modal .option-choice-button { min-height: 72px; flex-basis: 190px; font-size: 1.2rem !important; }
-  .guided-option-modal .option-footer { display: grid !important; grid-template-columns: minmax(0, 1.4fr) minmax(240px, .6fr); padding: 16px 24px !important; gap: 16px !important; }
-  .guided-option-modal .option-footer-content { grid-template-columns: 1fr; grid-template-rows: auto auto auto; gap: 6px !important; }
-  .guided-option-modal .qty-controls { grid-column: 1; grid-row: auto; }
+  .guided-option-modal .option-footer { padding: 16px 24px !important; gap: 12px !important; }
+  .guided-option-modal .option-quantity-block { grid-template-columns: 1fr; row-gap: 12px; }
+  /* 키오스크는 눈높이가 화면 위쪽이라 모달을 가운데가 아닌 위 1/4 지점에 붙인다. */
+  .modal-overlay.option-modal-overlay { flex-direction: column; align-items: center; justify-content: flex-start; }
+  .modal-overlay.option-modal-overlay::before { content: ''; flex: 1 1 0; min-height: 12px; }
+  .modal-overlay.option-modal-overlay::after { content: ''; flex: 3 1 0; }
 }
 
 @media (max-width: 760px) {
@@ -67,9 +73,8 @@
   .guided-option-modal .option-image-area { height: 100px !important; flex: none; }
   .guided-option-modal .option-choice-section { overflow: visible; padding: 0 12px 16px !important; }
   .guided-option-modal .option-choice-section > div { min-height: 0; padding: 16px !important; }
-  .guided-option-modal .option-footer { display: flex !important; flex-direction: column; padding: 12px !important; gap: 8px !important; }
-  .guided-option-modal .option-footer-content { grid-template-columns: 1fr; grid-template-rows: auto; gap: 8px !important; }
-  .guided-option-modal .qty-controls { grid-column: 1; grid-row: auto; }
+  .guided-option-modal .option-footer { padding: 12px !important; gap: 8px !important; }
+  .guided-option-modal .option-quantity-block { grid-template-columns: 1fr; margin-top: 16px; padding-top: 14px; }
   .guided-option-modal .option-footer-btns { height: auto; }
 }
 @media (max-width: 480px) {

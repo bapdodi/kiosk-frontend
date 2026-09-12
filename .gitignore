@@ -26,3 +26,6 @@ dist-ssr
 # Local environment overrides (never commit secrets)
 .env
 .env.local
+
+# 로컬 확인용 스크린샷
+screenshots/

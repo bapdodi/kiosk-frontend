@@ -254,7 +254,7 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
     const FALLBACK_IMAGE = '/no-image.png';
 
     return (
-        <div className="modal-overlay mobile-bottom" onClick={onCancel}>
+        <div className="modal-overlay mobile-bottom option-modal-overlay" onClick={onCancel}>
             <div className="modal-content full-mobile mobile-bottom guided-option-modal" role="dialog" aria-modal="true" aria-labelledby="option-product-title" onClick={e => e.stopPropagation()}>
                 {/* Header Close Button */}
                 <button
@@ -440,6 +440,93 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                             ))}
                         </div>
 
+                        <div className={`option-quantity-block${allOptionsSelected ? ' ready-for-quantity' : ''}`}>
+                            <label className="option-quantity-label" htmlFor="option-quantity"><span className="option-step">2</span> 수량 선택 <small>숫자를 눌러 직접 입력할 수 있어요</small></label>
+                            <div className="qty-controls" style={{ background: '#f1f5f9', padding: '6px', borderRadius: '16px', display: 'flex', alignItems: 'center' }}>
+                                <button
+                                    className="qty-btn"
+                                    aria-label="10개 줄이기"
+                                    style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
+                                    onClick={() => handleQuantityChange(-10)}
+                                >
+                                    −10
+                                </button>
+                                <button
+                                    aria-label="1개 줄이기"
+                                    className="qty-btn"
+                                    style={{ width: '40px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px' }}
+                                    onClick={(e) => { if (e.detail === 0) handleQuantityChange(-1); }}
+                                    onPointerDown={(e) => { e.preventDefault(); startPress(-1); }}
+                                    onPointerUp={stopPress}
+                                    onPointerLeave={stopPress}
+                                    onPointerCancel={stopPress}
+                                >
+                                    −
+                                </button>
+                                <input
+                                    id="option-quantity"
+                                    type="number"
+                                    inputMode="numeric"
+                                    min="1"
+                                    max="9999"
+                                    className="qty-num"
+                                    value={quantity}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === '') {
+                                            setQuantity('');
+                                        } else {
+                                            const parsed = parseInt(val, 10);
+                                            if (!isNaN(parsed)) setQuantity(Math.max(1, Math.min(parsed, 9999)));
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        if (quantity === '' || quantity < 1) setQuantity(1);
+                                    }}
+                                    style={{
+                                        width: '60px',
+                                        textAlign: 'center',
+                                        fontSize: '1.2rem',
+                                        fontWeight: 800,
+                                        border: 'none',
+                                        background: 'transparent',
+                                        outline: 'none',
+                                        padding: 0,
+                                        margin: '0 10px'
+                                    }}
+                                />
+                                <span className="option-quantity-unit">개</span>
+                                <button
+                                    className="qty-btn"
+                                    style={{ width: '40px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px' }}
+                                    aria-label="1개 늘리기"
+                                    onClick={(e) => { if (e.detail === 0) handleQuantityChange(1); }}
+                                    onPointerDown={(e) => { e.preventDefault(); startPress(1); }}
+                                    onPointerUp={stopPress}
+                                    onPointerLeave={stopPress}
+                                    onPointerCancel={stopPress}
+                                >
+                                    +
+                                </button>
+                                <button
+                                    className="qty-btn"
+                                    aria-label="10개 늘리기"
+                                    style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
+                                    onClick={() => handleBulkStep(10)}
+                                >
+                                    +10
+                                </button>
+                                <button
+                                    className="qty-btn"
+                                    aria-label="50개 늘리기"
+                                    style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
+                                    onClick={() => handleBulkStep(50)}
+                                >
+                                    +50
+                                </button>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
                 </div>
@@ -452,95 +539,6 @@ const OptionModal = ({ product, onConfirm, onCancel }) => {
                     justifyContent: 'space-between', alignItems: 'center',
                     gap: '20px'
                 }}>
-                    <div className={`option-footer-content${allOptionsSelected ? ' ready-for-quantity' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
-                        <label className="option-quantity-label" htmlFor="option-quantity"><span className="option-step">2</span> 수량 선택 <small>숫자를 눌러 직접 입력할 수 있어요</small></label>
-                        <div className="option-selection-summary" aria-live="polite">{addedCount > 0 ? `${addedCount}개 장바구니에 담았어요 · ` : ''}{allOptionsSelected ? `현재 선택: ${groups.map(g => selections[g.name]).join(' / ') || '기본 제품'}` : '제품을 선택해 주세요'}</div>
-                        <div className="qty-controls" style={{ background: '#f1f5f9', padding: '6px', borderRadius: '16px', display: 'flex', alignItems: 'center' }}>
-                            <button
-                                className="qty-btn"
-                                aria-label="10개 줄이기"
-                                style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
-                                onClick={() => handleQuantityChange(-10)}
-                            >
-                                −10
-                            </button>
-                            <button
-                                aria-label="1개 줄이기"
-                                className="qty-btn"
-                                style={{ width: '40px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px' }}
-                                onClick={(e) => { if (e.detail === 0) handleQuantityChange(-1); }}
-                                onPointerDown={(e) => { e.preventDefault(); startPress(-1); }}
-                                onPointerUp={stopPress}
-                                onPointerLeave={stopPress}
-                                onPointerCancel={stopPress}
-                            >
-                                −
-                            </button>
-                            <input
-                                id="option-quantity"
-                                type="number"
-                                inputMode="numeric"
-                                min="1"
-                                max="9999"
-                                className="qty-num"
-                                value={quantity}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (val === '') {
-                                        setQuantity('');
-                                    } else {
-                                        const parsed = parseInt(val, 10);
-                                        if (!isNaN(parsed)) setQuantity(Math.max(1, Math.min(parsed, 9999)));
-                                    }
-                                }}
-                                onBlur={() => {
-                                    if (quantity === '' || quantity < 1) setQuantity(1);
-                                }}
-                                style={{
-                                    width: '60px',
-                                    textAlign: 'center',
-                                    fontSize: '1.2rem',
-                                    fontWeight: 800,
-                                    border: 'none',
-                                    background: 'transparent',
-                                    outline: 'none',
-                                    padding: 0,
-                                    margin: '0 10px'
-                                }}
-                            />
-                            <span className="option-quantity-unit">개</span>
-                            <button
-                                className="qty-btn"
-                                style={{ width: '40px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px' }}
-                                aria-label="1개 늘리기"
-                                onClick={(e) => { if (e.detail === 0) handleQuantityChange(1); }}
-                                onPointerDown={(e) => { e.preventDefault(); startPress(1); }}
-                                onPointerUp={stopPress}
-                                onPointerLeave={stopPress}
-                                onPointerCancel={stopPress}
-                            >
-                                +
-                            </button>
-                            <button
-                                className="qty-btn"
-                                aria-label="10개 늘리기"
-                                style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
-                                onClick={() => handleBulkStep(10)}
-                            >
-                                +10
-                            </button>
-                            <button
-                                className="qty-btn"
-                                aria-label="50개 늘리기"
-                                style={{ width: '48px', height: '40px', background: 'white', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 800, color: '#475569' }}
-                                onClick={() => handleBulkStep(50)}
-                            >
-                                +50
-                            </button>
-                        </div>
-
-                    </div>
-
                     <div className="option-footer-btns" style={{ display: 'flex', gap: '12px', flex: '1', justifyContent: 'flex-end' }}>
                         {hasMultipleChoices && allOptionsSelected && (
                             <button className="option-continue-btn" onClick={() => handleConfirm(true)}>
