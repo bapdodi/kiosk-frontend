@@ -92,46 +92,84 @@ const ErpBakImportPage = () => {
         }
     }, []);
 
-    // 업로드는 진행률을 보여줘야 해서 fetch 대신 XHR 을 쓴다(fetch 는 업로드 진행률 이벤트가 없다).
-    const upload = (file) => {
+    // 조각 하나를 보낸다. 진행률 이벤트가 필요해 fetch 대신 XHR 을 쓴다(fetch 는 업로드 진행률이 없다).
+    const sendChunk = (uploadId, index, blob, sentBefore, totalSize) => new Promise((resolve, reject) => {
+        const form = new FormData();
+        form.append('uploadId', uploadId);
+        form.append('index', String(index));
+        form.append('file', blob, 'chunk');
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/erp-bak/admin/upload/chunk');
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                setUploadPercent(Math.round(((sentBefore + e.loaded) / totalSize) * 100));
+            }
+        };
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) return resolve();
+            let message = `조각 ${index + 1} 전송 실패 (HTTP ${xhr.status})`;
+            try {
+                message = JSON.parse(xhr.responseText).error || message;
+            } catch {
+                // 프록시가 돌려준 HTML 오류 문서 등 — 위의 기본 문구를 그대로 쓴다.
+            }
+            reject(new Error(message));
+        };
+        xhr.onerror = () => reject(new Error(`조각 ${index + 1} 전송 중 네트워크 오류가 발생했습니다.`));
+        xhr.send(form);
+    });
+
+    /**
+     * .bak 을 조각내어 올린다. Cloudflare 가 요청 본문을 100MB 로 막기 때문에 한 번에 보낼 수 없고,
+     * 조각 크기는 서버가 알려주는 값(chunkSize)을 따른다.
+     */
+    const upload = async (file) => {
         setError('');
         setDiff(null);
         setApplyResult(null);
         setUploadPercent(0);
-        const form = new FormData();
-        form.append('file', file);
 
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/erp-bak/admin/upload');
-        xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) setUploadPercent(Math.round((e.loaded / e.total) * 100));
-        };
-        xhr.upload.onload = () => {
-            // 전송이 끝나면 서버가 복원하는 동안 응답을 기다린다(수십 초 걸릴 수 있음).
+        let uploadId = null;
+        try {
+            const beginRes = await fetch('/api/erp-bak/admin/upload/begin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileName: file.name, totalSize: file.size }),
+            });
+            if (!beginRes.ok) throw new Error(await readError(beginRes));
+            const session = await beginRes.json();
+            uploadId = session.uploadId;
+
+            for (let index = 0, sent = 0; sent < file.size; index++) {
+                const blob = file.slice(sent, Math.min(sent + session.chunkSize, file.size));
+                await sendChunk(uploadId, index, blob, sent, file.size);
+                sent += blob.size;
+            }
+
+            // 전송이 끝나면 서버가 이어붙인 파일을 복원하는 동안 기다린다(수십 초 걸릴 수 있음).
             setUploadPercent(null);
             setBusy('restoring');
-        };
-        xhr.onload = () => {
-            setUploadPercent(null);
-            setBusy('');
-            if (fileInputRef.current) fileInputRef.current.value = '';
-            if (xhr.status >= 200 && xhr.status < 300) {
-                setStatus(JSON.parse(xhr.responseText));
-                loadDiff();
-            } else {
-                try {
-                    setError(JSON.parse(xhr.responseText).error || xhr.responseText);
-                } catch {
-                    setError(`업로드 실패 (HTTP ${xhr.status})`);
-                }
+            const finishRes = await fetch('/api/erp-bak/admin/upload/finish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uploadId }),
+            });
+            if (!finishRes.ok) throw new Error(await readError(finishRes));
+            setStatus(await finishRes.json());
+            uploadId = null;
+            await loadDiff();
+        } catch (err) {
+            setError(err.message || '업로드에 실패했습니다.');
+            // 실패한 조각 파일이 서버에 남지 않게 정리한다.
+            if (uploadId) {
+                fetch(`/api/erp-bak/admin/upload/${uploadId}`, { method: 'DELETE' }).catch(() => {});
             }
-        };
-        xhr.onerror = () => {
+        } finally {
             setUploadPercent(null);
-            setBusy('');
-            setError('업로드 중 네트워크 오류가 발생했습니다.');
-        };
-        xhr.send(form);
+            setBusy(current => (current === 'restoring' ? '' : current));
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
     };
 
     const onFileChange = (e) => {
