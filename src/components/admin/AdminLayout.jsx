@@ -98,6 +98,14 @@ const AdminLayout = ({
                         <span style={{ fontSize: '1.2rem' }}>🧾</span>
                         <span style={{ fontWeight: 600 }}>주문 내역 관리</span>
                     </NavLink>
+                    <NavLink
+                        to="/admin/erp-bak"
+                        className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
+                        style={{ textDecoration: 'none' }}
+                    >
+                        <span style={{ fontSize: '1.2rem' }}>📦</span>
+                        <span style={{ fontWeight: 600 }}>ERP 백업 반영</span>
+                    </NavLink>
                     <div className="admin-nav-group">
                         <NavLink
                             to="/admin/naver"
