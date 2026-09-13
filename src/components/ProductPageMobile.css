@@ -1,0 +1,452 @@
+/* 폰 전용 상품 화면.
+   키오스크 CSS(index.css / OptionModal.css)를 전혀 상속받지 않도록
+   전용 클래스(mp-)로만 짠다. 그래서 여기를 고쳐도 키오스크는 영향이 없다. */
+
+.mp-page {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    /* 모바일 브라우저 주소창이 오르내려도 실제 보이는 높이를 따라간다.
+       100vh 를 쓰면 주소창 높이만큼 아래가 잘려 주문 바가 안 보인다. */
+    height: 100dvh;
+    background: #fff;
+    color: #1e293b;
+}
+
+/* ── 상단 바 ────────────────────────────────────────────────────────────── */
+.mp-appbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 52px;
+    padding: 0 8px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff;
+}
+
+.mp-back {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #1e293b;
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.mp-back:active {
+    background: #f1f5f9;
+}
+
+.mp-appbar-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-weight: 800;
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── 본문 ──────────────────────────────────────────────────────────────── */
+.mp-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+.mp-image {
+    position: relative;
+    width: 100%;
+    height: 260px;
+    background: #f8fafc;
+}
+
+.mp-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.mp-dots {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .35);
+}
+
+.mp-dots button {
+    width: 7px;
+    height: 7px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .55);
+    cursor: pointer;
+}
+
+.mp-dots button.is-on {
+    width: 20px;
+    background: #fff;
+}
+
+.mp-summary {
+    padding: 14px 16px 16px;
+    border-bottom: 8px solid #f1f5f9;
+}
+
+.mp-name {
+    margin: 0 0 8px;
+    font-size: 1.3rem;
+    font-weight: 800;
+    line-height: 1.35;
+    /* 한국어는 어절 단위로 끊고, 한 어절이 칸보다 길 때만 쪼갠다. */
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+}
+
+.mp-price {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 1rem;
+    color: #1e293b;
+}
+
+.mp-price strong {
+    font-size: 1.6rem;
+    font-weight: 900;
+}
+
+.mp-price-note {
+    font-size: .85rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.mp-gyu {
+    margin-top: 6px;
+    font-size: .9rem;
+    color: #64748b;
+}
+
+.mp-block {
+    padding: 16px;
+    border-bottom: 8px solid #f1f5f9;
+}
+
+.mp-block-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.mp-badge {
+    font-size: .78rem;
+    font-weight: 700;
+    color: #9a3412;
+    background: #ffedd5;
+    border-radius: 6px;
+    padding: 3px 7px;
+}
+
+.mp-badge.is-done {
+    color: #475569;
+    background: #f1f5f9;
+}
+
+.mp-desc {
+    margin: 0;
+    font-size: .95rem;
+    line-height: 1.6;
+    color: #475569;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+}
+
+/* ── 규격 선택 ─────────────────────────────────────────────────────────── */
+.mp-group + .mp-group {
+    margin-top: 18px;
+}
+
+.mp-group.is-missing .mp-block-title {
+    color: #c2410c;
+}
+
+.mp-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mp-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    /* 손가락으로 누르는 최소 크기. 이보다 작으면 오터치가 는다. */
+    min-height: 52px;
+    padding: 10px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #fff;
+    color: #1e293b;
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+}
+
+.mp-option[aria-pressed="true"] {
+    border-color: #1e293b;
+    background: #f8fafc;
+}
+
+.mp-check {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #94a3b8;
+    border-radius: 50%;
+    font-size: .8rem;
+    color: #fff;
+}
+
+.mp-option[aria-pressed="true"] .mp-check {
+    background: #1e293b;
+    border-color: #1e293b;
+}
+
+/* ── 수량 ──────────────────────────────────────────────────────────────── */
+.mp-qty {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+/* 버튼 6개 + 숫자 + 단위를 한 줄에 넣는다. 고정폭으로 잡으면 좁은 폰에서
+   맨 오른쪽 +50 이 잘려 나간다. */
+.mp-stepper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px;
+    border-radius: 14px;
+    background: #f1f5f9;
+}
+
+.mp-stepper button {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 46px;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background: #fff;
+    color: #334155;
+    font-size: .95rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+}
+
+.mp-stepper button:active {
+    background: #e2e8f0;
+}
+
+.mp-qty-num {
+    flex: 1 1 0;
+    min-width: 44px;
+    height: 46px;
+    border: 2px solid #94a3b8;
+    border-radius: 10px;
+    background: #fff;
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+/* 숫자 입력의 위아래 화살표는 폰에서 오터치만 유발한다. */
+.mp-qty-num::-webkit-outer-spin-button,
+.mp-qty-num::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.mp-qty-num {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.mp-unit {
+    flex: 0 0 auto;
+    padding: 0 2px;
+    font-size: .9rem;
+    font-weight: 800;
+    color: #334155;
+}
+
+/* ── 담긴 항목 ─────────────────────────────────────────────────────────── */
+.mp-added {
+    padding: 14px 16px;
+    background: #fff7ed;
+    border-bottom: 8px solid #f1f5f9;
+}
+
+.mp-added-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: .95rem;
+    font-weight: 800;
+    color: #9a3412;
+}
+
+.mp-added ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.mp-added li {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px dashed #fed7aa;
+    font-size: .95rem;
+}
+
+.mp-added li:last-child {
+    border-bottom: none;
+}
+
+/* ── 추천 ──────────────────────────────────────────────────────────────── */
+.mp-reco {
+    border-bottom: none;
+}
+
+.mp-reco-list {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.mp-reco-card {
+    flex: 0 0 108px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    text-align: left;
+    cursor: pointer;
+}
+
+.mp-reco-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 72px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    overflow: hidden;
+}
+
+.mp-reco-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.mp-reco-empty {
+    font-size: .7rem;
+    color: #94a3b8;
+}
+
+.mp-reco-name {
+    font-size: .82rem;
+    font-weight: 700;
+    line-height: 1.3;
+    /* 이름이 길어도 카드 높이를 맞춰야 가로 줄이 흐트러지지 않는다. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ── 하단 주문 바 ──────────────────────────────────────────────────────── */
+.mp-bar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    /* 홈 인디케이터가 있는 기기에서 버튼이 가리지 않도록 여백을 더한다. */
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid #e2e8f0;
+    background: #fff;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, .06);
+}
+
+.mp-bar-total {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.mp-bar-total span {
+    font-size: .75rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.mp-bar-total strong {
+    font-size: 1.05rem;
+    font-weight: 900;
+}
+
+.mp-order {
+    flex: 1 1 auto;
+    min-height: 52px;
+    border: none;
+    border-radius: 14px;
+    background: var(--accent-color, #ff6b00);
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.mp-order:active {
+    filter: brightness(.95);
+}

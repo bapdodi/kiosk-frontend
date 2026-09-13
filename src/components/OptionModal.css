@@ -184,3 +184,28 @@
   .guided-option-modal .option-reco-card { flex-basis: 112px; }
   .guided-option-modal .option-reco-thumb { height: 76px; }
 }
+
+/* ── 옵션 팝업 닫기 버튼 ──────────────────────────────────────────────────── */
+/* 예전에는 JSX 인라인 스타일이라 미디어쿼리로 줄일 수 없었다.
+   기본값(키오스크/데스크톱)은 기존 인라인 스타일과 동일한 크기를 유지한다. */
+.option-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid #b91c1c;
+  background: #dc2626;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(185, 28, 28, .35);
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+

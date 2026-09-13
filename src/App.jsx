@@ -15,6 +15,9 @@ import OptionModal from './components/OptionModal';
 import OrderReviewModal from './components/OrderReviewModal';
 import ProductCard from './components/ProductCard';
 import { getChosungChar, getSearchMatchScore, matchesSearchText, normalizeSearchText } from './utils/search';
+import { useMobileBackClose } from './hooks/useMobileBackClose';
+import { useIsMobile } from './hooks/useIsMobile';
+import ProductPageMobile from './components/ProductPageMobile';
 
 // ... (KioskView & ProtectedRoute components)
 
@@ -223,6 +226,18 @@ function KioskView({
   const [orderModal, setOrderModal] = useState({ isOpen: false, name: '' });
   const [customers, setCustomers] = useState([]);
   const lastScrollTop = useRef(0);
+
+  const isMobile = useIsMobile();
+
+  // 폰 뒤로가기: 화면을 덮는 것들을 연 순서대로 한 단계씩 닫는다.
+  // 상품 페이지 → 장바구니 → 주문확인 → 상호 입력 순으로 쌓이고,
+  // 뒤로가기를 누르면 가장 위에 있는 것부터 닫힌다. 사이트를 떠나지 않는다.
+  useMobileBackClose([
+    { open: selectingProduct != null, close: () => setSelectingProduct(null) },
+    { open: isCartOpen, close: () => setIsCartOpen(false) },
+    { open: isReviewOpen, close: () => setIsReviewOpen(false) },
+    { open: orderModal.isOpen, close: () => setOrderModal(prev => ({ ...prev, isOpen: false })) },
+  ]);
   // 주문 중복 전송 방지용 키. 전송 성공 전까지 같은 키를 유지해
   // 재시도/더블클릭이 서버에서 같은 주문으로 합쳐지게 한다.
   const pendingOrderRequestId = useRef(null);
@@ -590,6 +605,7 @@ function KioskView({
       {/* Floating Cart Button (작은 화면 전용) */}
       <div className="floating-cart-btn" onClick={() => setIsCartOpen(true)}>
         <span className="cart-icon">🛒</span>
+        <span className="cart-label">장바구니</span>
         <span className="cart-count">{cart.length}</span>
       </div>
 
@@ -859,16 +875,31 @@ function KioskView({
         );
       })()}
 
-      <OptionModal
-        product={selectingProduct}
-        cartItems={cart}
-        products={products}
-        onSelectProduct={openRecommendedProduct}
-        quantities={optionQuantities}
-        onUpdateQty={updateQty}
-        onConfirm={confirmAddToCart}
-        onCancel={() => setSelectingProduct(null)}
-      />
+      {/* 폰과 키오스크는 화면을 아예 따로 쓴다. 규격·수량·가격 규칙만
+          useProductSelection 으로 공유하므로 계산이 갈라질 일은 없다. */}
+      {isMobile ? (
+        selectingProduct && (
+          <ProductPageMobile
+            product={selectingProduct}
+            cartItems={cart}
+            products={products}
+            onSelectProduct={openRecommendedProduct}
+            onConfirm={confirmAddToCart}
+            onCancel={() => setSelectingProduct(null)}
+          />
+        )
+      ) : (
+        <OptionModal
+          product={selectingProduct}
+          cartItems={cart}
+          products={products}
+          onSelectProduct={openRecommendedProduct}
+          quantities={optionQuantities}
+          onUpdateQty={updateQty}
+          onConfirm={confirmAddToCart}
+          onCancel={() => setSelectingProduct(null)}
+        />
+      )}
     </div>
   );
 }

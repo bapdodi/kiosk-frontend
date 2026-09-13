@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const CategoryNav = ({
     mainCategories,
@@ -14,6 +15,8 @@ const CategoryNav = ({
     const [isListening, setIsListening] = useState(false);
     const [voiceSupported, setVoiceSupported] = useState(false);
     const [voiceError, setVoiceError] = useState('');
+    // 폰에서는 안내 문구가 입력칸을 넘쳐 글자가 잘리므로 짧은 문구로 바꿔 준다.
+    const isNarrow = useIsMobile();
 
     const describeVoiceError = (code) => {
         switch (code) {
@@ -107,7 +110,9 @@ const CategoryNav = ({
                     <input
                         type="text"
                         className="search-input"
-                        placeholder={isListening ? '듣고 있어요… 말씀해주세요' : '초성·상품명 검색 (오타도 괜찮아요)'}
+                        placeholder={isListening
+                            ? (isNarrow ? '듣고 있어요…' : '듣고 있어요… 말씀해주세요')
+                            : (isNarrow ? '상품명·초성 검색' : '초성·상품명 검색 (오타도 괜찮아요)')}
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
                     />

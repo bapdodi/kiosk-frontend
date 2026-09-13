@@ -1,314 +1,43 @@
-import { useEffect, useRef, useState } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
 import './OptionModal.css';
-import { COMBINATION_GROUP } from '../utils/optionConstants';
+import { useProductSelection } from '../hooks/useProductSelection';
 
-// 복합옵션 상품은 규격이 수십 개일 수 있어, 추천 기준으로 보낼 ERP 코드 수를 제한한다.
-const MAX_RECOMMENDATION_SOURCE_CODES = 30;
-// 키오스크 화면에서 한 줄로 훑을 수 있는 개수. 더 늘리면 스크롤해야 보여서 눌리지 않는다.
-const VISIBLE_RECOMMENDATIONS = 6;
-
+/**
+ * 키오스크·PC 용 상품 선택 팝업.
+ *
+ * 폰은 이 화면을 쓰지 않는다 (components/ProductPageMobile.jsx 가 담당).
+ * 덕분에 여기 배치는 1080x1920 세로 키오스크 기준만 생각하면 되고,
+ * 폰 때문에 규칙을 덮어쓸 일이 없다.
+ */
 const OptionModal = ({ product, cartItems = [], products = [], onConfirm, onCancel, onSelectProduct }) => {
-    // Normalizing option groups from different data structures
-    const getOptionGroups = () => {
-        if (!product) return [];
+    const {
+        groups,
+        selections, setSelections,
+        allOptionsSelected,
+        showProductPrompt, setShowProductPrompt,
+        quantity, setQuantity,
+        handleQuantityChange, handleBulkStep, startPress, stopPress,
+        images, currentImageIndex, setCurrentImageIndex, hasMultipleImages,
+        failedImages, setFailedImages,
+        moveImage, handleImageTouchStart, handleImageTouchEnd,
+        recommendedProducts,
+        addedLines, addedTotalQuantity,
+        optionSectionRef, handleConfirm,
+    } = useProductSelection(product, { cartItems, products, onConfirm });
 
-        const compareOptions = (strA, strB) => {
-            const regex = /(\d+)|(\D+)/g;
-            const partsA = [...strA.trim().matchAll(regex)].map(m => m[0]);
-            const partsB = [...strB.trim().matchAll(regex)].map(m => m[0]);
-
-            for (let i = 0; i < Math.min(partsA.length, partsB.length); i++) {
-                const pA = partsA[i];
-                const pB = partsB[i];
-
-                const isNumA = /^\d+$/.test(pA);
-                const isNumB = /^\d+$/.test(pB);
-
-                if (isNumA && isNumB) {
-                    const diff = parseInt(pA, 10) - parseInt(pB, 10);
-                    if (diff !== 0) return diff;
-                } else if (isNumA !== isNumB) {
-                    return isNumB ? 1 : -1;
-                } else {
-                    const comp = pA.localeCompare(pB, 'ko-KR');
-                    if (comp !== 0) return comp;
-                }
-            }
-            return partsA.length - partsB.length;
-        };
-
-        if (product.optionGroups && product.optionGroups.length > 0) {
-            return product.optionGroups.map(g => ({
-                ...g,
-                values: g.values || []
-            }));
-        }
-
-        const groups = [];
-        if (product.sizes && product.sizes.length > 0) {
-            groups.push({ name: '규격 (Size)', values: product.sizes.map(s => s.name), legacySource: 'sizes' });
-        }
-        if (product.origins && product.origins.length > 0) {
-            groups.push({ name: '원산지 (Origin)', values: product.origins.map(o => o.name), legacySource: 'origins' });
-        }
-
-        // Handle ERP-grouped items as a generic "Options" choice
-        const activeCombos = (product.combinations || []).filter(c => !c.deleted);
-        if (groups.length === 0 && activeCombos.length > 1) {
-            groups.push({
-                name: COMBINATION_GROUP,
-                label: '',
-                values: activeCombos.map(c => c.name),
-                legacySource: 'combinations'
-            });
-        }
-        return groups;
-    };
-
-    const groups = getOptionGroups();
-    const [selections, setSelections] = useState({});
-    const [quantity, setQuantity] = useState(1);
-    const optionSectionRef = useRef(null);
-    const [showProductPrompt, setShowProductPrompt] = useState(false);
-
-    // Image carousel state
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [failedImages, setFailedImages] = useState({});
-    // 어떤 상품의 추천인지 함께 들고 있어야, 다른 상품으로 갈아탄 순간 이전 추천이 잠깐 비치지 않는다.
-    const [recommendations, setRecommendations] = useState({ productId: null, items: [] });
-    const touchStartX = useRef(null);
-
-    const optionImages = product?.optionImages || [];
-
-    // 현재 선택된 옵션값들에 등록된 사진을 모으고, 하나도 없으면 메인 사진으로 폴백한다.
-    const matchedOptionImages = [];
-    groups.forEach(g => {
-        const sel = selections[g.name];
-        if (!sel) return;
-        optionImages
-            .filter(oi => oi.groupName === g.name && oi.optionValue === sel)
-            .forEach(oi => matchedOptionImages.push(oi.imageUrl));
-    });
-    const images = matchedOptionImages.length > 0 ? matchedOptionImages : (product?.images || []);
-    const hasMultipleImages = images.length > 1;
-
-    const moveImage = (dir) => {
-        const count = images.length;
-        if (count <= 1) return;
-        setCurrentImageIndex(prev => (prev + dir + count) % count);
-    };
-
-    const handleImageTouchStart = (e) => {
-        touchStartX.current = e.touches[0].clientX;
-    };
-
-    const handleImageTouchEnd = (e) => {
-        if (touchStartX.current === null) return;
-        const delta = e.changedTouches[0].clientX - touchStartX.current;
-        if (Math.abs(delta) > 40) {
-            moveImage(delta < 0 ? 1 : -1);
-        }
-        touchStartX.current = null;
-    };
-
-    const intervalRef = useRef(null);
-    const timeoutRef = useRef(null);
-
-    const handleQuantityChange = (delta) => {
-        setQuantity(prev => {
-            const val = typeof prev === 'number' ? prev : parseInt(prev || '0', 10);
-            return Math.max(1, Math.min(val + delta, 9999));
-        });
-    };
-
-    // 묶음 수량 버튼(+10/+50). 아직 수량을 정하지 않은 초기 상태(1)에서 누르면
-    // 1+50=51 이 아니라 눌린 수량 그대로 맞춘다. 손님이 기대하는 "50개 담기"에 맞춘 동작.
-    const handleBulkStep = (step) => {
-        setQuantity(prev => {
-            const val = typeof prev === 'number' ? prev : parseInt(prev || '0', 10);
-            if (val === 1) return step;
-            return Math.max(1, Math.min(val + step, 9999));
-        });
-    };
-
-    const startPress = (delta) => {
-        // Stop any running intervals first
-        stopPress();
-        handleQuantityChange(delta);
-        timeoutRef.current = setTimeout(() => {
-            intervalRef.current = setInterval(() => {
-                handleQuantityChange(delta);
-            }, 30); // 속도를 더 빠르게 80ms -> 30ms로 변경
-        }, 400);
-    };
-
-    const stopPress = () => {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-
-    useEffect(() => () => stopPress(), []);
-
-    // Initialize selections.
-    // 옵션이 2개 이상인 그룹은 사용자가 직접 고르도록 디폴트 선택하지 않는다.
-    // (값이 하나뿐인 그룹은 선택의 여지가 없으므로 그대로 선택해 둔다.)
-    useEffect(() => {
-        const initial = {};
-        groups.forEach(g => {
-            if (g.values.length === 1) {
-                initial[g.name] = g.values[0];
-            }
-        });
-        setSelections(initial);
-        setQuantity(1);
-        setCurrentImageIndex(0);
-        setFailedImages({});
-        setShowProductPrompt(false);
-    }, [product]);
-
-    // 동시구매 추천. ERP 거래이력에서 집계한 "이 상품 주문한 전표에 함께 담긴 상품"을 가져온다.
-    // 복합옵션 상품은 규격마다 ERP 코드가 달라서, 규격을 고르기 전에도 추천이 보이도록 전 규격의
-    // 코드를 함께 보내고 서버가 합산한 결과를 돌려준다.
-    useEffect(() => {
-        const codes = (!product ? [] : [
-            product.erpCode,
-            ...(product.combinations || []).filter(c => !c.deleted).map(c => c.erpCode)
-        ]).filter(Boolean).slice(0, MAX_RECOMMENDATION_SOURCE_CODES);
-
-        if (codes.length === 0) return;
-
-        let cancelled = false;
-        const productId = product.id;
-        fetch(`/api/recommendations?codes=${encodeURIComponent(codes.join(','))}&limit=8`)
-            .then(res => (res.ok ? res.json() : []))
-            .then(data => {
-                if (!cancelled) {
-                    setRecommendations({ productId, items: Array.isArray(data) ? data : [] });
-                }
-            })
-            .catch(() => {
-                // 추천은 주문에 필수가 아니므로 실패하면 조용히 숨긴다.
-                if (!cancelled) setRecommendations({ productId, items: [] });
-            });
-
-        return () => { cancelled = true; };
-    }, [product]);
-
-    // All hooks are declared above; safe to bail out for a missing product here.
+    // 훅이 위에서 모두 선언됐으므로 여기서 안전하게 빠져나갈 수 있다.
     if (!product) return null;
-
-    // Internal price calculation helper
-    const getPriceForSelections = (tempSelections) => {
-        const activeCombos = (product.combinations || []).filter(c => !c.deleted);
-        if (activeCombos.length > 0) {
-            const comboName = groups.map(g => tempSelections[g.name]).join(' / ');
-            const combo = activeCombos.find(c => c.name === comboName);
-            // If combination based price exists, it's usually the final price (or extra)
-            // But for ERP grouped, it's should be treated as the unit price directly
-            if (combo) {
-                // For ERP items synced as combinations, 'priceC' is the actual unit price,
-                // not an "extra" fee. We handle that by returning (combo.priceC - product.priceC)
-                return combo.priceC - product.priceC;
-            }
-            return 0;
-        } else {
-            let extra = 0;
-            groups.forEach(g => {
-                const val = tempSelections[g.name];
-                if (g.legacySource === 'sizes') {
-                    const s = product.sizes.find(sz => sz.name === val);
-                    if (s) extra += s.price;
-                }
-                if (g.legacySource === 'origins') {
-                    const o = product.origins.find(og => og.name === val);
-                    if (o) extra += o.price;
-                }
-            });
-            return extra;
-        }
-    };
-
-    const safeQuantity = typeof quantity === 'number' ? quantity : parseInt(quantity || '0', 10);
-    // 이 상품으로 이미 장바구니에 담긴 항목들. 모달을 다시 열어도 그대로 보이도록
-    // 모달 내부 상태가 아니라 장바구니에서 직접 가져온다.
-    const addedLines = (cartItems || []).filter(i => i.id === product.id);
-    const addedTotalQuantity = addedLines.reduce((sum, line) => sum + (line.quantity || 1), 0);
-
-    // 서버는 상품 id 만 돌려준다. 사진·가격은 이미 메모리에 있는 전체 상품 목록에서 찾아 쓰고,
-    // 목록에 없는(삭제됐거나 아직 동기화 전인) 상품은 버린다.
-    const recommendedProducts = (recommendations.productId === product.id ? recommendations.items : [])
-        .map(reco => products.find(p => p.id === reco.productId))
-        .filter(Boolean)
-        .slice(0, VISIBLE_RECOMMENDATIONS);
-    // 모든 옵션 그룹이 선택되어야 담을 수 있다 (자동 디폴트가 없으므로 직접 선택 필수).
-    const allOptionsSelected = groups.every(g => selections[g.name] != null);
-
-    // 현재 선택값(selections)을 하나의 라인 객체로 변환
-    const buildLineFromSelections = (sel, qty) => {
-        const comboName = groups.map(g => sel[g.name]).join(' / ');
-        const foundCombo = (product.combinations || []).filter(c => !c.deleted).find(c => c.name === comboName);
-        const extra = getPriceForSelections(sel);
-        const comboId = foundCombo ? foundCombo.id : comboName;
-        return {
-            lineId: comboId,
-            comboId,
-            displayName: comboName,
-            totalExtra: extra,
-            unitPrice: (product.priceC || 0) + extra,
-            erpCode: foundCombo ? foundCombo.erpCode : (product.erpCode || null),
-            quantity: Math.max(1, qty)
-        };
-    };
-
-    const focusMissingProduct = () => {
-        setShowProductPrompt(true);
-        const target = optionSectionRef.current?.querySelector('[data-option-missing="true"]');
-        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        target?.querySelector('button')?.focus({ preventScroll: true });
-    };
-
-    const handleConfirm = (stayOpen = false) => {
-        if (!allOptionsSelected) {
-            focusMissingProduct();
-            return;
-        }
-        const qty = safeQuantity < 1 ? 1 : safeQuantity;
-        const line = buildLineFromSelections(selections, qty);
-        onConfirm(product, [{
-            id: line.comboId,
-            displayName: line.displayName,
-            totalExtra: line.totalExtra,
-            erpCode: line.erpCode
-        }], { [line.comboId]: qty }, stayOpen);
-
-        if (stayOpen) {
-            const initial = {};
-            groups.forEach(g => {
-                if (g.values.length === 1) initial[g.name] = g.values[0];
-            });
-            setSelections(initial);
-            setQuantity(1);
-            setShowProductPrompt(true);
-        }
-    };
 
     const FALLBACK_IMAGE = '/no-image.png';
 
     return (
         <div className="modal-overlay mobile-bottom option-modal-overlay" onClick={onCancel}>
             <div className="modal-content full-mobile mobile-bottom guided-option-modal" role="dialog" aria-modal="true" aria-labelledby="option-product-title" onClick={e => e.stopPropagation()}>
-                {/* Header Close Button */}
+                {/* Header Close Button (키오스크/데스크톱) */}
                 <button
                     onClick={onCancel}
                     aria-label="상품 선택 닫기"
-                    style={{
-                        position: 'absolute', top: '20px', right: '20px', zIndex: 10,
-                        width: '52px', height: '52px', borderRadius: '50%', border: '2px solid #b91c1c',
-                        background: '#dc2626', color: '#fff', boxShadow: '0 4px 12px rgba(185,28,28,0.35)',
-                        fontSize: '2rem', fontWeight: 900, lineHeight: 1,
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}
+                    className="option-close-btn"
                 >
                     ×
                 </button>
@@ -440,7 +169,7 @@ const OptionModal = ({ product, cartItems = [], products = [], onConfirm, onCanc
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                             {groups.map((group) => (
                                 <div key={group.name} data-option-missing={selections[group.name] == null}>
-                                    <div style={{ fontWeight: 700, marginBottom: '12px', fontSize: '1.1rem', color: '#64748b' }}>{group.label || (group.name === COMBINATION_GROUP ? '규격' : group.name)} <span className="option-required">{selections[group.name] == null ? '선택 필수' : '선택 완료'}</span></div>
+                                    <div style={{ fontWeight: 700, marginBottom: '12px', fontSize: '1.1rem', color: '#64748b' }}>{group.displayLabel} <span className="option-required">{selections[group.name] == null ? '선택 필수' : '선택 완료'}</span></div>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                                         {group.values.map(val => {
                                             const isSelected = selections[group.name] === val;
