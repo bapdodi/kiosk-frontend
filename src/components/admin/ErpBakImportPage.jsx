@@ -307,6 +307,12 @@ const ErpBakImportPage = () => {
                     <strong>반영 완료</strong> — 선택 {applyResult.applied}건 (삭제 {applyResult.deleted}행, 삽입 {applyResult.inserted}행)
                     <br />백업 테이블: <code>{applyResult.backupTable}</code> (문제가 생기면 이 테이블로 되돌릴 수 있습니다)
                     {applyResult.syncedProducts != null && <><br />키오스크 상품 동기화: {applyResult.syncedProducts}개</>}
+                    {applyResult.trashedProducts > 0 && (
+                        <><br />ERP 에서 빠진 상품 {applyResult.trashedProducts}개를 휴지통으로 옮겼습니다 (30일 안에 복원 가능)</>
+                    )}
+                    {applyResult.hiddenOptions > 0 && (
+                        <><br />사라진 규격 {applyResult.hiddenOptions}개를 상품에서 숨겼습니다</>
+                    )}
                 </div>
             )}
 
@@ -426,7 +432,9 @@ const ErpBakImportPage = () => {
                         <label style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', fontSize: '0.88rem', cursor: 'pointer' }}>
                             <input type="checkbox" checked={runProductSync} onChange={e => setRunProductSync(e.target.checked)} />
                             반영 후 키오스크 상품까지 동기화
-                            <span style={{ color: '#94a3b8', fontWeight: 400 }}>(전체 상품 대상이라 30초 이상 걸립니다)</span>
+                            <span style={{ color: '#94a3b8', fontWeight: 400 }}>
+                                (전체 상품 대상이라 30초 이상 걸립니다. ERP 에서 빠진 품목은 휴지통으로 이동합니다)
+                            </span>
                         </label>
                         <div style={{ flex: 1 }} />
                         <span style={{ color: '#64748b', fontSize: '0.88rem' }}>선택 {selectedCodes.length}건</span>
