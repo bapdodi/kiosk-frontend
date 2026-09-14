@@ -85,8 +85,7 @@ const OrderManagement = () => {
     };
 
     const filteredOrders = dateAndSearchFilteredOrders
-        .filter(order => activeOrderTab === 'all' ? true : order.status === activeOrderTab)
-        .reverse();
+        .filter(order => activeOrderTab === 'all' ? true : order.status === activeOrderTab);
 
     return (
         <div className="fade-in" style={{ paddingBottom: '40px' }}>
