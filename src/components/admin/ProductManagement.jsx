@@ -130,7 +130,7 @@ const ProductManagement = () => {
     const syncWithErp = async () => {
         setIsLoadingErpPreview(true);
         try {
-            const res = await fetch('/api/sync/erp/preview');
+            const res = await fetch('/api/sync/admin/erp/preview');
             if (res.ok) {
                 const preview = await res.json();
                 setErpPreviews(preview);
@@ -150,7 +150,7 @@ const ProductManagement = () => {
         if (!window.confirm(`선택한 ${selectedErpKeys.length}개 상품을 ERP 정보로 동기화할까요?`)) return;
         setIsApplyingErpSync(true);
         try {
-            const res = await fetch('/api/sync/erp/apply', {
+            const res = await fetch('/api/sync/admin/erp/apply', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(selectedErpKeys)

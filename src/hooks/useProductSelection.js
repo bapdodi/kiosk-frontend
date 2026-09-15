@@ -3,7 +3,6 @@ import {
     buildLineFromSelections as buildLine,
     getDefaultSelections,
     getOptionGroups,
-    getPriceForSelections as priceForSelections,
 } from '../utils/productOptions';
 
 // 복합옵션 상품은 규격이 수십 개일 수 있어, 추천 기준으로 보낼 ERP 코드 수를 제한한다.
@@ -15,11 +14,11 @@ const VISIBLE_RECOMMENDATIONS = 6;
  * 상품 선택(규격·수량·사진·추천·장바구니 담기) 로직.
  *
  * 화면은 키오스크용(OptionModal)과 폰용(ProductPageMobile) 두 벌로 갈라져 있지만
- * 가격 계산과 담기 규칙은 한 벌이어야 한다. 그 공통분모가 이 파일이다.
+ * 규격 해석과 담기 규칙은 한 벌이어야 한다. 그 공통분모가 이 파일이다.
  * 여기에는 DOM 배치나 CSS 에 대한 판단을 넣지 않는다.
  */
 export function useProductSelection(product, { cartItems = [], products = [], onConfirm }) {
-    // 규격 해석·가격 규칙은 목록 카드와도 공유해야 해서 utils/productOptions.js 에 있다.
+    // 규격 해석 규칙은 목록 카드와도 공유해야 해서 utils/productOptions.js 에 있다.
     const groups = getOptionGroups(product);
 
     const [selections, setSelections] = useState({});
@@ -149,9 +148,6 @@ export function useProductSelection(product, { cartItems = [], products = [], on
         return () => { cancelled = true; };
     }, [product]);
 
-    // ── 가격 ───────────────────────────────────────────────────────────────
-    const getPriceForSelections = (tempSelections) => priceForSelections(product, groups, tempSelections);
-
     const safeQuantity = typeof quantity === 'number' ? quantity : parseInt(quantity || '0', 10);
 
     // 이 상품으로 이미 장바구니에 담긴 항목들. 화면을 다시 열어도 그대로 보이도록
@@ -159,7 +155,7 @@ export function useProductSelection(product, { cartItems = [], products = [], on
     const addedLines = (cartItems || []).filter(i => product && i.id === product.id);
     const addedTotalQuantity = addedLines.reduce((sum, line) => sum + (line.quantity || 1), 0);
 
-    // 서버는 상품 id 만 돌려준다. 사진·가격은 이미 메모리에 있는 전체 상품 목록에서 찾아 쓰고,
+    // 서버는 상품 id 만 돌려준다. 사진·이름은 이미 메모리에 있는 전체 상품 목록에서 찾아 쓰고,
     // 목록에 없는(삭제됐거나 아직 동기화 전인) 상품은 버린다.
     const recommendedProducts = (product && recommendations.productId === product.id ? recommendations.items : [])
         .map(reco => products.find(p => p.id === reco.productId))
@@ -186,7 +182,6 @@ export function useProductSelection(product, { cartItems = [], products = [], on
         onConfirm(product, [{
             id: line.comboId,
             displayName: line.displayName,
-            totalExtra: line.totalExtra,
             erpCode: line.erpCode
         }], { [line.comboId]: qty }, stayOpen);
 
@@ -196,9 +191,6 @@ export function useProductSelection(product, { cartItems = [], products = [], on
             setShowProductPrompt(true);
         }
     };
-
-    // 현재 선택 기준 단가. 화면에 가격을 보여줄 때 쓴다.
-    const unitPrice = product ? (product.priceC || 0) + getPriceForSelections(selections) : 0;
 
     return {
         groups,
@@ -212,8 +204,7 @@ export function useProductSelection(product, { cartItems = [], products = [], on
         moveImage, handleImageTouchStart, handleImageTouchEnd,
         recommendedProducts,
         addedLines, addedTotalQuantity,
-        getPriceForSelections, buildLineFromSelections,
+        buildLineFromSelections,
         optionSectionRef, focusMissingProduct, handleConfirm,
-        unitPrice,
     };
 }

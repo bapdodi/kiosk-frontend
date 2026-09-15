@@ -25,7 +25,10 @@ import { buildQuickAddArgs } from './utils/productOptions';
 // ... (KioskView & ProtectedRoute components)
 
 function App() {
+  // 손님 화면용 목록(단가 없음)과 관리자용 목록(단가 포함)은 서버에서 서로 다른 API 로 온다.
+  // 한 벌로 쓰면 관리자 화면이 단가 없는 목록으로 상품을 저장해 가격을 0 으로 덮어쓴다.
   const [products, setProducts] = useState([]);
+  const [adminProducts, setAdminProducts] = useState([]);
   const [mainCategories, setMainCategories] = useState([]);
   const [subCategories, setSubCategories] = useState({});
   const [orders, setOrders] = useState([]);
@@ -89,7 +92,7 @@ function App() {
         await fetchProducts(true);
 
         if (isAuth) {
-          await fetchOrders();
+          await Promise.all([fetchOrders(), fetchAdminProducts()]);
         }
       } catch (error) {
         console.error('Error fetching initial data:', error);
@@ -134,6 +137,29 @@ function App() {
     }
   };
 
+  // 관리자 목록은 단가가 들어 있어 로그인한 관리자만 받을 수 있다.
+  const fetchAdminProducts = async () => {
+    try {
+      setIsRefreshing(true);
+      const res = await fetch('/api/products/admin/all');
+      if (!res.ok) throw new Error('상품 데이터를 불러오는데 실패했습니다.');
+
+      const data = await res.json();
+      setAdminProducts(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('Fetch admin products failed:', e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // 관리자 화면에서 상품을 고치면 손님 화면 목록도 곧 달라진다.
+  // 관리자 목록만 갱신해 두면 키오스크가 옛 목록을 들고 있게 되므로 함께 다시 받는다.
+  const updateAdminProducts = (next) => {
+    setAdminProducts(next);
+    fetchProducts();
+  };
+
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '2rem' }}>로딩 중...</div>;
   if (error) return <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', padding: '20px', textAlign: 'center' }}>
     <h2 style={{ marginBottom: '10px', color: 'var(--admin-danger)' }}>오류 발생</h2>
@@ -170,8 +196,8 @@ function App() {
         <Route path="/admin" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
             <AdminLayout
-              products={products}
-              setProducts={setProducts}
+              products={adminProducts}
+              setProducts={updateAdminProducts}
               mainCategories={mainCategories}
               setMainCategories={setMainCategories}
               subCategories={subCategories}
@@ -180,7 +206,7 @@ function App() {
                orders={orders}
                setOrders={setOrders}
                isRefreshing={isRefreshing}
-               onRefresh={() => fetchProducts()}
+               onRefresh={() => { fetchAdminProducts(); fetchProducts(); }}
                activeMainCat={activeMainCat}
                setActiveMainCat={setActiveMainCat}
                activeSubCat={activeSubCat}
@@ -445,7 +471,6 @@ function KioskView({
       Object.entries(quantities).forEach(([comboId, qty]) => {
         if (qty > 0) {
           const combo = combinations.find(c => String(c.id) === comboId);
-          const finalPrice = (product.priceC || 0) + (combo ? (combo.totalExtra || combo.price || 0) : 0);
           const selectedOption = combo ? (combo.displayName || combo.name) : null;
 
           const existingIndex = newCart.findIndex(i => i.id === product.id && i.selectedOption === selectedOption);
@@ -458,7 +483,6 @@ function KioskView({
             newCart.push({
               ...product,
               selectedOption,
-              finalPrice,
               erpCode: combo ? (combo.erpCode || combo.id) : product.erpCode,
               quantity: qty,
               cartId: Date.now() + Math.random()
@@ -521,14 +545,13 @@ function KioskView({
     const orderData = {
       customerName,
       erpCustomerCode,
+      // 금액은 보내지 않는다. 손님 화면은 단가를 모르고, 서버가 ERP 코드로 직접 계산한다.
       items: cart.map(item => ({
         name: item.name,
         erpCode: item.erpCode, // Include ERP code for backend sync
         quantity: item.quantity || 1, // Store the actual quantity mapping
-        selectedOption: item.selectedOption,
-        finalPrice: item.finalPrice
+        selectedOption: item.selectedOption
       })),
-      totalAmount: cart.reduce((sum, item) => sum + item.finalPrice * (item.quantity || 1), 0),
       status: 'pending'
     };
 
@@ -563,7 +586,6 @@ function KioskView({
     }
   };
 
-  const totalPrice = cart.reduce((sum, item) => sum + item.finalPrice * (item.quantity || 1), 0);
 
   // 주문 마무리 단계(내역 확인 → 상호 선택 → 완료).
   // 세 단계 모두 같은 내용을 쓰고, 키오스크·PC 는 화면으로 폰은 팝업으로만 껍데기가 갈린다.
