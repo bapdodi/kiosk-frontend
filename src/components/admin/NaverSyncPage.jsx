@@ -67,7 +67,7 @@ const NaverSyncPage = () => {
     const [statusFilter, setStatusFilter] = useState('');    // '' = 전체, 그 외 STATUS_META 키
     const [productPage, setProductPage] = useState(1);       // 1-based 페이지 번호
     const [expandedIds, setExpandedIds] = useState([]);      // 규격 펼친 상품 id 목록
-    const [pushModal, setPushModal] = useState(null);        // 전송 전 규격 검토 모달 { product, combos:[{id,name,priceC,stock,include}] }
+    const [pushModal, setPushModal] = useState(null);        // 전송 전 규격 검토 모달 { product, combos:[{id,name,priceA,stock,include}] }
 
     // ── 동기화 상태 ──
     const [previews, setPreviews] = useState(null); // null = 아직 안 불러옴
@@ -116,12 +116,12 @@ const NaverSyncPage = () => {
 
     // ── 규격/가격 표시 헬퍼 ──
     const activeCombos = (p) => (p.combinations || []).filter(c => !c.deleted);
-    // ERP 동기화 상품은 combination.priceC 가 각 옵션의 '절대 판매가'다(기본가+추가금이 아님).
-    // 손님 키오스크·네이버 모두 이 값을 그대로 청구하므로 표시도 이 값을 그대로 쓴다.
-    const comboPrice = (c) => (c.priceC || 0);
+    // 네이버 등 온라인 채널은 A단가(priceA) 를 판매가로 쓴다(키오스크 손님 청구가인 priceC 와 별개).
+    // combination.priceA 가 각 옵션의 '절대 판매가'다(기본가+추가금이 아님).
+    const comboPrice = (c) => (c.priceA || 0);
     const priceLabel = (p) => {
         const combos = activeCombos(p);
-        if (combos.length === 0) return `${(p.priceC || 0).toLocaleString()}원`;
+        if (combos.length === 0) return `${(p.priceA || 0).toLocaleString()}원`;
         const prices = combos.map(c => comboPrice(c));
         const min = Math.min(...prices), max = Math.max(...prices);
         return min === max ? `${min.toLocaleString()}원` : `${min.toLocaleString()} ~ ${max.toLocaleString()}원`;
@@ -178,7 +178,7 @@ const NaverSyncPage = () => {
         setPushModal({
             product: p,
             combos: combos.map(c => ({
-                id: c.id, name: c.name || '', priceC: c.priceC ?? 0, stock: c.stock ?? 0, include: true,
+                id: c.id, name: c.name || '', priceA: c.priceA ?? 0, stock: c.stock ?? 0, include: true,
             })),
         });
     };
@@ -192,7 +192,7 @@ const NaverSyncPage = () => {
         if (chosen.length === 0) return alert('전송할 규격을 최소 1개 선택하세요.');
         const override = {
             combinations: chosen.map(c => ({
-                id: c.id, name: c.name.trim(), priceC: Number(c.priceC) || 0, stock: Number(c.stock) || 0,
+                id: c.id, name: c.name.trim(), priceA: Number(c.priceA) || 0, stock: Number(c.stock) || 0,
             })),
         };
         const id = pushModal.product.id;
@@ -257,7 +257,7 @@ const NaverSyncPage = () => {
         if (link.lastError) return 'error';
         if (link.naverStatus === 'SUSPENSION') return 'suspended';
         const changed = link.lastSyncedName !== p.name
-            || link.lastSyncedPrice !== p.priceC
+            || link.lastSyncedPrice !== p.priceA
             || link.lastSyncedStock !== computeEffectiveStock(p);
         return changed ? 'changed' : 'linked';
     };
@@ -637,7 +637,7 @@ const NaverSyncPage = () => {
                         {visibleProducts.map(p => {
                             const b = naverBadge(p);
                             const combos = activeCombos(p);
-                            const repPrice = combos.length ? Math.min(...combos.map(c => c.priceC || 0)) : 0; // 대표(최저) 옵션가 = 추가금 기준
+                            const repPrice = combos.length ? Math.min(...combos.map(c => c.priceA || 0)) : 0; // 대표(최저) 옵션가 = 추가금 기준
                             const isExpanded = expandedIds.includes(p.id);
                             return (
                                 <Fragment key={p.id}>
@@ -741,7 +741,7 @@ const NaverSyncPage = () => {
                                                             <tr key={i}>
                                                                 <td style={{ fontWeight: 600 }}>{c.name}</td>
                                                                 <td style={{ textAlign: 'right', color: '#64748b' }}>
-                                                                    {(c.priceC || 0) - repPrice > 0 ? `+${((c.priceC || 0) - repPrice).toLocaleString()}원` : '-'}
+                                                                    {(c.priceA || 0) - repPrice > 0 ? `+${((c.priceA || 0) - repPrice).toLocaleString()}원` : '-'}
                                                                 </td>
                                                                 <td style={{ textAlign: 'right', fontWeight: 700 }}>{comboPrice(c).toLocaleString()}원</td>
                                                                 <td style={{ textAlign: 'right' }}>{c.stock ?? 0}</td>
@@ -943,8 +943,8 @@ const NaverSyncPage = () => {
                                             style={{ ...inputStyle, width: '100%', marginTop: 0 }} />
                                     </td>
                                     <td style={{ textAlign: 'right' }}>
-                                        <input type="number" value={c.priceC} disabled={!c.include}
-                                            onChange={e => updateModalCombo(i, { priceC: e.target.value })}
+                                        <input type="number" value={c.priceA} disabled={!c.include}
+                                            onChange={e => updateModalCombo(i, { priceA: e.target.value })}
                                             style={{ ...inputStyle, width: '120px', marginTop: 0, textAlign: 'right' }} />
                                     </td>
                                     <td style={{ textAlign: 'right' }}>
