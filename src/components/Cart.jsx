@@ -106,7 +106,7 @@ const Cart = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onSelect
                     onClick={onCheckout}
                     disabled={items.length === 0}
                 >
-                    결제하기
+                    주문 넣기
                 </button>
             </div>
         </section>

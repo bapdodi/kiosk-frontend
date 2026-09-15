@@ -1,8 +1,9 @@
-.guided-option-modal { display: flex; flex-direction: column; width: min(1120px, calc(100vw - 32px)); max-width: 1120px; height: min(860px, calc(100dvh - 32px)); max-height: none; }
-.guided-option-modal .option-scroll-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); overflow: hidden; }
+/* 팝업이 아니라 목록 자리를 대신 차지하는 화면이라, 남는 공간을 그대로 채운다. */
+.product-detail-view { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; background: #fff; overflow: hidden; }
+.guided-option-modal .option-scroll-body { flex: 0 1 auto; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); overflow: hidden; }
 .guided-option-modal .option-detail-layout { display: block; min-width: 0; border-right: 1px solid #e2e8f0; }
 .guided-option-modal .option-detail-layout > div { display: flex !important; flex-direction: column; height: 100%; box-sizing: border-box; padding: 24px !important; gap: 20px; align-items: stretch; }
-.guided-option-modal .option-image-area { min-height: 0 !important; height: 250px !important; flex: 0 0 250px; border-radius: 16px; }
+.guided-option-modal .option-image-area { min-height: 0 !important; height: 320px !important; flex: 0 0 320px; border-radius: 16px; }
 .guided-option-modal .option-image-area img { object-fit: contain !important; }
 .guided-option-modal .option-detail-layout .option-info-padding { padding: 0 !important; }
 .guided-option-modal .option-header-title { font-size: 1.6rem !important; margin: 0 0 10px; overflow-wrap: anywhere; }
@@ -11,7 +12,8 @@
 .guided-option-modal .option-description p { margin: 0; overflow-wrap: anywhere; }
 .option-description-title { font-weight: 800; color: #334155; margin-bottom: 6px; }
 .guided-option-modal .option-choice-section { min-height: 0; overflow-y: auto; padding: 24px !important; }
-.guided-option-modal .option-choice-section > div { min-height: 100%; box-sizing: border-box; padding: 24px !important; border: 2px solid #fed7aa !important; background: #fffaf5 !important; }
+/* 내용만큼만 차지한다. 100% 로 늘리면 규격이 3~4개뿐일 때 빈 주황 면이 화면을 덮는다. */
+.guided-option-modal .option-choice-section > div { min-height: 0; box-sizing: border-box; padding: 24px !important; border: 2px solid #fed7aa !important; background: #fffaf5 !important; }
 .guided-option-modal .option-choice-section.needs-product-selection > div { border-color: #ea580c !important; box-shadow: inset 0 0 0 2px #ea580c, 0 0 0 5px #ffedd5; }
 .guided-option-modal .option-choice-section.product-selection-complete > div { border-color: #cbd5e1 !important; background: #fff !important; box-shadow: none; }
 .guided-option-modal .product-selection-complete .option-step { background: #475569; }
@@ -26,7 +28,6 @@
 .guided-option-modal .option-choice-button[aria-pressed="true"] { background: #fff0df !important; border-color: #c2410c !important; color: #9a3412 !important; }
 .option-choice-check { width: 24px; height: 24px; border: 2px solid #94a3b8; border-radius: 50%; flex-shrink: 0; text-align: center; line-height: 20px; }
 [aria-pressed="true"] .option-choice-check { background: #c2410c; border-color: #c2410c; color: white; }
-.guided-option-modal .option-footer { flex: 0 0 auto; display: flex !important; padding: 16px 24px !important; gap: 12px !important; }
 .option-quantity-label { font-size: 1.25rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .option-quantity-label small { font-size: .85rem; color: #475569; font-weight: 500; }
 .guided-option-modal .qty-controls { width: 100%; scale: 1; gap: 8px; justify-content: space-between; box-sizing: border-box; }
@@ -39,53 +40,38 @@
 .guided-option-modal .qty-btn { min-width: 48px; height: 52px !important; }
 .guided-option-modal .qty-num { flex: 1; min-width: 48px; max-width: 180px; margin: 0 !important; height: 52px; background: white !important; border: 2px solid #94a3b8 !important; border-radius: 8px; font-size: 1.5rem !important; }
 .option-quantity-unit { font-weight: 800; color: #334155; }
-.guided-option-modal .option-footer-btns { width: 100%; flex: 1 1 auto !important; margin: 0; flex-direction: row; gap: 12px; align-items: stretch; }
-/* 나가기는 보조 동작이라 작게, 주문하기는 주 동작이라 크게 잡는다. */
-.guided-option-modal .option-exit-btn { flex: 0 0 auto !important; min-width: 110px; min-height: 60px; padding: 0 18px; border: 2px solid #94a3b8; border-radius: 16px; background: #fff; color: #334155; font-weight: 700; font-size: 1rem; cursor: pointer; }
-.guided-option-modal .option-order-btn { flex: 1 1 auto !important; min-height: 88px; padding: 0 24px; border: none; border-radius: 20px; background: var(--accent-color); color: #fff; font-weight: 900; font-size: 1.6rem; letter-spacing: .02em; cursor: pointer; box-shadow: 0 12px 24px rgba(255, 107, 0, .25); }
+/* 담기는 규격·수량을 정한 카드 안, 수량 바로 아래에 붙는다. */
+.guided-option-modal .option-order-btn { display: block; width: 100%; margin-top: 20px; min-height: 88px; padding: 0 24px; border: none; border-radius: 20px; background: var(--accent-color); color: #fff; font-weight: 900; font-size: 1.6rem; letter-spacing: .02em; cursor: pointer; box-shadow: 0 12px 24px rgba(255, 107, 0, .25); }
+.guided-option-modal .option-order-btn:active { transform: scale(0.99); }
 /* 계속 담기로 쌓인 항목 목록. 푸터 바로 위에 붙여 항상 보이게 한다. */
-.guided-option-modal .option-added-summary { flex: 0 0 auto; background: #fff7ed; border-top: 2px solid #fdba74; padding: 12px 24px; }
-.guided-option-modal .option-added-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; color: #9a3412; font-size: 1rem; font-weight: 800; margin-bottom: 8px; }
-.guided-option-modal .option-added-list { list-style: none; margin: 0; padding: 0; max-height: 132px; overflow-y: auto; }
-.guided-option-modal .option-added-list li { display: flex; align-items: baseline; gap: 10px; padding: 6px 0; border-bottom: 1px dashed #fed7aa; font-size: 1.05rem; color: #1e293b; }
-.guided-option-modal .option-added-list li:last-child { border-bottom: none; }
-.guided-option-modal .option-added-name { flex: 1 1 auto; min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
-.guided-option-modal .option-added-qty { flex: 0 0 auto; min-width: 60px; text-align: right; font-weight: 800; color: #c2410c; }
 
 .guided-option-modal button:focus-visible, .guided-option-modal input:focus-visible, .guided-option-modal summary:focus-visible { outline: 3px solid #2563eb !important; outline-offset: 3px; }
 
 /* 키오스크: 터치 입력을 지원하는 세로형 화면에서만 전용 배치를 적용한다. */
 @media (min-width: 768px) and (min-height: 900px) and (max-aspect-ratio: 4/3) and (any-pointer: coarse) {
-  .guided-option-modal { width: min(800px, calc(100vw - 24px)); max-width: 800px; height: auto; max-height: calc(100dvh - 24px); }
+  /* 본문은 내용만큼만(flex: 0 1 auto). 늘려서 채우면 추천 줄이 화면 맨 아래로 밀려 눈에 안 띈다.
+     세로 가운데 정렬도 쓰지 않는다 — 상품이 아래로 밀려 위가 빈 칸이 된다. */
   .guided-option-modal .option-scroll-body { display: block; overflow-y: auto; }
   .guided-option-modal .option-detail-layout { border-right: 0; }
   .guided-option-modal .option-detail-layout > div { display: grid !important; grid-template-columns: 1fr 1fr !important; height: auto; padding: 0 !important; gap: 0; align-items: stretch; }
-  .guided-option-modal .option-image-area { height: 360px !important; flex: none; border-radius: 0; }
+  /* 세로 1920 키오스크는 남는 높이가 많다. 빈 칸으로 두지 말고 사진에 준다. */
+  .guided-option-modal .option-image-area { height: 420px !important; min-height: 0 !important; max-height: none; flex: none; border-radius: 0; }
   .guided-option-modal .option-detail-layout .option-info-padding { padding: 40px !important; }
   .guided-option-modal .option-header-title { font-size: 2rem !important; }
   .guided-option-modal .option-choice-section { overflow: visible; padding: 0 40px 32px !important; }
   .guided-option-modal .option-choice-section > div { min-height: 0; padding: 28px !important; }
   .guided-option-modal .option-choice-button { min-height: 72px; flex-basis: 190px; font-size: 1.2rem !important; }
-  .guided-option-modal .option-footer { padding: 16px 24px !important; gap: 12px !important; }
   .guided-option-modal .option-quantity-block { grid-template-columns: 1fr; row-gap: 12px; }
-  /* 키오스크는 눈높이가 화면 위쪽이라 모달을 가운데가 아닌 화면 맨 위에 붙인다. */
-  .modal-overlay.option-modal-overlay { align-items: flex-start; padding-top: 12px; }
 }
 
 @media (max-width: 760px) {
-  .guided-option-modal { height: 100dvh; }
   .guided-option-modal .option-scroll-body { display: block; overflow-y: auto; }
   .guided-option-modal .option-detail-layout { border-right: 0; }
   .guided-option-modal .option-detail-layout > div { display: grid !important; grid-template-columns: 100px minmax(0, 1fr) !important; height: auto; padding: 16px 56px 16px 16px !important; gap: 12px; align-items: center; }
   .guided-option-modal .option-image-area { height: 100px !important; flex: none; }
   .guided-option-modal .option-choice-section { overflow: visible; padding: 0 12px 16px !important; }
   .guided-option-modal .option-choice-section > div { min-height: 0; padding: 16px !important; }
-  .guided-option-modal .option-footer { padding: 12px !important; gap: 8px !important; }
-  .guided-option-modal .option-added-summary { padding: 10px 12px; }
-  .guided-option-modal .option-added-list { max-height: 96px; }
   .guided-option-modal .option-quantity-block { grid-template-columns: 1fr; margin-top: 16px; padding-top: 14px; }
-  .guided-option-modal .option-footer-btns { height: auto; }
-  .guided-option-modal .option-exit-btn { min-width: 88px; min-height: 52px; font-size: .95rem; }
   .guided-option-modal .option-order-btn { min-height: 72px; font-size: 1.35rem; }
 }
 @media (max-width: 480px) {
@@ -95,7 +81,6 @@
   .guided-option-modal .option-choice-section { padding: 0 12px 16px !important; }
   .guided-option-modal .option-choice-section > div { padding: 16px !important; }
   .guided-option-modal .option-choice-button { padding: 14px !important; font-size: 1.1rem !important; }
-  .guided-option-modal .option-footer { padding: 12px !important; gap: 8px !important; }
   .guided-option-modal .qty-controls { gap: 4px; }
   .guided-option-modal .qty-btn { min-width: 40px; }
   .option-quantity-label small { width: 100%; }
@@ -185,27 +170,29 @@
   .guided-option-modal .option-reco-thumb { height: 76px; }
 }
 
-/* ── 옵션 팝업 닫기 버튼 ──────────────────────────────────────────────────── */
-/* 예전에는 JSX 인라인 스타일이라 미디어쿼리로 줄일 수 없었다.
-   기본값(키오스크/데스크톱)은 기존 인라인 스타일과 동일한 크기를 유지한다. */
-.option-close-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  z-index: 10;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 2px solid #b91c1c;
-  background: #dc2626;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(185, 28, 28, .35);
-  font-size: 2rem;
-  font-weight: 900;
-  line-height: 1;
+/* ── 목록으로 돌아가기 ───────────────────────────────────────────────────── */
+/* 돌아가는 길은 화면 맨 위 왼쪽 한 곳에만 둔다. 빨간 × 를 없앤 이유는,
+   빨강을 삭제(장바구니 비우기·줄 삭제)에만 쓰기로 색 규칙을 정리했기 때문이다. */
+.detail-back-btn {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin: 16px 0 0 24px;
+  padding: 12px 20px;
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+  background: #fff;
+  color: #334155;
+  font-size: 1.05rem;
+  font-weight: 800;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
+.detail-back-btn:active { transform: scale(0.98); }
+
+/* 선택 칸이 좁아지는 폭(키오스크 1080 등)에서는 수량 라벨과 +/- 컨트롤을
+   위아래로 쌓아 스테퍼가 잘리지 않게 한다. */
+@media (max-width: 1279px) {
+  .guided-option-modal .option-quantity-block { grid-template-columns: minmax(0, 1fr); }
+  .guided-option-modal .qty-controls { gap: 4px; }
+  .guided-option-modal .qty-btn { min-width: 42px; }
+}

@@ -39,7 +39,9 @@ body {
   background-color: var(--bg-color);
   color: var(--text-primary);
   margin: 0;
-  height: 100vh;
+  /* dvh: 주소창이 보이는 만큼을 뺀 실제 높이. 키오스크·PC 에서는 vh 와 같다.
+     vh 로 두면 주소창이 있는 브라우저에서 맨 아래 담기/주문 버튼이 화면 밖으로 나간다. */
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -47,7 +49,7 @@ body {
 .kiosk-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
   background-color: var(--bg-color);
   position: relative;
   overflow: hidden;
@@ -596,11 +598,12 @@ body {
 }
 
 /* 장바구니 전체 비우기: 실수 방지를 위해 눈에 띄되 결제 버튼보다는 약하게. */
+/* 비우기는 자주 쓰는 동작이 아니라 눈에 먼저 띄면 안 된다. 빨강은 줄 삭제(×)에만 남긴다. */
 .cart-clear-btn {
   flex: 0 0 auto;
   background: #fff;
-  color: #b91c1c;
-  border: 2px solid #fecaca;
+  color: #64748b;
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 10px 16px;
   font-size: 0.95rem;
@@ -611,8 +614,8 @@ body {
 }
 
 .cart-clear-btn:hover:not(:disabled) {
-  background: #fef2f2;
-  border-color: #fca5a5;
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 .cart-clear-btn:disabled {
@@ -695,8 +698,11 @@ body {
   display: none;
 }
 
-@media (min-width: 768px) and (min-height: 900px) {
-  /* 키오스크: 왼쪽 상품 그리드 + 오른쪽 세로 장바구니 사이드바 (전체 높이) */
+/* 키오스크(1080x1920)뿐 아니라 PC 브라우저(세로 900px 미만)에서도 사이드바를 쓴다.
+   폰 가로(예: 932x430)가 걸리지 않도록 두 조건 모두 min-height를 함께 본다. */
+@media (min-width: 768px) and (min-height: 900px),
+       (min-width: 1024px) and (min-height: 600px) {
+  /* 키오스크·PC: 왼쪽 상품 그리드 + 오른쪽 세로 장바구니 사이드바 (전체 높이) */
   /* --kiosk-cart-width가 지정되면(드래그로 조절 후 저장된 값) 그 값을, 없으면 기존 기본 폭(380px)을 사용 */
   .kiosk-container {
     display: grid;
@@ -912,9 +918,11 @@ body {
   color: var(--text-primary);
 }
 
+/* 주문 넣기는 마지막 단계라 담기(주황)와 다른 색을 쓴다.
+   같은 주황이면 "담기"와 "주문 전송"이 같은 무게로 보여 잘못 눌린다. */
 .cart-bar-checkout {
   width: 100%;
-  background: var(--accent-color);
+  background: #0f766e;
   color: #fff;
   border: none;
   padding: 18px;
@@ -2151,7 +2159,7 @@ body {
   padding: 18px;
   border-radius: 16px;
   border: none;
-  background: var(--accent-color);
+  background: #0f766e;
   color: white;
   font-weight: 900;
   font-size: 1.25rem;
@@ -2336,4 +2344,326 @@ body {
     max-height: 100dvh;
   }
 
+}
+
+/* ── 목록 카드: 가격 + 바로 담기 ────────────────────────────────────────────
+   단골은 아는 물건을 클릭 한 번에 집고, 처음 온 손님은 사진/이름을 눌러 상세로 간다.
+   두 경로가 한 카드 안에 있으므로, "담기"만 주황으로 채우고 나머지는 눌러도
+   되지만 눈에 먼저 띄지 않는 톤으로 둔다. */
+.product-card {
+  cursor: pointer;
+}
+
+.product-card-thumb {
+  position: relative;
+}
+
+.product-price {
+  margin-top: 6px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.product-price-unit {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-left: 2px;
+}
+
+.card-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.card-step {
+  flex: 1 1 120px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 2px;
+}
+
+.card-step button {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 1.25rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.card-step button:disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.card-step-qty {
+  flex: 1 1 auto;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.card-add-btn {
+  flex: 1 1 76px;
+  min-height: 44px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.card-add-btn:active {
+  transform: scale(0.97);
+}
+
+/* 규격을 골라야 하는 상품. 여기서 고르게 하면 카드가 작은 팝업이 돼 버리므로
+   상세 화면으로 보낸다는 것을 문구로 분명히 한다. */
+.card-choose-btn {
+  margin: 0 12px 12px;
+  min-height: 44px;
+  border: 2px solid #fdba74;
+  border-radius: 12px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.card-choose-btn:active {
+  transform: scale(0.97);
+}
+
+.card-add-btn.is-added {
+  background: #0f766e;
+}
+
+/* 폰 목록 카드는 예전 그대로(사진 + 이름) 둔다.
+   카드에서 바로 담기는 키오스크·PC 를 위한 것이고, 폰은 카드를 누르면
+   전체 화면 상품 페이지로 가는 흐름이 이미 있다. 폰 카드에 버튼을 더하면
+   하단 장바구니 버튼과 겹치고 한 줄에 들어가지도 않는다. */
+@media (max-width: 600px) {
+  .product-price,
+  .card-add-row,
+  .card-choose-btn {
+    display: none;
+  }
+}
+
+/* ── 주문 마무리 화면 (내역 확인 → 상호 선택 → 완료) ─────────────────────────
+   예전에는 팝업 두 겹 + 브라우저 alert() 였다. 목록 자리를 차지하는 화면으로 바꿔
+   상품 상세와 같은 방식으로 흐르게 한다. 오른쪽 장바구니 레일은 그대로 남는다. */
+.checkout-view {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  /* 카드는 max-height: 100% + 내부 스크롤이라 화면을 넘지 않는다. 가운데 정렬이 안전하다. */
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background: var(--bg-color);
+  overflow-y: auto;
+}
+
+.checkout-card {
+  width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+/* 상호 선택 화면의 확정/취소 */
+.checkout-submit-btn {
+  flex: 2;
+  padding: 18px;
+  border: none;
+  border-radius: 14px;
+  background: #0f766e;
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* 못 누르는 상태는 회색으로. 예전에는 연두색이라 눌리는 것처럼 보였다. */
+.checkout-submit-btn:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.checkout-cancel-btn {
+  flex: 1;
+  padding: 18px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: #fff;
+  color: #475569;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* ── 주문 완료 ───────────────────────────────────────────────────────────── */
+.order-done-head {
+  flex: 0 0 auto;
+  padding: 32px 24px 24px;
+  text-align: center;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.order-done-check {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: #0f766e;
+  color: #fff;
+  font-size: 2.4rem;
+  font-weight: 900;
+  line-height: 72px;
+}
+
+.order-done-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #1e293b;
+}
+
+.order-done-sub {
+  margin: 10px 0 0;
+  color: #475569;
+  font-size: 1.05rem;
+}
+
+.order-done-no {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.order-done-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 24px;
+}
+
+.order-done-line {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.order-done-line:last-child {
+  border-bottom: none;
+}
+
+.order-done-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 700;
+  color: #1e293b;
+  overflow-wrap: anywhere;
+}
+
+.order-done-name em {
+  font-style: normal;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.order-done-qty {
+  flex: 0 0 auto;
+  font-weight: 900;
+  color: #0f766e;
+}
+
+.order-done-foot {
+  flex: 0 0 auto;
+  padding: 18px 24px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.order-done-home {
+  width: 100%;
+  padding: 20px;
+  border: none;
+  border-radius: 16px;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* 상호 목록: 팝업(폰)에서는 짧게, 화면(키오스크·PC)에서는 남는 높이만큼 길게.
+   한 번에 더 많이 보이면 초성 탭을 덜 눌러도 된다. */
+.customer-list {
+  max-height: 250px;
+}
+
+.checkout-view .customer-list {
+  max-height: 44vh;
+}
+
+.checkout-card {
+  max-width: 720px;
+}
+
+/* 화면 변형에는 닫기(×)를 두지 않는다. 팝업이 아니라 한 단계이고,
+   아래에 "더 담기" 가 같은 일을 한다. */
+.checkout-view .review-close {
+  display: none;
+}
+
+/* 자동 복귀 남은 시간. 버튼 안에 같이 두어 "곧 바뀐다" 를 누르기 전에 알 수 있게 한다. */
+.order-done-count {
+  display: inline-block;
+  min-width: 2.2em;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-done-auto {
+  margin: 12px 0 0;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.95rem;
 }

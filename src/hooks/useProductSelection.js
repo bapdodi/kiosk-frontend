@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { COMBINATION_GROUP } from '../utils/optionConstants';
+import {
+    buildLineFromSelections as buildLine,
+    getDefaultSelections,
+    getOptionGroups,
+    getPriceForSelections as priceForSelections,
+} from '../utils/productOptions';
 
 // 복합옵션 상품은 규격이 수십 개일 수 있어, 추천 기준으로 보낼 ERP 코드 수를 제한한다.
 const MAX_RECOMMENDATION_SOURCE_CODES = 30;
@@ -14,44 +19,9 @@ const VISIBLE_RECOMMENDATIONS = 6;
  * 여기에는 DOM 배치나 CSS 에 대한 판단을 넣지 않는다.
  */
 export function useProductSelection(product, { cartItems = [], products = [], onConfirm }) {
-    // 데이터 구조가 여러 갈래(optionGroups / sizes+origins / combinations)라 한 형태로 모은다.
-    const getOptionGroups = () => {
-        if (!product) return [];
+    // 규격 해석·가격 규칙은 목록 카드와도 공유해야 해서 utils/productOptions.js 에 있다.
+    const groups = getOptionGroups(product);
 
-        if (product.optionGroups && product.optionGroups.length > 0) {
-            return product.optionGroups.map(g => ({
-                ...g,
-                values: g.values || []
-            }));
-        }
-
-        const groups = [];
-        if (product.sizes && product.sizes.length > 0) {
-            groups.push({ name: '규격 (Size)', values: product.sizes.map(s => s.name), legacySource: 'sizes' });
-        }
-        if (product.origins && product.origins.length > 0) {
-            groups.push({ name: '원산지 (Origin)', values: product.origins.map(o => o.name), legacySource: 'origins' });
-        }
-
-        // ERP 로 묶여 들어온 상품은 규격 하나짜리 선택지로 다룬다.
-        const activeCombos = (product.combinations || []).filter(c => !c.deleted);
-        if (groups.length === 0 && activeCombos.length > 1) {
-            groups.push({
-                name: COMBINATION_GROUP,
-                label: '',
-                values: activeCombos.map(c => c.name),
-                legacySource: 'combinations'
-            });
-        }
-        return groups;
-    };
-
-    // 화면에 보여줄 이름. COMBINATION_GROUP 은 내부용 sentinel 이라 그대로 쓰면
-    // 손님 화면에 "__combination__" 이 노출된다. 두 화면이 같은 규칙을 쓰도록 여기서 정한다.
-    const groups = getOptionGroups().map(g => ({
-        ...g,
-        displayLabel: g.label || (g.name === COMBINATION_GROUP ? '규격' : g.name),
-    }));
     const [selections, setSelections] = useState({});
     const [quantity, setQuantity] = useState(1);
     const [showProductPrompt, setShowProductPrompt] = useState(false);
@@ -140,13 +110,7 @@ export function useProductSelection(product, { cartItems = [], products = [], on
     // 옵션이 2개 이상인 그룹은 사용자가 직접 고르도록 디폴트 선택하지 않는다.
     // (값이 하나뿐인 그룹은 선택의 여지가 없으므로 그대로 선택해 둔다.)
     useEffect(() => {
-        const initial = {};
-        groups.forEach(g => {
-            if (g.values.length === 1) {
-                initial[g.name] = g.values[0];
-            }
-        });
-        setSelections(initial);
+        setSelections(getDefaultSelections(groups));
         setQuantity(1);
         setCurrentImageIndex(0);
         setFailedImages({});
@@ -186,34 +150,7 @@ export function useProductSelection(product, { cartItems = [], products = [], on
     }, [product]);
 
     // ── 가격 ───────────────────────────────────────────────────────────────
-    const getPriceForSelections = (tempSelections) => {
-        if (!product) return 0;
-        const activeCombos = (product.combinations || []).filter(c => !c.deleted);
-        if (activeCombos.length > 0) {
-            const comboName = groups.map(g => tempSelections[g.name]).join(' / ');
-            const combo = activeCombos.find(c => c.name === comboName);
-            // ERP 로 들어온 조합은 combo.priceC 가 그 자체로 단가라,
-            // 기본가와의 차액(extra)으로 환산해서 돌려준다.
-            if (combo) {
-                return combo.priceC - product.priceC;
-            }
-            return 0;
-        }
-
-        let extra = 0;
-        groups.forEach(g => {
-            const val = tempSelections[g.name];
-            if (g.legacySource === 'sizes') {
-                const s = product.sizes.find(sz => sz.name === val);
-                if (s) extra += s.price;
-            }
-            if (g.legacySource === 'origins') {
-                const o = product.origins.find(og => og.name === val);
-                if (o) extra += o.price;
-            }
-        });
-        return extra;
-    };
+    const getPriceForSelections = (tempSelections) => priceForSelections(product, groups, tempSelections);
 
     const safeQuantity = typeof quantity === 'number' ? quantity : parseInt(quantity || '0', 10);
 
@@ -230,21 +167,7 @@ export function useProductSelection(product, { cartItems = [], products = [], on
         .slice(0, VISIBLE_RECOMMENDATIONS);
 
     // 현재 선택값(selections)을 하나의 라인 객체로 변환
-    const buildLineFromSelections = (sel, qty) => {
-        const comboName = groups.map(g => sel[g.name]).join(' / ');
-        const foundCombo = (product.combinations || []).filter(c => !c.deleted).find(c => c.name === comboName);
-        const extra = getPriceForSelections(sel);
-        const comboId = foundCombo ? foundCombo.id : comboName;
-        return {
-            lineId: comboId,
-            comboId,
-            displayName: comboName,
-            totalExtra: extra,
-            unitPrice: (product.priceC || 0) + extra,
-            erpCode: foundCombo ? foundCombo.erpCode : (product.erpCode || null),
-            quantity: Math.max(1, qty)
-        };
-    };
+    const buildLineFromSelections = (sel, qty) => buildLine(product, groups, sel, qty);
 
     const focusMissingProduct = () => {
         setShowProductPrompt(true);
@@ -268,11 +191,7 @@ export function useProductSelection(product, { cartItems = [], products = [], on
         }], { [line.comboId]: qty }, stayOpen);
 
         if (stayOpen) {
-            const initial = {};
-            groups.forEach(g => {
-                if (g.values.length === 1) initial[g.name] = g.values[0];
-            });
-            setSelections(initial);
+            setSelections(getDefaultSelections(groups));
             setQuantity(1);
             setShowProductPrompt(true);
         }

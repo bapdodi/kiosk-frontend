@@ -1,4 +1,4 @@
-// 큰 화면(키오스크)용 하단 고정 주문내역 바.
+// 큰 화면(키오스크·PC)용 오른쪽 세로 장바구니 사이드바.
 // 동일 상품(id)은 하나로 묶고 규격(옵션)별로 하위 줄에 표시한다. (기존 장바구니 모달과 동일)
 // 상품은 한 줄씩 세로로 쌓이고, 넘치면 세로 스크롤한다.
 // 작은 화면(폰)에서는 CSS(min-width:601px)로 숨겨지고, 기존 floating 버튼 + 모달을 사용한다.
@@ -58,7 +58,7 @@ const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onRes
                                                 style={{ cursor: onSelectProduct ? 'pointer' : 'default' }}
                                                 onClick={() => onSelectProduct && onSelectProduct(item)}
                                             >
-                                                {item.selectedOption || '기본'}
+                                                {item.selectedOption || ''}
                                             </span>
                                             <div className="cart-bar-step">
                                                 <button
@@ -101,7 +101,7 @@ const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onRes
                     onClick={onCheckout}
                     disabled={items.length === 0}
                 >
-                    결제하기
+                    주문 넣기
                 </button>
             </div>
         </section>
