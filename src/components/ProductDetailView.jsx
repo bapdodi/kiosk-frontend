@@ -1,15 +1,18 @@
 import { getImageUrl } from '../utils/imageUtils';
-import './OptionModal.css';
+import './ProductDetailView.css';
 import { useProductSelection } from '../hooks/useProductSelection';
 
 /**
- * 키오스크·PC 용 상품 선택 팝업.
+ * 키오스크·PC 용 상품 상세(규격·수량 선택) 화면.
+ *
+ * 팝업이 아니라 목록 자리를 대신 차지하는 한 단계다. 팝업이던 시절에는 뒤 화면을
+ * 덮어 버려서 오른쪽 장바구니를 못 쓰게 됐고, 그래서 팝업 안에 장바구니를 하나 더
+ * 두어야 했다. 화면 전환으로 바꾸면서 장바구니는 레일 하나로 돌아갔다.
  *
  * 폰은 이 화면을 쓰지 않는다 (components/ProductPageMobile.jsx 가 담당).
- * 덕분에 여기 배치는 1080x1920 세로 키오스크 기준만 생각하면 되고,
- * 폰 때문에 규칙을 덮어쓸 일이 없다.
+ * 덕분에 여기 배치는 1080x1920 세로 키오스크 기준만 생각하면 된다.
  */
-const OptionModal = ({ product, cartItems = [], products = [], onConfirm, onCancel, onSelectProduct }) => {
+const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, onCancel, onSelectProduct }) => {
     const {
         groups,
         selections, setSelections,
@@ -21,7 +24,6 @@ const OptionModal = ({ product, cartItems = [], products = [], onConfirm, onCanc
         failedImages, setFailedImages,
         moveImage, handleImageTouchStart, handleImageTouchEnd,
         recommendedProducts,
-        addedLines, addedTotalQuantity,
         optionSectionRef, handleConfirm,
     } = useProductSelection(product, { cartItems, products, onConfirm });
 
@@ -31,15 +33,10 @@ const OptionModal = ({ product, cartItems = [], products = [], onConfirm, onCanc
     const FALLBACK_IMAGE = '/no-image.png';
 
     return (
-        <div className="modal-overlay mobile-bottom option-modal-overlay" onClick={onCancel}>
-            <div className="modal-content full-mobile mobile-bottom guided-option-modal" role="dialog" aria-modal="true" aria-labelledby="option-product-title" onClick={e => e.stopPropagation()}>
-                {/* Header Close Button (키오스크/데스크톱) */}
-                <button
-                    onClick={onCancel}
-                    aria-label="상품 선택 닫기"
-                    className="option-close-btn"
-                >
-                    ×
+        <section className="product-detail-view guided-option-modal" aria-labelledby="option-product-title">
+                {/* 돌아가는 길은 화면 맨 위 한 곳에만 둔다 */}
+                <button onClick={onCancel} className="detail-back-btn">
+                    ← 목록으로
                 </button>
 
                 <div className="option-scroll-body">
@@ -299,27 +296,13 @@ const OptionModal = ({ product, cartItems = [], products = [], onConfirm, onCanc
                             </div>
                         </div>
 
-                    </div>
-                </div>
-                </div>
+                        {/* 규격 → 수량 → 담기. 정하자마자 바로 누를 수 있게 같은 카드 안에 둔다.
+                            아래 푸터에 있을 때는 시선이 화면 끝까지 갔다 와야 했다. */}
+                        <button className="option-order-btn" onClick={() => handleConfirm(true)}>담기</button>
 
-                {/* 이 상품으로 장바구니에 담긴 항목 목록. 모달을 다시 열어도 무엇을 주문했는지 보인다. */}
-                {addedLines.length > 0 && (
-                    <div className="option-added-summary">
-                        <div className="option-added-head">
-                            <strong>장바구니에 담긴 이 상품 {addedLines.length}종</strong>
-                            <span>{addedTotalQuantity}개</span>
-                        </div>
-                        <ul className="option-added-list">
-                            {addedLines.map(line => (
-                                <li key={line.cartId}>
-                                    <span className="option-added-name">{line.selectedOption || '기본'}</span>
-                                    <span className="option-added-qty">{line.quantity || 1}개</span>
-                                </li>
-                            ))}
-                        </ul>
                     </div>
-                )}
+                </div>
+                </div>
 
                 {/* 같은 전표에 함께 담긴 적이 많은 상품. 누르면 그 상품의 주문 화면으로 바로 넘어간다. */}
                 {recommendedProducts.length > 0 && (
@@ -346,23 +329,8 @@ const OptionModal = ({ product, cartItems = [], products = [], onConfirm, onCanc
                         </div>
                     </div>
                 )}
-
-                {/* Bottom Section: Qty & Footer */}
-                <div className="option-footer" style={{
-                    position: 'sticky', bottom: 0, padding: '25px 40px',
-                    background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(10px)',
-                    borderTop: '1px solid #e2e8f0', display: 'flex',
-                    justifyContent: 'space-between', alignItems: 'center',
-                    gap: '20px'
-                }}>
-                    <div className="option-footer-btns" style={{ display: 'flex', gap: '12px', flex: '1', justifyContent: 'flex-end' }}>
-                        <button className="option-order-btn" onClick={() => handleConfirm(true)}>주문하기</button>
-                        <button className="option-exit-btn" onClick={onCancel}>나가기</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </section>
     );
 };
 
-export default OptionModal;
+export default ProductDetailView;

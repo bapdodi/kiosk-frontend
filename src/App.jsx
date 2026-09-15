@@ -11,13 +11,16 @@ import Cart from './components/Cart';
 import CartBar from './components/CartBar';
 import CategoryNav from './components/CategoryNav';
 import LoginPage from './components/LoginPage';
-import OptionModal from './components/OptionModal';
-import OrderReviewModal from './components/OrderReviewModal';
+import ProductDetailView from './components/ProductDetailView';
+import OrderReview from './components/OrderReview';
+import CustomerSelect from './components/CustomerSelect';
+import OrderDone from './components/OrderDone';
 import ProductCard from './components/ProductCard';
-import { getChosungChar, getSearchMatchScore, matchesSearchText, normalizeSearchText } from './utils/search';
+import { getChosungChar, getSearchMatchScore, normalizeSearchText } from './utils/search';
 import { useMobileBackClose } from './hooks/useMobileBackClose';
 import { useIsMobile } from './hooks/useIsMobile';
 import ProductPageMobile from './components/ProductPageMobile';
+import { buildQuickAddArgs } from './utils/productOptions';
 
 // ... (KioskView & ProtectedRoute components)
 
@@ -224,6 +227,9 @@ function KioskView({
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [orderModal, setOrderModal] = useState({ isOpen: false, name: '' });
+  // 주문 전송에 성공한 직후의 내역. 완료 화면에서 주문번호와 무엇을 넣었는지 보여준다.
+  // 장바구니는 비우지만 이 값은 남겨 두어야 "내가 넣은 게 맞나" 를 확인할 수 있다.
+  const [completedOrder, setCompletedOrder] = useState(null);
   const [customers, setCustomers] = useState([]);
   const lastScrollTop = useRef(0);
 
@@ -237,6 +243,7 @@ function KioskView({
     { open: isCartOpen, close: () => setIsCartOpen(false) },
     { open: isReviewOpen, close: () => setIsReviewOpen(false) },
     { open: orderModal.isOpen, close: () => setOrderModal(prev => ({ ...prev, isOpen: false })) },
+    { open: completedOrder != null, close: () => setCompletedOrder(null) },
   ]);
   // 주문 중복 전송 방지용 키. 전송 성공 전까지 같은 키를 유지해
   // 재시도/더블클릭이 서버에서 같은 주문으로 합쳐지게 한다.
@@ -403,6 +410,13 @@ function KioskView({
     setOptionQuantities({});
   };
 
+  // 규격을 고를 필요가 없는 상품은 목록 카드에서 바로 담는다. 상세 화면과 같은
+  // 규칙으로 줄을 만들어야 가격·ERP 코드가 어긋나지 않으므로 인자도 같은 곳에서 만든다.
+  const quickAddToCart = (product, qty) => {
+    const { combinations, quantities } = buildQuickAddArgs(product, qty);
+    confirmAddToCart(product, combinations, quantities, true);
+  };
+
   // 장바구니의 항목을 누르면 해당 상품의 주문(옵션 선택) 화면을 다시 연다.
   const openProductFromCart = (item) => {
     const target = products.find(p => p.id === item.id) || item;
@@ -534,9 +548,11 @@ function KioskView({
       if (response.ok) {
         const savedOrder = await response.json();
         setOrders([...orders, savedOrder]);
-        alert(`${customerName}님, 주문이 완료되었습니다. 이용해주셔서 감사합니다!`);
         pendingOrderRequestId.current = null;
+        // 장바구니를 비우기 전에 넣은 내역을 완료 화면으로 넘긴다.
+        setCompletedOrder({ order: savedOrder, customerName, items: cart });
         setCart([]);
+        setIsReviewOpen(false);
         setOrderModal({ isOpen: false, name: '' });
       } else {
         const errorText = await response.text();
@@ -549,32 +565,108 @@ function KioskView({
 
   const totalPrice = cart.reduce((sum, item) => sum + item.finalPrice * (item.quantity || 1), 0);
 
+  // 주문 마무리 단계(내역 확인 → 상호 선택 → 완료).
+  // 세 단계 모두 같은 내용을 쓰고, 키오스크·PC 는 화면으로 폰은 팝업으로만 껍데기가 갈린다.
+  const checkoutStage = completedOrder ? 'done'
+    : orderModal.isOpen ? 'customer'
+    : isReviewOpen ? 'review'
+    : null;
+
+  const renderCheckout = (variant) => {
+    if (checkoutStage === 'review') {
+      return (
+        <OrderReview
+          variant={variant}
+          items={cart}
+          onRemove={removeFromCart}
+          onQuantityChange={updateCartQuantity}
+          onClose={() => setIsReviewOpen(false)}
+          onConfirm={handleReviewConfirm}
+        />
+      );
+    }
+    if (checkoutStage === 'customer') {
+      return (
+        <CustomerSelect
+          variant={variant}
+          customers={customers}
+          name={orderModal.name}
+          onNameChange={(name) => setOrderModal(prev => ({ ...prev, name }))}
+          chosungTabs={chosungTabs}
+          selectedChosung={selectedChosung}
+          onChosungChange={setSelectedChosung}
+          getChosung={getChosung}
+          onSubmit={submitOrder}
+          onCancel={() => setOrderModal(prev => ({ ...prev, isOpen: false }))}
+        />
+      );
+    }
+    if (checkoutStage === 'done') {
+      return (
+        <OrderDone
+          variant={variant}
+          order={completedOrder.order}
+          customerName={completedOrder.customerName}
+          items={completedOrder.items}
+          onHome={() => setCompletedOrder(null)}
+        />
+      );
+    }
+    return null;
+  };
+
+  const showCheckout = !isMobile && checkoutStage != null;
+
+  // 키오스크·PC 는 상세를 팝업이 아니라 화면 전환으로 연다.
+  // 목록 자리를 상세가 차지하고, 오른쪽 장바구니 레일은 그대로 남는다.
+  // (팝업이 뒤 화면을 덮던 시절에는 팝업 안에 장바구니를 하나 더 둬야 했다.)
+  const showDetail = !isMobile && selectingProduct != null;
+
   return (
     <div
       className="kiosk-container"
       ref={kioskContainerRef}
       style={cartWidth != null ? { '--kiosk-cart-width': `${cartWidth}px` } : undefined}
     >
-      <div className="nav-wrapper">
-        <CategoryNav
-          mainCategories={mainCategories}
-          subCategories={subCategories}
-          activeMainCat={activeMainCat}
-          activeSubCat={activeSubCat}
-          onMainCatChange={handleMainCatChange}
-          onSubCatChange={handleSubCatChange}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-        />
-      </div>
+      {!showDetail && !showCheckout && (
+        <div className="nav-wrapper">
+          <CategoryNav
+            mainCategories={mainCategories}
+            subCategories={subCategories}
+            activeMainCat={activeMainCat}
+            activeSubCat={activeSubCat}
+            onMainCatChange={handleMainCatChange}
+            onSubCatChange={handleSubCatChange}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+        </div>
+      )}
 
       <div className="content-area">
-        <main className="kiosk-main" onScroll={handleScroll}>
+        {showCheckout ? renderCheckout('screen') : showDetail ? (
+          <ProductDetailView
+            product={selectingProduct}
+            cartItems={cart}
+            products={products}
+            onSelectProduct={openRecommendedProduct}
+            quantities={optionQuantities}
+            onUpdateQty={updateQty}
+            onConfirm={confirmAddToCart}
+            onCancel={() => setSelectingProduct(null)}
+          />
+        ) : (
+        <main
+          className="kiosk-main"
+          onScroll={handleScroll}
+          ref={(el) => { if (el) el.scrollTop = lastScrollTop.current; }}
+        >
           {filteredProducts.map((product) => (
             <div key={product.id}>
               <ProductCard
                 product={product}
-                onAddClick={handleAddToCartClick}
+                onOpenDetail={handleAddToCartClick}
+                onQuickAdd={quickAddToCart}
               />
             </div>
           ))}
@@ -589,9 +681,10 @@ function KioskView({
             </div>
           )}
         </main>
+        )}
       </div>
 
-      {/* 큰 화면(키오스크)용 하단 주문내역 바 */}
+      {/* 큰 화면(키오스크·PC)용 오른쪽 장바구니 레일 */}
       <CartBar
         items={cart}
         onRemove={removeFromCart}
@@ -628,274 +721,18 @@ function KioskView({
 
 
 
-      {/* 주문 내역 확인 팝업 (사진 포함) */}
-      {isReviewOpen && (
-        <OrderReviewModal
-          items={cart}
-          onRemove={removeFromCart}
-          onQuantityChange={updateCartQuantity}
-          onClose={() => setIsReviewOpen(false)}
-          onConfirm={handleReviewConfirm}
-        />
-      )}
-
-      {/* Order Name Input Modal */}
-      {orderModal.isOpen && (() => {
-        const customerSearchQuery = orderModal.name.trim();
-        const filteredCustomers = customers.filter(c => {
-          const name = c.NAME?.trim() || '';
-          if (customerSearchQuery) {
-            return matchesSearchText(name, customerSearchQuery);
-          }
-
-          if (selectedChosung === 'A-Z') {
-            const firstChar = name.charAt(0).toUpperCase();
-            return firstChar >= 'A' && firstChar <= 'Z';
-          }
-          if (selectedChosung === '기타') {
-            return getChosung(name) === '기타';
-          }
-          return getChosung(name) === selectedChosung;
-        });
-
-        const isValidName = customers.some(c => c.NAME?.trim() === orderModal.name.trim());
-        const defaultCustomer = customers.find(c => c.NAME?.trim() === "1");
-        
-        return (
-          <div className="modal-overlay">
-            <div className="modal-content" style={{ maxWidth: '600px', width: '90%' }}>
-              <div style={{ padding: '20px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
-                <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.4rem' }}>주문 확인</h3>
-                <p style={{ color: '#64748b', marginTop: '8px', fontSize: '0.95rem' }}>주문하실 상호를 선택하거나 검색해주세요.</p>
-              </div>
-              
-              <div style={{ padding: '20px' }}>
-                {/* 1번 고객 버튼 */}
-                <button
-                  onClick={() => {
-                    if (!defaultCustomer) {
-                      alert('1번 고객 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
-                      return;
-                    }
-                    submitOrder(defaultCustomer.NAME, String(defaultCustomer.CODE));
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    marginBottom: '15px',
-                    borderRadius: '12px',
-                    border: '2px solid #10b981',
-                    background: '#ecfdf5',
-                    color: '#065f46',
-                    fontWeight: '800',
-                    cursor: 'pointer',
-                    fontSize: '1rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px'
-                  }}
-                >
-                  👤 비회원으로 주문하기
-                </button>
-
-                {/* 두 갈래(비회원 / 상호 선택)를 시각적으로 분리 */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  margin: '18px 0'
-                }}>
-                  <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-                  <span style={{ color: '#94a3b8', fontWeight: 800, fontSize: '0.9rem' }}>또는</span>
-                  <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-                </div>
-
-                {/* 상호명 직접 검색 - 비회원 버튼 바로 아래에 강조 배치 */}
-                <div style={{
-                  marginBottom: '15px',
-                  padding: '14px',
-                  background: '#fff7ed',
-                  border: '2px solid var(--accent-color)',
-                  borderRadius: '14px',
-                  boxShadow: '0 2px 8px rgba(255, 107, 0, 0.15)'
-                }}>
-                  <div style={{
-                    fontWeight: 900,
-                    fontSize: '1.05rem',
-                    color: '#9a3412',
-                    marginBottom: '10px',
-                    textAlign: 'center'
-                  }}>
-                    🔍 상호명 직접 검색
-                  </div>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      className="admin-input-small"
-                      placeholder="상호명 직접 검색"
-                      value={orderModal.name}
-                      onChange={(e) => setOrderModal({ ...orderModal, name: e.target.value })}
-                      onKeyDown={(e) => e.key === 'Enter' && isValidName && submitOrder()}
-                      style={{
-                        padding: '15px',
-                        fontSize: '1rem',
-                        textAlign: 'center',
-                        borderRadius: '12px',
-                        border: `2px solid ${orderModal.name.trim() === '' ? '#e2e8f0' : (isValidName ? '#10b981' : '#ef4444')}`,
-                        width: '100%',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                    {orderModal.name.trim() !== '' && (
-                      <div style={{ 
-                        position: 'absolute', 
-                        right: '15px', 
-                        top: '50%', 
-                        transform: 'translateY(-50%)',
-                        fontSize: '1.1rem'
-                      }}>
-                        {isValidName ? '✅' : '❌'}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* 초성 카테고리 탭 */}
-                <div style={{ 
-                  display: 'flex', 
-                  overflowX: 'auto', 
-                  gap: '8px', 
-                  paddingBottom: '12px',
-                  marginBottom: '15px',
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none'
-                }} className="chosung-scroll">
-                  {chosungTabs.map(tab => (
-                    <button
-                      key={tab}
-                      onClick={() => setSelectedChosung(tab)}
-                      style={{
-                        padding: '8px 16px',
-                        borderRadius: '20px',
-                        border: '1px solid #e2e8f0',
-                        background: selectedChosung === tab ? 'var(--accent-color)' : 'white',
-                        color: selectedChosung === tab ? 'white' : '#64748b',
-                        fontWeight: 'bold',
-                        whiteSpace: 'nowrap',
-                        cursor: 'pointer',
-                        flexShrink: 0
-                      }}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setSelectedChosung('기타')}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '20px',
-                      border: '1px solid #e2e8f0',
-                      background: selectedChosung === '기타' ? 'var(--accent-color)' : 'white',
-                      color: selectedChosung === '기타' ? 'white' : '#64748b',
-                      fontWeight: 'bold',
-                      whiteSpace: 'nowrap',
-                      cursor: 'pointer',
-                      flexShrink: 0
-                    }}
-                  >
-                    기타
-                  </button>
-                </div>
-
-                {/* 상호명 리스트 */}
-                <div style={{ 
-                  maxHeight: '250px', 
-                  overflowY: 'auto', 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-                  gap: '10px',
-                  marginBottom: '20px',
-                  padding: '10px',
-                  background: '#f8fafc',
-                  borderRadius: '12px'
-                }}>
-                  {filteredCustomers.length > 0 ? filteredCustomers.map(c => (
-                    <button
-                      key={c.CODE}
-                      onClick={() => setOrderModal({ ...orderModal, name: c.NAME })}
-                      style={{
-                        padding: '12px 8px',
-                        borderRadius: '10px',
-                        border: orderModal.name === c.NAME ? '2px solid var(--accent-color)' : '1px solid #e2e8f0',
-                        background: orderModal.name === c.NAME ? '#eff6ff' : 'white',
-                        color: orderModal.name === c.NAME ? 'var(--accent-color)' : '#334155',
-                        fontSize: '0.9rem',
-                        fontWeight: orderModal.name === c.NAME ? 'bold' : 'normal',
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        wordBreak: 'break-all'
-                      }}
-                    >
-                      {c.NAME}
-                    </button>
-                  )) : (
-                    <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
-                      해당하는 상호가 없습니다.
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    className="apply-btn"
-                    style={{ 
-                      flex: 2, 
-                      padding: '15px', 
-                      fontSize: '1rem', 
-                      borderRadius: '12px',
-                      opacity: isValidName ? 1 : 0.5,
-                      cursor: isValidName ? 'pointer' : 'not-allowed'
-                    }}
-                    onClick={submitOrder}
-                    disabled={!isValidName}
-                  >
-                    {isValidName ? '주문 완료하기' : '상호를 먼저 선택해주세요'}
-                  </button>
-                  <button
-                    className="action-btn"
-                    style={{ flex: 1, padding: '15px', borderRadius: '12px', height: 'auto' }}
-                    onClick={() => setOrderModal({ ...orderModal, isOpen: false })}
-                  >
-                    취소
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {/* 폰은 기존대로 팝업으로 띄운다. 키오스크·PC 는 위 content-area 안에서 화면이 바뀐다. */}
+      {isMobile && renderCheckout('modal')}
 
       {/* 폰과 키오스크는 화면을 아예 따로 쓴다. 규격·수량·가격 규칙만
-          useProductSelection 으로 공유하므로 계산이 갈라질 일은 없다. */}
-      {isMobile ? (
-        selectingProduct && (
-          <ProductPageMobile
-            product={selectingProduct}
-            cartItems={cart}
-            products={products}
-            onSelectProduct={openRecommendedProduct}
-            onConfirm={confirmAddToCart}
-            onCancel={() => setSelectingProduct(null)}
-          />
-        )
-      ) : (
-        <OptionModal
+          useProductSelection 으로 공유하므로 계산이 갈라질 일은 없다.
+          키오스크·PC 의 상세는 위 content-area 안에서 목록을 대신한다. */}
+      {isMobile && selectingProduct && (
+        <ProductPageMobile
           product={selectingProduct}
           cartItems={cart}
           products={products}
           onSelectProduct={openRecommendedProduct}
-          quantities={optionQuantities}
-          onUpdateQty={updateQty}
           onConfirm={confirmAddToCart}
           onCancel={() => setSelectingProduct(null)}
         />
