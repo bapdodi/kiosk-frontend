@@ -1,11 +1,11 @@
 import { COMBINATION_GROUP } from './optionConstants';
 
 /**
- * 규격(옵션) 해석과 가격 계산 규칙.
+ * 규격(옵션) 해석 규칙.
  *
  * 이 규칙을 쓰는 곳이 세 군데로 늘었다.
  *   - 목록 카드(ProductCard)  : 규격을 골라야 하는 상품인지 판단해 바로 담기/선택하기를 가른다
- *   - 상세 화면(OptionModal)  : 규격을 고르고 가격을 보여준다
+ *   - 상세 화면(OptionModal)  : 규격을 고른다
  *   - 폰 화면(ProductPageMobile)
  * 세 곳이 서로 다른 판단을 하면 "카드에서는 바로 담겼는데 상세에서는 규격을 고르라고 한다"
  * 같은 어긋남이 생긴다. 그래서 판단 근거는 전부 여기 한 곳에만 둔다.
@@ -78,47 +78,21 @@ export function countOptionValues(product) {
     return getOptionGroups(product).reduce((max, g) => Math.max(max, g.values.length), 0);
 }
 
-/** 선택된 규격에 따른 기본가 대비 추가금 */
-export function getPriceForSelections(product, groups, selections) {
-    if (!product) return 0;
-
-    const activeCombos = (product.combinations || []).filter(c => !c.deleted);
-    if (activeCombos.length > 0) {
-        const comboName = groups.map(g => selections[g.name]).join(' / ');
-        const combo = activeCombos.find(c => c.name === comboName);
-        // ERP 로 들어온 조합은 combo.priceC 가 그 자체로 단가라,
-        // 기본가와의 차액(extra)으로 환산해서 돌려준다.
-        if (combo) return combo.priceC - product.priceC;
-        return 0;
-    }
-
-    let extra = 0;
-    groups.forEach(g => {
-        const val = selections[g.name];
-        if (g.legacySource === 'sizes') {
-            const s = product.sizes.find(sz => sz.name === val);
-            if (s) extra += s.price;
-        }
-        if (g.legacySource === 'origins') {
-            const o = product.origins.find(og => og.name === val);
-            if (o) extra += o.price;
-        }
-    });
-    return extra;
-}
+/*
+ * 가격은 여기서 다루지 않는다.
+ * 손님 화면에는 서버가 단가를 내려주지 않고(공개 API 에서 제거), 주문 금액은
+ * 서버가 ERP 코드로 다시 계산한다. 화면이 알아야 하는 것은 "무엇을 몇 개" 뿐이다.
+ */
 
 /** 현재 선택값(selections)을 장바구니 한 줄로 변환 */
 export function buildLineFromSelections(product, groups, selections, qty) {
     const comboName = groups.map(g => selections[g.name]).join(' / ');
     const foundCombo = (product.combinations || []).filter(c => !c.deleted).find(c => c.name === comboName);
-    const extra = getPriceForSelections(product, groups, selections);
     const comboId = foundCombo ? foundCombo.id : comboName;
     return {
         lineId: comboId,
         comboId,
         displayName: comboName,
-        totalExtra: extra,
-        unitPrice: (product.priceC || 0) + extra,
         erpCode: foundCombo ? foundCombo.erpCode : (product.erpCode || null),
         quantity: Math.max(1, qty)
     };
@@ -135,7 +109,6 @@ export function buildQuickAddArgs(product, qty) {
         combinations: [{
             id: line.comboId,
             displayName: line.displayName,
-            totalExtra: line.totalExtra,
             erpCode: line.erpCode,
         }],
         quantities: { [line.comboId]: Math.max(1, qty) },
