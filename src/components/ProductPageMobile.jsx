@@ -5,7 +5,7 @@ import './ProductPageMobile.css';
 
 const FALLBACK_IMAGE = '/no-image.png';
 
-const formatPrice = (n) => (n || 0).toLocaleString('ko-KR');
+const formatQuantity = (n) => (n || 0).toLocaleString('ko-KR');
 
 /**
  * 폰 전용 상품 화면.
@@ -28,7 +28,6 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
         recommendedProducts,
         addedLines, addedTotalQuantity,
         optionSectionRef, handleConfirm,
-        unitPrice,
     } = useProductSelection(product, { cartItems, products, onConfirm });
 
     const quantityRef = useRef(null);
@@ -91,12 +90,6 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
 
                 <div className="mp-summary">
                     <h1 id="mp-title" className="mp-name">{product.name}</h1>
-                    <div className="mp-price">
-                        <strong>{formatPrice(unitPrice)}</strong>원
-                        {!allOptionsSelected && groups.length > 0 && (
-                            <span className="mp-price-note">규격에 따라 달라져요</span>
-                        )}
-                    </div>
                     {product.gyu && <div className="mp-gyu">규격 {product.gyu}</div>}
                 </div>
 
@@ -227,8 +220,8 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
                 페이지 전체 높이를 100dvh 로 잡고 그 안에서 배치한다. */}
             <footer className="mp-bar">
                 <div className="mp-bar-total">
-                    <span>합계</span>
-                    <strong>{formatPrice(unitPrice * (safeQuantity || 1))}원</strong>
+                    <span>수량</span>
+                    <strong>{formatQuantity(safeQuantity || 1)}개</strong>
                 </div>
                 <button type="button" className="mp-order" onClick={() => handleConfirm(true)}>
                     {allOptionsSelected ? '장바구니 담기' : '규격 선택'}

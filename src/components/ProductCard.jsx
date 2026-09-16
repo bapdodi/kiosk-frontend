@@ -22,7 +22,6 @@ const ProductCard = ({ product, onOpenDetail, onQuickAdd }) => {
 
     const mustChoose = needsOptionChoice(product);
     const optionCount = countOptionValues(product);
-    const price = product.priceC || 0;
 
     // 카드 안의 담기/수량 조작이 상세 화면 열기로 번지지 않게 막는다.
     const stop = (e) => e.stopPropagation();
@@ -67,12 +66,6 @@ const ProductCard = ({ product, onOpenDetail, onQuickAdd }) => {
 
             <div className="product-info">
                 <h3 className="product-name">{product.name}</h3>
-                {price > 0 && (
-                    <div className="product-price">
-                        {price.toLocaleString()}
-                        <span className="product-price-unit">원{mustChoose ? '~' : ''}</span>
-                    </div>
-                )}
             </div>
 
             {mustChoose ? (
