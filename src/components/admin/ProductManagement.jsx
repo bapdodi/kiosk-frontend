@@ -22,6 +22,7 @@ const ProductManagement = () => {
     const [isLoadingErpPreview, setIsLoadingErpPreview] = useState(false);
     const [isApplyingErpSync, setIsApplyingErpSync] = useState(false);
     const [trashProducts, setTrashProducts] = useState(null);
+    const [trashOptions, setTrashOptions] = useState([]);
     const [isLoadingTrash, setIsLoadingTrash] = useState(false);
     const [editingCatId, setEditingCatId] = useState(null);
     const [tempCategories, setTempCategories] = useState([]);
@@ -114,7 +115,7 @@ const ProductManagement = () => {
             ? '\n\nERP 연동 상품이므로 외부 판매 채널은 판매 중지됩니다.'
             : '';
         if (!window.confirm(
-            `“${product.name}” 상품을 휴지통으로 이동할까요?${erpWarning}\n30일 동안 원래 상태로 복원할 수 있습니다.`
+            `“${product.name}” 상품을 휴지통으로 이동할까요?${erpWarning}\n휴지통에서 언제든 원래 상태로 복원할 수 있습니다.`
         )) return;
         try {
             const res = await fetch(`/api/products/admin/${product.id}`, { method: 'DELETE' });
@@ -177,7 +178,7 @@ const ProductManagement = () => {
         const erpCount = selectedRows.filter(isErpProduct).length;
         const erpWarning = erpCount > 0 ? `\nERP 연동 상품 ${erpCount}개는 외부 판매 채널도 판매 중지됩니다.` : '';
         if (!window.confirm(
-            `선택한 ${selectedProducts.length}개 상품을 휴지통으로 이동할까요?${erpWarning}\n30일 동안 복원할 수 있습니다.`
+            `선택한 ${selectedProducts.length}개 상품을 휴지통으로 이동할까요?${erpWarning}\n휴지통에서 언제든 복원할 수 있습니다.`
         )) return;
 
         try {
@@ -202,14 +203,25 @@ const ProductManagement = () => {
     const openTrash = async () => {
         setIsLoadingTrash(true);
         try {
-            const res = await fetch('/api/products/admin/trash');
-            if (!res.ok) throw new Error(await res.text());
-            setTrashProducts(await res.json());
+            // 상품 단위 삭제와 규격(조합) 단위 숨김은 저장 위치가 달라 따로 받아온다.
+            const [productRes, optionRes] = await Promise.all([
+                fetch('/api/products/admin/trash'),
+                fetch('/api/products/admin/trash/options')
+            ]);
+            if (!productRes.ok) throw new Error(await productRes.text());
+            if (!optionRes.ok) throw new Error(await optionRes.text());
+            setTrashProducts(await productRes.json());
+            setTrashOptions(await optionRes.json());
         } catch (err) {
             alert('휴지통을 불러오지 못했습니다.');
         } finally {
             setIsLoadingTrash(false);
         }
+    };
+
+    const closeTrash = () => {
+        setTrashProducts(null);
+        setTrashOptions([]);
     };
 
     const restoreProduct = async (product) => {
@@ -219,17 +231,12 @@ const ProductManagement = () => {
         await onRefresh();
     };
 
-    const permanentlyDeleteProduct = async (product) => {
-        if (!window.confirm(`“${product.name}”을 영구 삭제할까요? 이 작업은 복구할 수 없습니다.`)) return;
-        const res = await fetch(`/api/products/admin/${product.id}/permanent`, { method: 'DELETE' });
-        if (res.status === 409) return alert('휴지통 이동 후 30일이 지나야 영구 삭제할 수 있습니다.');
-        if (!res.ok) return alert('영구 삭제에 실패했습니다.');
-        setTrashProducts(current => current.filter(item => item.id !== product.id));
+    const restoreOption = async (option) => {
+        const res = await fetch(`/api/products/admin/trash/options/${option.id}/restore`, { method: 'POST' });
+        if (!res.ok) return alert('규격 복원에 실패했습니다.');
+        setTrashOptions(current => current.filter(item => item.id !== option.id));
+        await onRefresh();
     };
-
-    const canPermanentlyDelete = (product) => (
-        product.deletedAt && Date.now() - new Date(product.deletedAt).getTime() >= 30 * 24 * 60 * 60 * 1000
-    );
 
     const refreshProducts = async () => {
         onRefresh();
@@ -776,17 +783,17 @@ const ProductManagement = () => {
             />
 
             {trashProducts && (
-                <div className="modal-overlay" onClick={() => setTrashProducts(null)}>
+                <div className="modal-overlay" onClick={closeTrash}>
                     <div className="modal-content" onClick={event => event.stopPropagation()} style={{ maxWidth: '760px', width: '92%', maxHeight: '82vh', display: 'flex', flexDirection: 'column' }}>
                         <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: '1.2rem' }}>🗑️ 상품 휴지통</h3>
-                                <p style={{ margin: '7px 0 0', color: '#64748b', fontSize: '0.9rem' }}>상품 ID, 사진, 카테고리와 옵션을 그대로 복원합니다.</p>
+                                <p style={{ margin: '7px 0 0', color: '#64748b', fontSize: '0.9rem' }}>상품 ID, 사진, 카테고리와 옵션을 그대로 복원합니다. 자동으로 지워지지 않습니다.</p>
                             </div>
-                            <button className="action-btn" onClick={() => setTrashProducts(null)}>닫기</button>
+                            <button className="action-btn" onClick={closeTrash}>닫기</button>
                         </div>
                         <div style={{ overflowY: 'auto', padding: '8px 20px', flex: 1 }}>
-                            {trashProducts.length === 0 ? (
+                            {trashProducts.length === 0 && trashOptions.length === 0 ? (
                                 <div style={{ padding: '60px 0', textAlign: 'center', color: '#94a3b8' }}>휴지통이 비어 있습니다.</div>
                             ) : trashProducts.map(product => (
                                 <div key={product.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 4px', borderBottom: '1px solid #f1f5f9' }}>
@@ -803,15 +810,34 @@ const ProductManagement = () => {
                                         </div>
                                     </div>
                                     <button className="action-btn" style={{ color: '#2563eb' }} onClick={() => restoreProduct(product)}>복원</button>
-                                    <button
-                                        className="action-btn"
-                                        style={{ color: canPermanentlyDelete(product) ? '#ef4444' : '#cbd5e1' }}
-                                        disabled={!canPermanentlyDelete(product)}
-                                        title={canPermanentlyDelete(product) ? '영구 삭제' : '30일 후 영구 삭제 가능'}
-                                        onClick={() => permanentlyDeleteProduct(product)}
-                                    >영구 삭제</button>
                                 </div>
                             ))}
+
+                            {trashOptions.length > 0 && (
+                                <div style={{ marginTop: '18px' }}>
+                                    <div style={{ padding: '10px 4px', borderTop: '2px solid #e2e8f0', fontWeight: 700 }}>
+                                        📐 숨겨진 규격 <span style={{ color: '#94a3b8', fontWeight: 400, fontSize: '0.85rem' }}>({trashOptions.length}개)</span>
+                                    </div>
+                                    <p style={{ margin: '0 4px 8px', color: '#64748b', fontSize: '0.82rem' }}>
+                                        상품은 그대로지만 규격만 숨겨진 항목입니다. 복원하면 키오스크에 다시 나타납니다.
+                                    </p>
+                                    {trashOptions.map(option => (
+                                        <div key={option.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 4px', borderBottom: '1px solid #f1f5f9' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 700 }}>
+                                                    {option.productName} <span style={{ color: '#64748b', fontWeight: 400 }}>· {option.optionName}</span>
+                                                </div>
+                                                <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '4px' }}>
+                                                    ERP {option.erpCode || '코드 없음'}
+                                                    {option.priceC != null ? ` · ${option.priceC.toLocaleString()}원` : ''}
+                                                    {option.stock != null ? ` · 재고 ${option.stock}` : ''}
+                                                </div>
+                                            </div>
+                                            <button className="action-btn" style={{ color: '#2563eb' }} onClick={() => restoreOption(option)}>복원</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
