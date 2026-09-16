@@ -34,11 +34,6 @@ const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, 
 
     return (
         <section className="product-detail-view guided-option-modal" aria-labelledby="option-product-title">
-                {/* 돌아가는 길은 화면 맨 위 한 곳에만 둔다 */}
-                <button onClick={onCancel} className="detail-back-btn">
-                    ← 목록으로
-                </button>
-
                 <div className="option-scroll-body">
                 <div className="option-detail-layout">
                     {/* Top Section: Info & Image */}
@@ -298,7 +293,10 @@ const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, 
 
                         {/* 규격 → 수량 → 담기. 정하자마자 바로 누를 수 있게 같은 카드 안에 둔다.
                             아래 푸터에 있을 때는 시선이 화면 끝까지 갔다 와야 했다. */}
-                        <button className="option-order-btn" onClick={() => handleConfirm(true)}>담기</button>
+                        <div className="option-action-row">
+                            <button className="option-browse-btn" onClick={onCancel}>다른 상품 보기</button>
+                            <button className="option-order-btn" onClick={() => handleConfirm(true)}>담기</button>
+                        </div>
 
                     </div>
                 </div>
@@ -307,7 +305,7 @@ const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, 
                 {/* 같은 전표에 함께 담긴 적이 많은 상품. 누르면 그 상품의 주문 화면으로 바로 넘어간다. */}
                 {recommendedProducts.length > 0 && (
                     <div className="option-reco">
-                        <div className="option-reco-head">이 상품을 주문한 분들이 함께 주문한 상품</div>
+                        <div className="option-reco-head">연관 있는 상품</div>
                         <div className="option-reco-list">
                             {recommendedProducts.map(item => (
                                 <button

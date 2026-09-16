@@ -41,7 +41,10 @@
 .guided-option-modal .qty-num { flex: 1; min-width: 48px; max-width: 180px; margin: 0 !important; height: 52px; background: white !important; border: 2px solid #94a3b8 !important; border-radius: 8px; font-size: 1.5rem !important; }
 .option-quantity-unit { font-weight: 800; color: #334155; }
 /* 담기는 규격·수량을 정한 카드 안, 수량 바로 아래에 붙는다. */
-.guided-option-modal .option-order-btn { display: block; width: 100%; margin-top: 20px; min-height: 88px; padding: 0 24px; border: none; border-radius: 20px; background: var(--accent-color); color: #fff; font-weight: 900; font-size: 1.6rem; letter-spacing: .02em; cursor: pointer; box-shadow: 0 12px 24px rgba(255, 107, 0, .25); }
+.guided-option-modal .option-action-row { display: grid; grid-template-columns: 1.05fr 1fr; gap: 16px; margin-top: 20px; }
+.guided-option-modal .option-browse-btn { white-space: nowrap; min-height: 88px; padding: 0 12px; border: 2px solid #cbd5e1; border-radius: 20px; background: #fff; color: #475569; font-weight: 800; font-size: 1.35rem; cursor: pointer; }
+.guided-option-modal .option-browse-btn:active { transform: scale(0.99); }
+.guided-option-modal .option-order-btn { display: block; width: 100%; min-height: 88px; padding: 0 24px; border: none; border-radius: 20px; background: var(--accent-color); color: #fff; font-weight: 900; font-size: 1.6rem; letter-spacing: .02em; cursor: pointer; box-shadow: 0 12px 24px rgba(255, 107, 0, .25); }
 .guided-option-modal .option-order-btn:active { transform: scale(0.99); }
 /* 계속 담기로 쌓인 항목 목록. 푸터 바로 위에 붙여 항상 보이게 한다. */
 
@@ -73,6 +76,7 @@
   .guided-option-modal .option-choice-section > div { min-height: 0; padding: 16px !important; }
   .guided-option-modal .option-quantity-block { grid-template-columns: 1fr; margin-top: 16px; padding-top: 14px; }
   .guided-option-modal .option-order-btn { min-height: 72px; font-size: 1.35rem; }
+  .guided-option-modal .option-browse-btn { min-height: 72px; font-size: 1.1rem; }
 }
 @media (max-width: 480px) {
   .guided-option-modal .option-detail-layout > div { grid-template-columns: 72px minmax(0, 1fr) !important; padding: 16px 56px 16px 16px; gap: 12px; }
@@ -169,25 +173,6 @@
   .guided-option-modal .option-reco-card { flex-basis: 112px; }
   .guided-option-modal .option-reco-thumb { height: 76px; }
 }
-
-/* ── 목록으로 돌아가기 ───────────────────────────────────────────────────── */
-/* 돌아가는 길은 화면 맨 위 왼쪽 한 곳에만 둔다. 빨간 × 를 없앤 이유는,
-   빨강을 삭제(장바구니 비우기·줄 삭제)에만 쓰기로 색 규칙을 정리했기 때문이다. */
-.detail-back-btn {
-  flex: 0 0 auto;
-  align-self: flex-start;
-  margin: 16px 0 0 24px;
-  padding: 12px 20px;
-  border: 2px solid #cbd5e1;
-  border-radius: 12px;
-  background: #fff;
-  color: #334155;
-  font-size: 1.05rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.detail-back-btn:active { transform: scale(0.98); }
 
 /* 선택 칸이 좁아지는 폭(키오스크 1080 등)에서는 수량 라벨과 +/- 컨트롤을
    위아래로 쌓아 스테퍼가 잘리지 않게 한다. */

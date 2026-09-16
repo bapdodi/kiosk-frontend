@@ -194,7 +194,7 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
 
                 {recommendedProducts.length > 0 && (
                     <section className="mp-block mp-reco">
-                        <h2 className="mp-block-title">함께 주문한 상품</h2>
+                        <h2 className="mp-block-title">연관 있는 상품</h2>
                         <div className="mp-reco-list">
                             {recommendedProducts.map(item => (
                                 <button
