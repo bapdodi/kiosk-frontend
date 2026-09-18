@@ -32,6 +32,9 @@ const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, 
 
     const FALLBACK_IMAGE = '/no-image.png';
 
+    // 규격이 전부 한 가지뿐이면 고를 것이 없다. 그래도 무엇인지는 보여 주고 자동 선택해 둔다.
+    const autoSelectedOnly = groups.length > 0 && groups.every(g => g.values.length === 1);
+
     return (
         <section className="product-detail-view guided-option-modal" aria-labelledby="option-product-title">
                 <div className="option-scroll-body">
@@ -154,10 +157,10 @@ const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, 
                 <div ref={optionSectionRef} style={{ padding: '0 40px 40px 40px', background: '#fff' }} className={`option-info-padding option-choice-section${allOptionsSelected ? ' product-selection-complete' : showProductPrompt ? ' needs-product-selection' : ''}`}>
                     <div style={{ padding: '30px', background: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
                         <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '20px', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span className="option-step">1</span> {groups.length ? (allOptionsSelected ? '제품 선택 완료 · 수량을 정해주세요' : '제품을 먼저 선택해 주세요') : '기본 제품으로 담습니다'}
+                            <span className="option-step">1</span> {autoSelectedOnly ? '규격이 하나뿐이라 자동 선택했습니다' : allOptionsSelected ? '제품 선택 완료 · 수량을 정해주세요' : '제품을 먼저 선택해 주세요'}
                         </h3>
 
-                        <p className="option-choice-help">{groups.length ? '아래에서 원하는 규격을 눌러 주세요. 각 항목에서 하나씩 선택합니다.' : '아래에서 필요한 수량을 확인해 주세요.'}</p>
+                        <p className="option-choice-help">{autoSelectedOnly ? '이 상품은 아래 규격 하나로만 나옵니다. 수량만 정해 주세요.' : '아래에서 원하는 규격을 눌러 주세요. 각 항목에서 하나씩 선택합니다.'}</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                             {groups.map((group) => (
                                 <div key={group.name} data-option-missing={selections[group.name] == null}>

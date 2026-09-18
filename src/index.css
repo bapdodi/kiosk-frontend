@@ -317,6 +317,19 @@ body {
   color: var(--text-primary);
 }
 
+/* 규격이 하나뿐이라 고를 것이 없는 상품. 고를 수는 없어도 무엇인지는 보여야 한다. */
+.product-single-option {
+  margin-top: 6px;
+  align-self: flex-start;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #c2410c;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 3px 10px;
+}
+
 .hashtag {
   font-size: 0.8rem;
   color: var(--accent-secondary);

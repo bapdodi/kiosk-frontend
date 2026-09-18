@@ -13,6 +13,11 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
+      // 내부망의 다른 기기(태블릿/키오스크)에서 붙을 수 있게 모든 인터페이스에 바인딩한다.
+      // 포트는 백엔드 CORS 허용 목록과 맞춰 5173 으로 고정.
+      host: true,
+      port: 5173,
+      strictPort: true,
       proxy: {
         '/api': {
           target,

@@ -133,7 +133,9 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
                             </div>
                         );
                     }) : (
-                        <p className="mp-desc">선택할 규격이 없어 기본 제품으로 담습니다.</p>
+                        <p className="mp-desc">
+                            {product.gyu ? `규격 ${product.gyu} · 이 규격으로 담습니다.` : '선택할 규격이 없어 기본 제품으로 담습니다.'}
+                        </p>
                     )}
 
                     <div className="mp-qty" ref={quantityRef}>
