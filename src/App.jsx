@@ -618,6 +618,17 @@ function KioskView({
     : isReviewOpen ? 'review'
     : null;
 
+  // 주문을 끝내고 "처음으로" 를 누르면 진짜 첫 화면이어야 한다.
+  // 완료 화면만 닫으면 주문 직전에 보던 상품 상세가 그대로 남아 있어서
+  // 다음 손님이 앞사람이 산 물건 페이지에서 시작하게 된다.
+  const goHome = () => {
+    setCompletedOrder(null);
+    setSelectingProduct(null);
+    setSearchQuery('');
+    setActiveMainCat(null);
+    setActiveSubCat(null);
+  };
+
   const renderCheckout = (variant) => {
     if (checkoutStage === 'review') {
       return (
@@ -654,7 +665,7 @@ function KioskView({
           order={completedOrder.order}
           customerName={completedOrder.customerName}
           items={completedOrder.items}
-          onHome={() => setCompletedOrder(null)}
+          onHome={goHome}
         />
       );
     }
