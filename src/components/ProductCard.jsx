@@ -1,5 +1,4 @@
 import { getImageUrl } from '../utils/imageUtils';
-import { countOptionValues, getSingleOptionLabel, needsOptionChoice } from '../utils/productOptions';
 
 /**
  * 목록의 상품 카드.
@@ -12,15 +11,8 @@ import { countOptionValues, getSingleOptionLabel, needsOptionChoice } from '../u
  *     시절에는 같은 상품이 화면마다 다르게 동작해 손님이 순서를 익히지 못했다.
  */
 const ProductCard = ({ product, onOpenDetail }) => {
-    const mustChoose = needsOptionChoice(product);
-    const optionCount = countOptionValues(product);
-    // 규격이 하나뿐이라 고를 것이 없어도, 무엇인지는 카드에서 보여 준다.
-    // '기본' 은 규격 데이터가 없는 상품의 자리표시자라 목록에서는 감춘다(상세에서는 보여 준다).
-    const label = mustChoose ? null : getSingleOptionLabel(product);
-    const singleOption = label === '기본' ? null : label;
-
-    // 카드 안 버튼 클릭이 카드 전체 클릭으로 번지지 않게 막는다.
-    const stop = (e) => e.stopPropagation();
+    // 카드는 사진과 이름만 보여 주고, 규격·수량은 모두 상세에서 정한다.
+    // 목록에 규격과 버튼을 같이 얹으면 카드 높이가 제각각이라 눈이 걸렸다.
 
     return (
         <div className="product-card" onClick={() => onOpenDetail(product)}>
@@ -48,18 +40,7 @@ const ProductCard = ({ product, onOpenDetail }) => {
 
             <div className="product-info">
                 <h3 className="product-name">{product.name}</h3>
-                {singleOption && (
-                    <div className="product-single-option">규격 {singleOption}</div>
-                )}
             </div>
-
-            <button
-                type="button"
-                className="card-choose-btn"
-                onClick={(e) => { stop(e); onOpenDetail(product); }}
-            >
-                {mustChoose ? `규격 ${optionCount}종 선택 →` : '주문하기 →'}
-            </button>
         </div>
     );
 };
