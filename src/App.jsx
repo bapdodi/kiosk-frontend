@@ -20,7 +20,6 @@ import { getChosungChar, getSearchMatchScore, normalizeSearchText } from './util
 import { useMobileBackClose } from './hooks/useMobileBackClose';
 import { useIsMobile } from './hooks/useIsMobile';
 import ProductPageMobile from './components/ProductPageMobile';
-import { buildQuickAddArgs } from './utils/productOptions';
 
 // ... (KioskView & ProtectedRoute components)
 
@@ -388,6 +387,20 @@ function KioskView({
 
   const isSearching = normalizeSearchText(searchQuery) !== "";
 
+  // 카테고리 트리에 실제로 존재하는 메인 카테고리 id. ERP 동기화나 카테고리 삭제로
+  // 상품이 없어진 분류(erp-100-0-0 등)를 가리키는 경우가 있는데, 그런 상품은 어느 탭에도
+  // 걸리지 않아 '전체'에서만 보인다. 목록 중간에 섞이면 분류된 상품을 밀어내므로 맨 뒤로 보낸다.
+  const knownMainCatIds = useMemo(
+    () => new Set(mainCategories.map(c => c.id)),
+    [mainCategories]
+  );
+
+  const isUncategorized = useCallback((product) => {
+    // 카테고리를 아직 못 받아온 첫 렌더에서는 전부 미분류로 취급하지 않는다.
+    if (knownMainCatIds.size === 0) return false;
+    return !(product.categories || []).some(c => knownMainCatIds.has(c.mainCategory));
+  }, [knownMainCatIds]);
+
   const filteredProducts = useMemo(() => {
     return products.map((product) => {
       const searchScore = isSearching
@@ -412,21 +425,39 @@ function KioskView({
       return matchesCategory ? { product, searchScore } : null;
     }).filter(Boolean).sort((a, b) => {
       if (a.searchScore !== b.searchScore) return a.searchScore - b.searchScore;
+      // 분류가 꼬인 상품은 검색 결과가 아닌 한 항상 맨 뒤.
+      if (!isSearching) {
+        const aOrphan = isUncategorized(a.product) ? 1 : 0;
+        const bOrphan = isUncategorized(b.product) ? 1 : 0;
+        if (aOrphan !== bOrphan) return aOrphan - bOrphan;
+      }
       const aOrder = a.product.sortOrder || "";
       const bOrder = b.product.sortOrder || "";
       if (aOrder < bOrder) return -1;
       if (aOrder > bOrder) return 1;
       return a.product.id - b.product.id;
     }).map(({ product }) => product);
-  }, [activeMainCat, activeSubCat, isSearching, products, searchQuery]);
+  }, [activeMainCat, activeSubCat, isSearching, isUncategorized, products, searchQuery]);
+
+  // 검색은 항상 전체 범위이므로 한 글자라도 입력되면 '전체' 탭으로 옮겨 준다.
+  // CategoryNav 의 음성인식 콜백이 첫 렌더 함수를 붙잡고 있으므로 참조를 고정한다.
+  const handleSearchChange = useCallback((value) => {
+    setSearchQuery(value);
+    if (normalizeSearchText(value) !== "") {
+      setActiveMainCat(null);
+      setActiveSubCat(null);
+    }
+  }, [setSearchQuery, setActiveMainCat, setActiveSubCat]);
 
   const handleMainCatChange = (id) => {
+    setSearchQuery(''); // 다른 카테고리를 고르면 검색어는 지운다
     setActiveMainCat(id);
     setActiveSubCat(null);
     setIsNavVisible(true); // 카테고리 변경 시 네비게이션 무조건 노출
   };
 
   const handleSubCatChange = (id) => {
+    setSearchQuery('');
     setActiveSubCat(id);
     setIsNavVisible(true); // 카테고리 변경 시 네비게이션 무조건 노출
   };
@@ -434,13 +465,6 @@ function KioskView({
   const handleAddToCartClick = (product) => {
     setSelectingProduct(product);
     setOptionQuantities({});
-  };
-
-  // 규격을 고를 필요가 없는 상품은 목록 카드에서 바로 담는다. 상세 화면과 같은
-  // 규칙으로 줄을 만들어야 가격·ERP 코드가 어긋나지 않으므로 인자도 같은 곳에서 만든다.
-  const quickAddToCart = (product, qty) => {
-    const { combinations, quantities } = buildQuickAddArgs(product, qty);
-    confirmAddToCart(product, combinations, quantities, true);
   };
 
   // 장바구니의 항목을 누르면 해당 상품의 주문(옵션 선택) 화면을 다시 연다.
@@ -660,7 +684,7 @@ function KioskView({
             onMainCatChange={handleMainCatChange}
             onSubCatChange={handleSubCatChange}
             searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
+            onSearchChange={handleSearchChange}
           />
         </div>
       )}
@@ -688,7 +712,6 @@ function KioskView({
               <ProductCard
                 product={product}
                 onOpenDetail={handleAddToCartClick}
-                onQuickAdd={quickAddToCart}
               />
             </div>
           ))}
