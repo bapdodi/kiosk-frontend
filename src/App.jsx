@@ -471,6 +471,7 @@ function KioskView({
   const openProductFromCart = (item) => {
     const target = products.find(p => p.id === item.id) || item;
     setIsCartOpen(false);
+    setIsReviewOpen(false);
     setSelectingProduct(target);
     setOptionQuantities({});
   };
@@ -639,6 +640,7 @@ function KioskView({
           onQuantityChange={updateCartQuantity}
           onClose={() => setIsReviewOpen(false)}
           onConfirm={handleReviewConfirm}
+          onSelectProduct={openProductFromCart}
         />
       );
     }
