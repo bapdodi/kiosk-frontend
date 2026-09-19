@@ -5,7 +5,7 @@ import { getImageUrl } from '../utils/imageUtils';
 // 여기서 수량 변경/삭제까지 가능하게 해서 "다시 장바구니로 돌아가는" 왕복을 없앴다.
 //
 // 키오스크·PC 는 화면(screen), 폰은 기존처럼 팝업(modal)으로 띄운다.
-const OrderReview = ({ variant, items, onRemove, onQuantityChange, onClose, onConfirm }) => {
+const OrderReview = ({ variant, items, onRemove, onQuantityChange, onClose, onConfirm, onSelectProduct }) => {
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
     // 같은 상품(id)끼리 묶어서 사진 한 장 아래 옵션별 줄로 표시 (장바구니와 동일한 규칙)
@@ -33,7 +33,15 @@ const OrderReview = ({ variant, items, onRemove, onQuantityChange, onClose, onCo
                         <div className="review-empty">장바구니가 비어있습니다.</div>
                     ) : (
                         groups.map((group) => (
-                            <div key={group.id} className="review-row">
+                            // 카드 아무 데나 누르면 그 상품의 옵션 선택 화면으로 다시 들어간다.
+                            // (옵션을 잘못 골랐을 때 삭제 후 목록에서 다시 찾는 왕복을 없앤다)
+                            // 수량/삭제 버튼은 안에서 전파를 끊어 카드 클릭으로 번지지 않게 한다.
+                            <div
+                                key={group.id}
+                                className={`review-row${onSelectProduct ? ' is-clickable' : ''}`}
+                                onClick={onSelectProduct ? () => onSelectProduct(group.items[0]) : undefined}
+                                role={onSelectProduct ? 'button' : undefined}
+                            >
                                 <div className="review-thumb">
                                     {(!group.images || group.images.length === 0) ? (
                                         <div className="review-thumb-empty">이미지 준비 중</div>
@@ -59,7 +67,11 @@ const OrderReview = ({ variant, items, onRemove, onQuantityChange, onClose, onCo
                                         {group.items.map((item) => {
                                             const quantity = item.quantity || 1;
                                             return (
-                                                <div key={item.cartId} className="review-line">
+                                                <div
+                                                    key={item.cartId}
+                                                    className="review-line"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
                                                     <span className="review-opt">
                                                         {item.selectedOption}
                                                     </span>

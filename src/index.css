@@ -2071,6 +2071,21 @@ body {
   text-align: center;
 }
 
+.review-row.is-clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.review-row.is-clickable:active {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+/* 수량/삭제 줄은 카드 클릭 대상이 아니므로 기본 커서로 되돌린다 */
+.review-row.is-clickable .review-line {
+  cursor: default;
+}
+
 .review-detail {
   flex: 1 1 auto;
   min-width: 0;
