@@ -254,7 +254,7 @@ const CategoryManagement = () => {
                 </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+            <div className="admin-header-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
                 <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 900 }}>📁 카테고리 구성</h2>
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <div style={{ position: 'relative' }}>
@@ -318,7 +318,7 @@ const CategoryManagement = () => {
             )}
 
             {catViewMode === 'grid' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '25px' }}>
+                <div className="admin-cat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '25px' }}>
                     {filteredCats.map(main => (
                         <div key={main.id}
                             draggable={!catSearchQuery.trim()}
@@ -409,7 +409,7 @@ const CategoryManagement = () => {
             ) : (
                 currentCat && (
                     <div style={{ maxWidth: '800px', margin: '0 auto', background: 'white', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '30px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '2px solid #f1f5f9', paddingBottom: '20px' }}>
+                        <div className="admin-header-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '2px solid #f1f5f9', paddingBottom: '20px' }}>
                             <h2 style={{ margin: 0 }}>📁 {currentCat.name}</h2>
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <button onClick={() => openCatModal('main', null, currentCat)} style={{ padding: '10px 20px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>대분류 정보 수정</button>

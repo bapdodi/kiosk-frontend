@@ -647,7 +647,7 @@ const ProductManagement = () => {
                                     transition: 'all 0.2s ease'
                                 }}
                             >
-                                <td style={{ textAlign: 'center' }}>
+                                <td data-label="선택" style={{ textAlign: 'center' }}>
                                     <input
                                         type="checkbox"
                                         checked={selectedProducts.includes(p.id)}
@@ -658,7 +658,7 @@ const ProductManagement = () => {
                                         style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                                     />
                                 </td>
-                                <td>
+                                <td data-label="이미지">
                                     {p.images && p.images.length > 0 ? (
                                         <img
                                             src={getImageUrl(p.images[0])}
@@ -673,7 +673,7 @@ const ProductManagement = () => {
                                         </div>
                                     )}
                                 </td>
-                                <td>
+                                <td data-label="상품 정보">
                                     <div style={{ fontWeight: 700, marginBottom: '6px' }}>
                                         {p.name}
                                         {p.erpCode && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#64748b', fontWeight: 400 }}>[{p.erpCode}]</span>}
@@ -682,7 +682,7 @@ const ProductManagement = () => {
                                         {p.hashtags?.map(tag => <span key={tag} className="tag-badge">{tag}</span>)}
                                     </div>
                                 </td>
-                                <td style={{ minWidth: '260px' }}>
+                                <td data-label="카테고리" style={{ minWidth: '260px' }}>
                                     {editingCatId === p.id ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                             <CategoryEditor
@@ -736,12 +736,12 @@ const ProductManagement = () => {
                                         </div>
                                     )}
                                 </td>
-                                <td>
+                                <td data-label="기본 판매가">
                                     <div style={{ fontWeight: 800, color: '#1e293b' }}>
                                         {p.priceC.toLocaleString()}원
                                     </div>
                                 </td>
-                                <td style={{ textAlign: 'center' }}>
+                                <td data-label="순서" style={{ textAlign: 'center' }}>
                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                                         <button
                                             onClick={() => moveProduct(p.id, 'up')}
@@ -753,7 +753,7 @@ const ProductManagement = () => {
                                         >▼</button>
                                     </div>
                                 </td>
-                                <td style={{ textAlign: 'right' }}>
+                                <td data-label="관리" style={{ textAlign: 'right' }}>
                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                         <button className="action-btn" onClick={() => handleEditNavigate(p.id)}>수정</button>
                                         <button className="action-btn" style={{ color: '#ef4444' }} onClick={() => deleteProduct(p)}>휴지통</button>
