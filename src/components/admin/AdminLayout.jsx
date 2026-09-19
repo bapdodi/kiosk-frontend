@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import useOrderNotifications from '../../hooks/useOrderNotifications';
@@ -36,6 +37,9 @@ const AdminLayout = ({
     const orderNotifications = useOrderNotifications({ orders, setOrders });
     const { newOrderAlert, dismissAlert, isStreamConnected, fetchError } = orderNotifications;
     const naverTab = new URLSearchParams(location.search).get('tab') || 'mapping';
+    // 좁은 화면에서는 사이드바를 서랍으로 접는다. 화면을 이동하면 자동으로 닫는다.
+    const [isNavOpen, setIsNavOpen] = useState(false);
+    useEffect(() => { setIsNavOpen(false); }, [location.pathname, location.search]);
 
     return (
         <div className="admin-page-container">
@@ -68,10 +72,34 @@ const AdminLayout = ({
                     </button>
                 </div>
             )}
-            <aside className="admin-sidebar">
+            <div className="admin-mobile-bar">
+                <button
+                    type="button"
+                    className="admin-hamburger"
+                    aria-label="관리 메뉴 열기"
+                    aria-expanded={isNavOpen}
+                    onClick={() => setIsNavOpen(true)}
+                >
+                    ☰
+                </button>
+                <span className="admin-mobile-title">매장 관리자</span>
+                <button type="button" className="admin-mobile-home" onClick={() => navigate('/')}>🏠</button>
+            </div>
+            {isNavOpen && (
+                <div className="admin-nav-backdrop" onClick={() => setIsNavOpen(false)} />
+            )}
+            <aside className={`admin-sidebar ${isNavOpen ? 'open' : ''}`}>
                 <div className="admin-sidebar-header">
                     <div style={{ color: 'white', fontSize: '0.7rem', opacity: 0.5, marginBottom: '5px', letterSpacing: '0.1em' }}>관리 서비스</div>
                     <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>매장 관리자</div>
+                    <button
+                        type="button"
+                        className="admin-nav-close"
+                        aria-label="관리 메뉴 닫기"
+                        onClick={() => setIsNavOpen(false)}
+                    >
+                        ×
+                    </button>
                 </div>
                 <nav style={{ flex: 1, padding: '20px 10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <NavLink
@@ -139,7 +167,7 @@ const AdminLayout = ({
             </aside>
 
             <main className="admin-content">
-                <div style={{ position: 'absolute', top: '30px', right: '40px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="admin-topbar" style={{ position: 'absolute', top: '30px', right: '40px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span
                         title={isStreamConnected
                             ? '실시간 주문 알림 연결됨'
@@ -159,7 +187,7 @@ const AdminLayout = ({
                     )}
                     <button className="back-to-kiosk" onClick={() => navigate('/')}>🏠 키오스크 화면으로 이동</button>
                 </div>
-                <div style={{ maxWidth: '1100px', margin: '60px auto 0 auto' }}>
+                <div className="admin-content-inner" style={{ maxWidth: '1100px', margin: '60px auto 0 auto' }}>
                     <Outlet context={{
                         products, setProducts,
                         mainCategories, setMainCategories,

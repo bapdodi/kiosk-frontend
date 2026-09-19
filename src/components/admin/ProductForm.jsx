@@ -1094,9 +1094,18 @@ const ProductForm = () => {
                 @media (max-width: 1024px) {
                     .admin-form-footer { left: 0; }
                 }
-                @media (max-width: 600px) {
+                @media (max-width: 767.98px) {
                     .section-form.compact-row { grid-template-columns: 1fr; }
                     .form-row { grid-template-columns: 1fr; }
+                    .admin-form-header { flex-direction: column; align-items: stretch; gap: 12px; }
+                    .admin-form-header h2 { font-size: 1.4rem; }
+                    .admin-form-footer { padding: 12px 14px; }
+                    .footer-content { flex-direction: column; align-items: stretch; gap: 10px; }
+                    .status-msg { display: none; }
+                    .footer-btns { gap: 10px; }
+                    .footer-btns .flat-btn { flex: 1; white-space: nowrap; }
+                    .flat-btn.large { padding: 14px 10px; font-size: 0.95rem; }
+                    .form-input.small { width: 100%; }
                 }
             `}</style>
         </div>

@@ -10,6 +10,20 @@ export default defineConfig(({ mode }) => {
   // 없으면 로컬 기본값(http://localhost:<VITE_BACKEND_PORT>)을 사용한다.
   const target = env.VITE_BACKEND_URL || `http://localhost:${backendPort}`
 
+  // 백엔드 CORS 허용 목록에는 http://localhost:5173 만 들어 있다.
+  // 폰·태블릿에서 http://<내부망IP>:5173 으로 붙으면 브라우저가 그 IP 오리진을 붙여 보내
+  // 로그인이 403 으로 막히고 화면에는 "로그인 정보가 올바르지 않습니다" 로 보인다.
+  // dev 프록시에서만 Origin 을 localhost:5173 으로 바꿔 보낸다(운영 빌드와 무관).
+  const forceLocalhostOrigin = {
+    configure: (proxy) => {
+      proxy.on('proxyReq', (proxyReq) => {
+        if (proxyReq.getHeader('origin')) {
+          proxyReq.setHeader('origin', 'http://localhost:5173')
+        }
+      })
+    }
+  }
+
   return {
     plugins: [react()],
     server: {
@@ -22,10 +36,12 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target,
           changeOrigin: true,
+          ...forceLocalhostOrigin,
         },
         '/uploads': {
           target,
           changeOrigin: true,
+          ...forceLocalhostOrigin,
         }
       }
     }

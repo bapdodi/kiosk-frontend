@@ -177,7 +177,7 @@ const OrderManagement = () => {
                     </h2>
                     <p style={{ color: '#64748b', fontSize: '1rem', fontWeight: 500 }}>실시간으로 들어오는 주문을 관리하고 처리 상태를 업데이트하세요.</p>
                 </div>
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'stretch', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <div className="order-stats-row" style={{ display: 'flex', gap: '20px', alignItems: 'stretch', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     <div className="admin-stat-card" style={{ padding: '15px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '8px', minWidth: '190px' }}>
                         <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700 }}>
                             주문 알림음 {isSoundEnabled ? '켜짐' : '꺼짐'}
@@ -214,7 +214,7 @@ const OrderManagement = () => {
 
             <div className="glass-panel" style={{ borderRadius: '30px', padding: '25px', marginBottom: '30px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
-                    <div style={{ display: 'flex', gap: '10px', background: '#f1f5f9', padding: '6px', borderRadius: '100px' }}>
+                    <div className="order-tab-group" style={{ display: 'flex', gap: '10px', background: '#f1f5f9', padding: '6px', borderRadius: '100px' }}>
                         {[
                             { id: 'all', name: '전체', icon: '📋' },
                             { id: 'pending', name: '대기 중', icon: '⏳' },
@@ -270,7 +270,7 @@ const OrderManagement = () => {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'white', padding: '15px 25px', borderRadius: '20px', border: '1px solid #f1f5f9' }}>
+                <div className="order-date-filter" style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'white', padding: '15px 25px', borderRadius: '20px', border: '1px solid #f1f5f9' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span style={{ fontSize: '1.2rem' }}>📅</span>
                         <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#475569', marginRight: '10px' }}>기간 필터</span>
@@ -316,13 +316,13 @@ const OrderManagement = () => {
                     <tbody>
                         {filteredOrders.map(order => (
                             <tr key={order.id} className="order-row">
-                                <td style={{ color: '#64748b', fontWeight: 500 }}>
+                                <td data-label="주문 시간" style={{ color: '#64748b', fontWeight: 500 }}>
                                     <div style={{ fontSize: '0.9rem' }}>{formatTime(order.timestamp)}</div>
                                 </td>
-                                <td>
+                                <td data-label="주문자">
                                     <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '1rem' }}>{order.customerName}</div>
                                 </td>
-                                <td>
+                                <td data-label="주문 내역">
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         <div style={{ fontSize: '0.95rem', color: '#475569', fontWeight: 600 }}>
                                             {order.items.length > 1 ? `${order.items[0].name} 외 ${order.items.length - 1}건` : order.items[0]?.name}
@@ -335,12 +335,12 @@ const OrderManagement = () => {
                                         </button>
                                     </div>
                                 </td>
-                                <td>
+                                <td data-label="결제 금액">
                                     <div style={{ fontWeight: 900, fontSize: '1.1rem', color: '#1e293b' }}>
                                         ₩{order.totalAmount.toLocaleString()}
                                     </div>
                                 </td>
-                                <td style={{ textAlign: 'center' }}>
+                                <td data-label="상태 설정" style={{ textAlign: 'center' }}>
                                     <div style={{ display: 'inline-flex', position: 'relative' }}>
                                         <select
                                             className={`status-badge status-${order.status}`}
@@ -363,7 +363,7 @@ const OrderManagement = () => {
                                         </select>
                                     </div>
                                 </td>
-                                <td style={{ textAlign: 'right' }}>
+                                <td data-label="관리" style={{ textAlign: 'right' }}>
                                     <button
                                         onClick={() => handlePrintStatement(order)}
                                         title="거래명세서 인쇄"
