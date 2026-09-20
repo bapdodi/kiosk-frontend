@@ -1,5 +1,7 @@
 /* 팝업이 아니라 목록 자리를 대신 차지하는 화면이라, 남는 공간을 그대로 채운다. */
-.product-detail-view { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; background: #fff; overflow: hidden; }
+.product-detail-view { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; background: #fff; overflow: hidden; }
+.guided-option-modal .option-back-btn { position: absolute; top: 20px; left: 20px; z-index: 20; display: inline-flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 18px; border: 0; border-radius: 14px; background: rgba(15, 23, 42, .88); color: #fff; font-size: 1.05rem; font-weight: 800; cursor: pointer; box-shadow: 0 8px 24px rgba(15, 23, 42, .24); backdrop-filter: blur(8px); }
+.guided-option-modal .option-back-btn:active { transform: scale(.98); }
 .guided-option-modal .option-scroll-body { flex: 0 1 auto; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); overflow: hidden; }
 .guided-option-modal .option-detail-layout { display: block; min-width: 0; border-right: 1px solid #e2e8f0; }
 .guided-option-modal .option-detail-layout > div { display: flex !important; flex-direction: column; height: 100%; box-sizing: border-box; padding: 24px !important; gap: 20px; align-items: stretch; }
@@ -42,7 +44,7 @@
 .option-quantity-unit { font-weight: 800; color: #334155; }
 /* 담기는 규격·수량을 정한 카드 안, 수량 바로 아래에 붙는다. */
 .guided-option-modal .option-action-row { display: grid; grid-template-columns: 1.05fr 1fr; gap: 16px; margin-top: 20px; }
-.guided-option-modal .option-browse-btn { white-space: nowrap; min-height: 88px; padding: 0 12px; border: 2px solid #cbd5e1; border-radius: 20px; background: #fff; color: #475569; font-weight: 800; font-size: 1.35rem; cursor: pointer; }
+.guided-option-modal .option-browse-btn { white-space: nowrap; min-height: 88px; padding: 0 12px; border: 2px solid #0284c7; border-radius: 20px; background: #0ea5e9; color: #fff; font-weight: 800; font-size: 1.35rem; cursor: pointer; box-shadow: 0 10px 20px rgba(14, 165, 233, .28); }
 .guided-option-modal .option-browse-btn:active { transform: scale(0.99); }
 .guided-option-modal .option-order-btn { display: block; width: 100%; min-height: 88px; padding: 0 24px; border: none; border-radius: 20px; background: var(--accent-color); color: #fff; font-weight: 900; font-size: 1.6rem; letter-spacing: .02em; cursor: pointer; box-shadow: 0 12px 24px rgba(255, 107, 0, .25); }
 .guided-option-modal .option-order-btn:active { transform: scale(0.99); }

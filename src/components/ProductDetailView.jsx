@@ -37,6 +37,9 @@ const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, 
 
     return (
         <section className="product-detail-view guided-option-modal" aria-labelledby="option-product-title">
+                <button type="button" className="option-back-btn" onClick={onCancel}>
+                    <span aria-hidden="true">←</span> 돌아가기
+                </button>
                 <div className="option-scroll-body">
                 <div className="option-detail-layout">
                     {/* Top Section: Info & Image */}
