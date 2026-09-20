@@ -252,6 +252,8 @@ function KioskView({
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [orderModal, setOrderModal] = useState({ isOpen: false, name: '' });
+  const [cartToast, setCartToast] = useState(null);
+  const cartToastTimer = useRef(null);
   // 주문 전송에 성공한 직후의 내역. 완료 화면에서 주문번호와 무엇을 넣었는지 보여준다.
   // 장바구니는 비우지만 이 값은 남겨 두어야 "내가 넣은 게 맞나" 를 확인할 수 있다.
   const [completedOrder, setCompletedOrder] = useState(null);
@@ -273,6 +275,16 @@ function KioskView({
   // 주문 중복 전송 방지용 키. 전송 성공 전까지 같은 키를 유지해
   // 재시도/더블클릭이 서버에서 같은 주문으로 합쳐지게 한다.
   const pendingOrderRequestId = useRef(null);
+
+  useEffect(() => () => {
+    if (cartToastTimer.current) clearTimeout(cartToastTimer.current);
+  }, []);
+
+  const showCartToast = (productName, quantity) => {
+    if (cartToastTimer.current) clearTimeout(cartToastTimer.current);
+    setCartToast({ productName, quantity, key: Date.now() });
+    cartToastTimer.current = setTimeout(() => setCartToast(null), 2200);
+  };
 
   // 키오스크 장바구니 사이드바 폭 (드래그로 조절, localStorage에 저장해 새로고침 후에도 유지)
   const CART_WIDTH_STORAGE_KEY = 'kioskCartWidthPx';
@@ -491,6 +503,11 @@ function KioskView({
   };
 
   const confirmAddToCart = (product, combinations, quantities, stayOpen = false) => {
+    const addedQuantity = Object.values(quantities).reduce(
+      (total, qty) => total + (Number(qty) > 0 ? Number(qty) : 0),
+      0
+    );
+
     setCart(previousCart => {
       const newCart = [...previousCart];
       Object.entries(quantities).forEach(([comboId, qty]) => {
@@ -517,6 +534,8 @@ function KioskView({
       });
       return newCart;
     });
+
+    if (addedQuantity > 0) showCartToast(product.name, addedQuantity);
 
     if (!stayOpen) setSelectingProduct(null);
     setOptionQuantities({});
@@ -794,6 +813,21 @@ function KioskView({
           onConfirm={confirmAddToCart}
           onCancel={() => setSelectingProduct(null)}
         />
+      )}
+
+      {cartToast && (
+        <div
+          key={cartToast.key}
+          className="cart-added-toast"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="cart-added-toast-icon" aria-hidden="true">✓</span>
+          <span className="cart-added-toast-copy">
+            <strong>장바구니에 담았어요</strong>
+            <span>{cartToast.productName} · {cartToast.quantity.toLocaleString('ko-KR')}개</span>
+          </span>
+        </div>
       )}
     </div>
   );

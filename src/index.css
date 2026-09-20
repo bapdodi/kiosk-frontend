@@ -18,6 +18,77 @@
   --admin-bg: #f1f5f9;
 }
 
+/* 담기 성공 피드백: 버튼을 누른 자리와 관계없이 화면 상단 중앙에서 잠깐 보인다. */
+.cart-added-toast {
+  position: fixed;
+  left: 50%;
+  top: max(28px, env(safe-area-inset-top));
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 18px 26px;
+  border: 1px solid #bae6fd;
+  border-radius: 18px;
+  background: rgba(240, 249, 255, .98);
+  color: #0c4a6e;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, .24);
+  transform: translateX(-50%);
+  animation: cart-toast-in-out 2.2s ease both;
+  pointer-events: none;
+}
+
+.cart-added-toast-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 50%;
+  background: #0284c7;
+  color: #fff;
+  font-size: 1.65rem;
+  font-weight: 900;
+}
+
+.cart-added-toast-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.cart-added-toast-copy strong { font-size: 1.4rem; line-height: 1.25; }
+.cart-added-toast-copy span {
+  max-width: min(420px, calc(100vw - 120px));
+  overflow: hidden;
+  color: #0369a1;
+  font-size: .9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes cart-toast-in-out {
+  0% { opacity: 0; transform: translate(-50%, -18px) scale(.96); }
+  12%, 82% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -10px) scale(.98); }
+}
+
+@media (max-width: 760px) {
+  .cart-added-toast {
+    top: calc(68px + env(safe-area-inset-top));
+    padding: 15px 18px;
+  }
+  .cart-added-toast-icon { width: 42px; height: 42px; flex-basis: 42px; }
+  .cart-added-toast-copy strong { font-size: 1.2rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart-added-toast { animation: none; }
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
