@@ -53,13 +53,16 @@ const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onRes
                                     const quantity = item.quantity || 1;
                                     return (
                                         <div key={item.cartId} className="cart-bar-line">
-                                            <span
+                                            <button
+                                                type="button"
                                                 className="cart-bar-line-opt"
                                                 style={{ cursor: onSelectProduct ? 'pointer' : 'default' }}
                                                 onClick={() => onSelectProduct && onSelectProduct(item)}
+                                                title="이 규격을 다시 주문하기"
                                             >
-                                                {item.selectedOption || ''}
-                                            </span>
+                                                <span className="cart-bar-line-opt-label">규격</span>
+                                                <span className="cart-bar-line-opt-value">{item.selectedOption || '기본'}</span>
+                                            </button>
                                             <div className="cart-bar-step">
                                                 <button
                                                     onClick={() => onQuantityChange(item.cartId, -1)}
@@ -81,7 +84,7 @@ const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onRes
                                                 onClick={() => onRemove(item.cartId)}
                                                 aria-label="삭제"
                                             >
-                                                ×
+                                                삭제
                                             </button>
                                         </div>
                                     );
