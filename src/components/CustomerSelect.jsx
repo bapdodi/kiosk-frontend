@@ -42,8 +42,8 @@ const CustomerSelect = ({
     return (
         <CheckoutShell variant={variant}>
             <div style={{ padding: '20px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
-                <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.4rem' }}>주문 확인</h3>
-                <p style={{ color: '#64748b', marginTop: '8px', fontSize: '0.95rem' }}>주문하실 상호를 선택하거나 검색해주세요.</p>
+                <h3 style={{ margin: 0, fontWeight: 900, fontSize: '2.2rem' }}>주문 확인</h3>
+                <p style={{ color: '#64748b', marginTop: '8px', fontSize: '1.35rem' }}>주문하실 상호를 선택하거나 검색해주세요.</p>
             </div>
 
             <div style={{ padding: '20px' }}>
@@ -58,7 +58,7 @@ const CustomerSelect = ({
                     }}
                     style={{
                         width: '100%',
-                        padding: '14px',
+                        padding: '22px',
                         marginBottom: '15px',
                         borderRadius: '12px',
                         border: '2px solid #10b981',
@@ -66,7 +66,7 @@ const CustomerSelect = ({
                         color: '#065f46',
                         fontWeight: '800',
                         cursor: 'pointer',
-                        fontSize: '1rem',
+                        fontSize: '1.5rem',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -79,7 +79,7 @@ const CustomerSelect = ({
                 {/* 두 갈래(비회원 / 상호 선택)를 시각적으로 분리 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '18px 0' }}>
                     <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-                    <span style={{ color: '#94a3b8', fontWeight: 800, fontSize: '0.9rem' }}>또는</span>
+                    <span style={{ color: '#94a3b8', fontWeight: 800, fontSize: '1.2rem' }}>또는</span>
                     <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
                 </div>
 
@@ -94,7 +94,7 @@ const CustomerSelect = ({
                 }}>
                     <div style={{
                         fontWeight: 900,
-                        fontSize: '1.05rem',
+                        fontSize: '1.55rem',
                         color: '#9a3412',
                         marginBottom: '10px',
                         textAlign: 'center'
@@ -109,8 +109,8 @@ const CustomerSelect = ({
                             onChange={(e) => onNameChange(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && isValidName && onSubmit()}
                             style={{
-                                padding: '15px',
-                                fontSize: '1rem',
+                                padding: '20px',
+                                fontSize: '1.5rem',
                                 textAlign: 'center',
                                 borderRadius: '12px',
                                 border: `2px solid ${name.trim() === '' ? '#e2e8f0' : (isValidName ? '#10b981' : '#ef4444')}`,
@@ -124,7 +124,7 @@ const CustomerSelect = ({
                                 right: '15px',
                                 top: '50%',
                                 transform: 'translateY(-50%)',
-                                fontSize: '1.1rem'
+                                fontSize: '1.6rem'
                             }}>
                                 {isValidName ? '✅' : '❌'}
                             </div>
@@ -150,8 +150,9 @@ const CustomerSelect = ({
                             key={tab}
                             onClick={() => onChosungChange(tab)}
                             style={{
-                                padding: '8px 16px',
-                                borderRadius: '20px',
+                                padding: '11px 20px',
+                                fontSize: '1.15rem',
+                                borderRadius: '24px',
                                 border: '1px solid #e2e8f0',
                                 background: selectedChosung === tab ? 'var(--accent-color)' : 'white',
                                 color: selectedChosung === tab ? 'white' : '#64748b',
@@ -170,7 +171,7 @@ const CustomerSelect = ({
                 <div className="customer-list" style={{
                     overflowY: 'auto',
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: '10px',
                     marginBottom: '20px',
                     padding: '10px',
@@ -182,12 +183,12 @@ const CustomerSelect = ({
                             key={c.CODE}
                             onClick={() => onNameChange(c.NAME)}
                             style={{
-                                padding: '12px 8px',
+                                padding: '18px 10px',
                                 borderRadius: '10px',
                                 border: name === c.NAME ? '2px solid var(--accent-color)' : '1px solid #e2e8f0',
                                 background: name === c.NAME ? '#eff6ff' : 'white',
                                 color: name === c.NAME ? 'var(--accent-color)' : '#334155',
-                                fontSize: '0.9rem',
+                                fontSize: '1.35rem',
                                 fontWeight: name === c.NAME ? 'bold' : 'normal',
                                 cursor: 'pointer',
                                 textAlign: 'center',
@@ -197,7 +198,7 @@ const CustomerSelect = ({
                             {c.NAME}
                         </button>
                     )) : (
-                        <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
+                        <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '20px', color: '#94a3b8', fontSize: '1.1rem' }}>
                             해당하는 상호가 없습니다.
                         </div>
                     )}
