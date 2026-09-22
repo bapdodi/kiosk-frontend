@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-route
 import AdminLayout from './components/admin/AdminLayout';
 import CategoryManagement from './components/admin/CategoryManagement';
 import ErpBakImportPage from './components/admin/ErpBakImportPage';
+import ErpReceivingPage from './components/admin/ErpReceivingPage';
 import NaverSyncPage from './components/admin/NaverSyncPage';
 import OrderManagement from './components/admin/OrderManagement';
 import ProductForm from './components/admin/ProductForm';
@@ -223,6 +224,7 @@ function App() {
           <Route path="orders" element={<OrderManagement />} />
           <Route path="naver" element={<NaverSyncPage />} />
           <Route path="erp-bak" element={<ErpBakImportPage />} />
+          <Route path="erp-receiving" element={<ErpReceivingPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
