@@ -699,6 +699,7 @@ function KioskView({
   // 목록 자리를 상세가 차지하고, 오른쪽 장바구니 레일은 그대로 남는다.
   // (팝업이 뒤 화면을 덮던 시절에는 팝업 안에 장바구니를 하나 더 둬야 했다.)
   const showDetail = !isMobile && selectingProduct != null;
+  const cartItemCount = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
   return (
     <div
@@ -733,7 +734,11 @@ function KioskView({
             onConfirm={confirmAddToCart}
             onCancel={() => setSelectingProduct(null)}
           />
-        ) : (
+        ) : (<>
+        <div className="mobile-result-summary" aria-live="polite">
+          <strong>{isSearching ? `‘${searchQuery.trim()}’ 검색` : '상품'}</strong>
+          <span>{filteredProducts.length.toLocaleString('ko-KR')}개</span>
+        </div>
         <main
           className="kiosk-main"
           onScroll={handleScroll}
@@ -758,7 +763,7 @@ function KioskView({
             </div>
           )}
         </main>
-        )}
+        </>)}
       </div>
 
       {/* 큰 화면(키오스크·PC)용 오른쪽 장바구니 레일 */}
@@ -773,11 +778,11 @@ function KioskView({
       />
 
       {/* Floating Cart Button (작은 화면 전용) */}
-      <div className="floating-cart-btn" onClick={() => setIsCartOpen(true)}>
+      <button type="button" className="floating-cart-btn" onClick={() => setIsCartOpen(true)} aria-label={`장바구니 열기, 총 ${cartItemCount}개`}>
         <span className="cart-icon">🛒</span>
         <span className="cart-label">장바구니</span>
-        <span className="cart-count">{cart.length}</span>
-      </div>
+        <span className="cart-count">{cartItemCount}</span>
+      </button>
 
       {/* Cart Modal */}
       {isCartOpen && (
@@ -812,6 +817,10 @@ function KioskView({
           onSelectProduct={openRecommendedProduct}
           onConfirm={confirmAddToCart}
           onCancel={() => setSelectingProduct(null)}
+          onOpenCart={() => {
+            setSelectingProduct(null);
+            setIsCartOpen(true);
+          }}
         />
       )}
 

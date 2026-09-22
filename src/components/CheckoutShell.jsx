@@ -5,11 +5,11 @@
  * 안쪽 내용은 두 경우가 완전히 같아서, 달라지는 껍데기만 여기서 가른다.
  * (폰 화면은 이번 개편 범위 밖이라 기존 동작을 그대로 둔다.)
  */
-const CheckoutShell = ({ variant, children, maxWidth = 600 }) => {
+const CheckoutShell = ({ variant, children, maxWidth = 600, className = '' }) => {
     if (variant === 'modal') {
         return (
             <div className="modal-overlay">
-                <div className="modal-content" style={{ maxWidth: `${maxWidth}px`, width: '90%' }}>
+                <div className={`modal-content ${className}`.trim()} style={{ maxWidth: `${maxWidth}px`, width: '90%' }}>
                     {children}
                 </div>
             </div>
@@ -19,7 +19,7 @@ const CheckoutShell = ({ variant, children, maxWidth = 600 }) => {
     // 화면 변형의 폭은 CSS(.checkout-card)가 정한다. 팝업보다 넓게 쓸 수 있다.
     return (
         <section className="checkout-view">
-            <div className="checkout-card">{children}</div>
+            <div className={`checkout-card ${className}`.trim()}>{children}</div>
         </section>
     );
 };

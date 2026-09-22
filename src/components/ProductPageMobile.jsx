@@ -14,7 +14,7 @@ const formatQuantity = (n) => (n || 0).toLocaleString('ko-KR');
  * 하단에 주문 바가 고정된다. 키오스크용 OptionModal 과 화면은 완전히 별개고,
  * 규격·수량·가격 규칙만 useProductSelection 으로 공유한다.
  */
-const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, onCancel, onSelectProduct }) => {
+const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, onCancel, onSelectProduct, onOpenCart }) => {
     const {
         groups,
         selections, setSelections,
@@ -54,12 +54,22 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
     const imageSrc = (!currentImage || failedImages[currentImage])
         ? FALLBACK_IMAGE
         : getImageUrl(currentImage);
+    const cartQuantity = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
     return (
         <div className="mp-page" role="dialog" aria-modal="true" aria-labelledby="mp-title">
             <header className="mp-appbar">
                 <button type="button" className="mp-back" onClick={onCancel} aria-label="뒤로 가기">←</button>
                 <span className="mp-appbar-title">{product.name}</span>
+                <button
+                    type="button"
+                    className="mp-cart"
+                    onClick={onOpenCart}
+                    aria-label={`장바구니 열기, 총 ${cartQuantity}개`}
+                >
+                    <span aria-hidden="true">🛒</span>
+                    <span className="mp-cart-count">{cartQuantity}</span>
+                </button>
             </header>
 
             <div className="mp-scroll">

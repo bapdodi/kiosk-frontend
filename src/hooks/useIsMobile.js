@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from 'react';
 
-// 폰과 키오스크/PC 를 가르는 기준. CSS 의 @media (max-width: 600px) 와 같은 값이라
-// 한쪽만 바꾸면 화면과 컴포넌트 선택이 어긋난다. 바꿀 때는 양쪽을 같이 본다.
-export const MOBILE_QUERY = '(max-width: 600px)';
+// 폰과 키오스크/PC 를 가르는 기준. 7인치 이하 태블릿과 폰 가로 화면도
+// 모바일 주문 화면을 쓴다. CSS 기준과 함께 바꿔야 한다.
+export const MOBILE_QUERY = '(max-width: 767.98px)';
 
 const subscribe = (onChange) => {
     const mq = window.matchMedia(MOBILE_QUERY);

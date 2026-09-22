@@ -40,15 +40,16 @@ const CustomerSelect = ({
     const defaultCustomer = customers.find(c => c.NAME?.trim() === '1');
 
     return (
-        <CheckoutShell variant={variant}>
-            <div style={{ padding: '20px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
-                <h3 style={{ margin: 0, fontWeight: 900, fontSize: '2.2rem' }}>주문 확인</h3>
-                <p style={{ color: '#64748b', marginTop: '8px', fontSize: '1.35rem' }}>주문하실 상호를 선택하거나 검색해주세요.</p>
+        <CheckoutShell variant={variant} className="customer-select-shell">
+            <div className="customer-select-head" style={{ padding: '20px', textAlign: 'center', borderBottom: '1px solid #f1f5f9', flex: '0 0 auto' }}>
+                <h3 className="customer-select-title" style={{ margin: 0, fontWeight: 900, fontSize: '2.2rem' }}>주문 확인</h3>
+                <p className="customer-select-sub" style={{ color: '#64748b', marginTop: '8px', fontSize: '1.35rem' }}>주문하실 상호를 선택하거나 검색해주세요.</p>
             </div>
 
-            <div style={{ padding: '20px' }}>
+            <div className="customer-select-body" style={{ padding: '20px' }}>
                 {/* 1번 고객 버튼 */}
                 <button
+                    className="customer-guest-btn"
                     onClick={() => {
                         if (!defaultCustomer) {
                             alert('1번 고객 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
@@ -77,14 +78,14 @@ const CustomerSelect = ({
                 </button>
 
                 {/* 두 갈래(비회원 / 상호 선택)를 시각적으로 분리 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '18px 0' }}>
+                <div className="customer-divider" style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '18px 0' }}>
                     <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
                     <span style={{ color: '#94a3b8', fontWeight: 800, fontSize: '1.2rem' }}>또는</span>
                     <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
                 </div>
 
                 {/* 상호명 직접 검색 - 비회원 버튼 바로 아래에 강조 배치 */}
-                <div style={{
+                <div className="customer-search-panel" style={{
                     marginBottom: '15px',
                     padding: '14px',
                     background: '#fff7ed',
@@ -92,7 +93,7 @@ const CustomerSelect = ({
                     borderRadius: '14px',
                     boxShadow: '0 2px 8px rgba(255, 107, 0, 0.15)'
                 }}>
-                    <div style={{
+                    <div className="customer-search-title" style={{
                         fontWeight: 900,
                         fontSize: '1.55rem',
                         color: '#9a3412',
@@ -103,7 +104,7 @@ const CustomerSelect = ({
                     </div>
                     <div style={{ position: 'relative' }}>
                         <input
-                            className="admin-input-small"
+                            className="admin-input-small customer-search-input"
                             placeholder="상호명 직접 검색"
                             value={name}
                             onChange={(e) => onNameChange(e.target.value)}
@@ -134,7 +135,7 @@ const CustomerSelect = ({
 
                 {/* 초성 카테고리 탭 */}
                 <div
-                    className="chosung-scroll"
+                    className="chosung-scroll customer-chosung-tabs"
                     style={{
                         display: 'flex',
                         overflowX: 'auto',
@@ -148,6 +149,7 @@ const CustomerSelect = ({
                     {[...chosungTabs, '기타'].map(tab => (
                         <button
                             key={tab}
+                            className="customer-chosung-btn"
                             onClick={() => onChosungChange(tab)}
                             style={{
                                 padding: '11px 20px',
@@ -181,6 +183,7 @@ const CustomerSelect = ({
                     {filteredCustomers.length > 0 ? filteredCustomers.map(c => (
                         <button
                             key={c.CODE}
+                            className="customer-list-btn"
                             onClick={() => onNameChange(c.NAME)}
                             style={{
                                 padding: '18px 10px',
@@ -204,7 +207,7 @@ const CustomerSelect = ({
                     )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div className="customer-actions" style={{ display: 'flex', gap: '10px', flex: '0 0 auto' }}>
                     {/* 상호를 아직 안 고른 상태는 "못 누르는 상태"다.
                         예전에는 연두색이라 눌리는 것처럼 보였다. */}
                     <button
