@@ -128,6 +128,23 @@ const ProductManagement = () => {
         }
     };
 
+    // 서버 동기화 결과 요약. 건드리지 않은 품목은 관리자가 직접 정리해야 해서 이름까지 보여준다.
+    const describeErpSyncResult = (r) => {
+        const lines = [`ERP 동기화 완료: 새 상품 ${r.created}개, 갱신 ${r.updated}개`];
+        if (r.trashedProducts || r.hiddenOptions) {
+            lines.push(`ERP 에서 사라진 품목: 상품 ${r.trashedProducts}개 휴지통, 옵션 ${r.hiddenOptions}개 숨김`);
+        }
+        if (r.removalSkipped) lines.push(r.removalSkipped);
+        const names = (list) => list.slice(0, 10).join(', ') + (list.length > 10 ? ` 외 ${list.length - 10}개` : '');
+        if (r.ambiguous?.length) {
+            lines.push(`같은 이름 상품이 여럿이라 건너뜀 ${r.ambiguous.length}개: ${names(r.ambiguous)}`);
+        }
+        if (r.duplicate?.length) {
+            lines.push(`다른 ERP 품명과 같은 상품에 걸려 건너뜀 ${r.duplicate.length}개: ${names(r.duplicate)}`);
+        }
+        return lines.join('\n');
+    };
+
     const syncWithErp = async () => {
         setIsLoadingErpPreview(true);
         try {
@@ -157,10 +174,11 @@ const ProductManagement = () => {
                 body: JSON.stringify(selectedErpKeys)
             });
             if (!res.ok) return alert('동기화 실패: ' + (await res.text()));
+            const result = await res.json();
             setErpPreviews(null);
             setSelectedErpKeys([]);
             await onRefresh();
-            alert(`ERP 동기화가 완료되었습니다. (${selectedErpKeys.length}개 상품)`);
+            alert(describeErpSyncResult(result));
         } catch (err) {
             alert('네트워크 오류');
         } finally {
