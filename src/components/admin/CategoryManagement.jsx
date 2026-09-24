@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { describeError, describeResponseError } from '../../utils/apiError';
 
 const CategoryManagement = () => {
     const {
@@ -93,13 +94,16 @@ const CategoryManagement = () => {
     };
 
     const deleteMainCategory = async (id) => {
-        if (!window.confirm('해당 대분류가 삭제됩니다.')) return;
+        if (!window.confirm('해당 대분류와 그 아래 중분류·세부분류가 모두 삭제됩니다.')) return;
         try {
             const res = await fetch(`/api/categories/admin/${id}`, { method: 'DELETE' });
             if (res.ok) {
                 await refreshCategories();
+            } else {
+                // 상품이 연결된 분류는 서버가 409 와 이유를 돌려준다. 예전엔 여기서 조용히 무시됐다.
+                alert('삭제할 수 없습니다: ' + await describeResponseError(res, '대분류 삭제에 실패했습니다.'));
             }
-        } catch (err) { alert('오류 발생'); }
+        } catch (err) { alert(describeError(err, '대분류 삭제에 실패했습니다.')); }
     };
 
     const persistCategoryOrder = async (type, updatedItems, parentId = null) => {
@@ -209,8 +213,10 @@ const CategoryManagement = () => {
             const res = await fetch(`/api/categories/admin/${subId}`, { method: 'DELETE' });
             if (res.ok) {
                 await refreshCategories();
+            } else {
+                alert('삭제할 수 없습니다: ' + await describeResponseError(res, '중분류 삭제에 실패했습니다.'));
             }
-        } catch (err) { alert('오류 발생'); }
+        } catch (err) { alert(describeError(err, '중분류 삭제에 실패했습니다.')); }
     };
 
     const filteredCats = mainCategories.filter(c =>
