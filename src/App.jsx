@@ -18,6 +18,7 @@ import CustomerSelect from './components/CustomerSelect';
 import OrderDone from './components/OrderDone';
 import ProductCard from './components/ProductCard';
 import { getChosungChar, getSearchMatchScore, normalizeSearchText } from './utils/search';
+import { describeError, fetchJson } from './utils/apiError';
 import { useMobileBackClose } from './hooks/useMobileBackClose';
 import { useIsMobile } from './hooks/useIsMobile';
 import ProductPageMobile from './components/ProductPageMobile';
@@ -44,9 +45,7 @@ function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refreshCategories = useCallback(async () => {
-    const res = await fetch('/api/categories');
-    if (!res.ok) throw new Error('카테고리를 불러오는데 실패했습니다.');
-    const catData = await res.json();
+    const catData = await fetchJson('/api/categories', '카테고리를 불러오는데 실패했습니다.');
 
     const mainArr = catData.filter(c => c.level === 'main');
     const subObj = {};
@@ -96,7 +95,7 @@ function App() {
         }
       } catch (error) {
         console.error('Error fetching initial data:', error);
-        setError(error.message);
+        setError(describeError(error, '초기 데이터를 불러오지 못했습니다.'));
       } finally {
         setLoading(false);
       }
@@ -124,14 +123,11 @@ function App() {
     try {
       if (!isInitial) setIsRefreshing(true);
 
-      const res = await fetch('/api/products/all');
-      if (!res.ok) throw new Error('상품 데이터를 불러오는데 실패했습니다.');
-
-      const data = await res.json();
+      const data = await fetchJson('/api/products/all', '상품 데이터를 불러오는데 실패했습니다.');
       setProducts(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('Fetch products failed:', e);
-      setError(e.message);
+      setError(describeError(e, '상품 데이터를 불러오는데 실패했습니다.'));
     } finally {
       setIsRefreshing(false);
     }
