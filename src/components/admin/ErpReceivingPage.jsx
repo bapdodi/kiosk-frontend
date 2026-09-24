@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { describeError, describeResponseError } from '../../utils/apiError';
 
+// TODO(거래명세서 자동 입력, 이어서 할 작업): 상단에 [명세서 PDF 올리기]를 두고,
+// 서버가 읽어 온 거래처·품목 줄로 이 격자를 채운다. 원본 PDF 를 옆에 띄우고,
+// 매칭이 불확실한 줄은 노란색, 명세서 합계와 다르면 빨간색으로 보여 준 뒤
+// 기존 미리보기 → 저장 흐름을 그대로 탄다. 자세한 설계는 backend ErpReceivingService 주석.
 const KIND_LABELS = { 3: '매출', 4: '매입', 13: '발주' };
 
 const won = (n) => Number(n || 0).toLocaleString('ko-KR');
