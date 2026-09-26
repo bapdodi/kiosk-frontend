@@ -16,12 +16,16 @@ import ProductDetailView from './components/ProductDetailView';
 import OrderReview from './components/OrderReview';
 import CustomerSelect from './components/CustomerSelect';
 import OrderDone from './components/OrderDone';
+import AttractScreen from './components/AttractScreen';
 import ProductCard from './components/ProductCard';
 import { getChosungChar, getSearchMatchScore, normalizeSearchText } from './utils/search';
 import { describeError, fetchJson } from './utils/apiError';
 import { useMobileBackClose } from './hooks/useMobileBackClose';
 import { useIsMobile } from './hooks/useIsMobile';
 import ProductPageMobile from './components/ProductPageMobile';
+
+// 키오스크를 이만큼 아무도 안 만지면 장바구니를 비우고 대기 화면으로 돌아간다.
+const IDLE_RESET_MS = 90 * 1000;
 
 // ... (KioskView & ProtectedRoute components)
 
@@ -691,6 +695,39 @@ function KioskView({
     return null;
   };
 
+  // 대기 화면. 폰 손님에게는 띄우지 않는다(키오스크·PC 전용).
+  const [isIdle, setIsIdle] = useState(true);
+
+  // 한동안 아무 입력이 없으면 앞 손님이 담아 둔 것을 전부 지우고 처음으로 돌린다.
+  const resetForNextCustomer = () => {
+    goHome();
+    setCart([]);
+    setIsCartOpen(false);
+    setIsReviewOpen(false);
+    setOrderModal({ isOpen: false, name: '' });
+    setOptionQuantities({});
+    pendingOrderRequestId.current = null;
+    setIsIdle(true);
+  };
+  const resetRef = useRef(resetForNextCustomer);
+  useEffect(() => { resetRef.current = resetForNextCustomer; });
+
+  useEffect(() => {
+    if (isMobile || isIdle) return;
+    let timer;
+    const restart = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => resetRef.current(), IDLE_RESET_MS);
+    };
+    const events = ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'];
+    events.forEach(e => window.addEventListener(e, restart, { capture: true, passive: true }));
+    restart();
+    return () => {
+      clearTimeout(timer);
+      events.forEach(e => window.removeEventListener(e, restart, { capture: true }));
+    };
+  }, [isMobile, isIdle]);
+
   const showCheckout = !isMobile && checkoutStage != null;
 
   // 키오스크·PC 는 상세를 팝업이 아니라 화면 전환으로 연다.
@@ -821,6 +858,8 @@ function KioskView({
           }}
         />
       )}
+
+      {!isMobile && isIdle && <AttractScreen onStart={() => setIsIdle(false)} />}
 
       {cartToast && (
         <div
