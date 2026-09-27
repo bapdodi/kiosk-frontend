@@ -48,3 +48,18 @@ test('여러 단어 중 하나에 오타가 있어도 찾는다', () => {
   assert.ok(Number.isFinite(getSearchMatchScore('스텐 파이프 20A', '스텐 파이브')));
   assert.ok(getSearchMatchScore('스텐 파이프 20A', '스텐 파이브') < 10);
 });
+
+test('검색 결과가 없는 짧은 한글 오타에 가까운 상품을 먼저 추천한다', async () => {
+  const { getSimilarProducts } = await import('./search.js');
+  const products = [{ id: 1, name: '보온재' }, { id: 2, name: '밸브' }];
+  assert.equal(matchesSearchText('밸브', '밸바'), false);
+  assert.equal(getSimilarProducts(products, '밸바')[0].id, 2);
+});
+
+test('유사 상품은 태그를 비교하고 개수를 제한하며 빈 검색어는 추천하지 않는다', async () => {
+  const { getSimilarProducts } = await import('./search.js');
+  const products = Array.from({ length: 10 }, (_, id) => ({ id, name: '제품', hashtags: ['밸브'] }));
+  assert.equal(getSimilarProducts(products, '밸바').length, 6);
+  assert.deepEqual(getSimilarProducts(products, '  '), []);
+  assert.deepEqual(getSimilarProducts([], '밸바'), []);
+});

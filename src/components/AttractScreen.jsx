@@ -4,13 +4,6 @@ import './AttractScreen.css';
  * 키오스크 대기 화면. 처음 켰을 때와 한동안 아무도 안 만졌을 때 보여준다.
  * 화면 아무 곳이나 누르면 주문 화면으로 들어간다.
  */
-const STEPS = [
-    { icon: '👆', label: '화면터치' },
-    { icon: '🛒', label: '상품선택' },
-    { icon: '🧾', label: '결제/주문확인' },
-    { icon: '✅', label: '주문완료' },
-];
-
 const AttractScreen = ({ onStart }) => (
     <div className="attract-screen" onClick={onStart} role="button" aria-label="화면을 터치해 주문 시작">
         <div className="attract-main">
@@ -26,17 +19,13 @@ const AttractScreen = ({ onStart }) => (
             <h1 className="attract-title">
                 <span className="attract-accent">간편</span>하게<br />주문
             </h1>
+            <div className="attract-tap" aria-hidden="true">
+                <span className="attract-tap-ring" />
+                <span className="attract-finger">👆</span>
+            </div>
             <p className="attract-touch">화면을 터치해 주세요</p>
         </div>
-        <ol className="attract-steps">
-            {STEPS.map((step, i) => (
-                <li key={step.label} className="attract-step">
-                    {i > 0 && <span className="attract-arrow" aria-hidden="true">›</span>}
-                    <span className="attract-step-icon" aria-hidden="true">{step.icon}</span>
-                    <span className="attract-step-label">{step.label}</span>
-                </li>
-            ))}
-        </ol>
+
     </div>
 );
 

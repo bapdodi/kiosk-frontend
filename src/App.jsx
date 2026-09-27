@@ -18,7 +18,7 @@ import CustomerSelect from './components/CustomerSelect';
 import OrderDone from './components/OrderDone';
 import AttractScreen from './components/AttractScreen';
 import ProductCard from './components/ProductCard';
-import { getChosungChar, getSearchMatchScore, normalizeSearchText } from './utils/search';
+import { getChosungChar, getSearchMatchScore, getSimilarProducts, normalizeSearchText } from './utils/search';
 import { describeError, fetchJson } from './utils/apiError';
 import { useMobileBackClose } from './hooks/useMobileBackClose';
 import { useIsMobile } from './hooks/useIsMobile';
@@ -453,6 +453,15 @@ function KioskView({
     }).map(({ product }) => product);
   }, [activeMainCat, activeSubCat, isSearching, isUncategorized, products, searchQuery]);
 
+  const similarProducts = useMemo(
+    () => isSearching && filteredProducts.length === 0
+      ? getSimilarProducts(products, searchQuery)
+      : [],
+    [isSearching, filteredProducts.length, products, searchQuery],
+  );
+  const showingSimilar = similarProducts.length > 0;
+  const displayedProducts = showingSimilar ? similarProducts : filteredProducts;
+
   // 검색은 항상 전체 범위이므로 한 글자라도 입력되면 '전체' 탭으로 옮겨 준다.
   // CategoryNav 의 음성인식 콜백이 첫 렌더 함수를 붙잡고 있으므로 참조를 고정한다.
   const handleSearchChange = useCallback((value) => {
@@ -688,7 +697,7 @@ function KioskView({
           order={completedOrder.order}
           customerName={completedOrder.customerName}
           items={completedOrder.items}
-          onHome={goHome}
+          onHome={isMobile ? goHome : resetForNextCustomer}
         />
       );
     }
@@ -772,14 +781,19 @@ function KioskView({
         ) : (<>
         <div className="mobile-result-summary" aria-live="polite">
           <strong>{isSearching ? `‘${searchQuery.trim()}’ 검색` : '상품'}</strong>
-          <span>{filteredProducts.length.toLocaleString('ko-KR')}개</span>
+          <span>{displayedProducts.length.toLocaleString('ko-KR')}개</span>
         </div>
         <main
           className="kiosk-main"
           onScroll={handleScroll}
           ref={(el) => { if (el) el.scrollTop = lastScrollTop.current; }}
         >
-          {filteredProducts.map((product) => (
+          {showingSimilar && (
+            <div role="status" style={{ gridColumn: '1/-1', padding: '16px 20px', background: '#fff3e8', borderRadius: '12px', color: '#663c15' }}>
+              검색 결과가 없어 이름이 비슷한 상품을 보여드립니다. 상품명과 규격을 확인해 주세요.
+            </div>
+          )}
+          {displayedProducts.map((product) => (
             <div key={product.id}>
               <ProductCard
                 product={product}
@@ -792,7 +806,7 @@ function KioskView({
               불러오는 중...
             </div>
           )}
-          {filteredProducts.length === 0 && !isRefreshing && (
+          {displayedProducts.length === 0 && !isRefreshing && (
             <div className="empty-cart-message" style={{ textAlign: 'center', gridColumn: '1/-1', padding: '50px' }}>
               검색 결과가 없습니다.
             </div>

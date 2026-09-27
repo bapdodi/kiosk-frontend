@@ -166,3 +166,27 @@ export const getSearchMatchScore = (name, query) => {
 };
 
 export const matchesSearchText = (name, query) => Number.isFinite(getSearchMatchScore(name, query));
+
+// 일반 검색이 실패했을 때만 사용한다. 한글 자모도 비교해 짧은 오타를 찾는다.
+export const getSimilarProducts = (products, query, limit = 6) => {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return [];
+  const similarity = (value) => {
+    const name = normalizeSearchText(value);
+    if (!name) return 0;
+    return Math.max(...['NFC', 'NFD'].map((form) => {
+      const needle = normalizedQuery.normalize(form);
+      const text = name.normalize(form);
+      const distance = closestSubstringDistance(text, needle, needle.length);
+      return Math.max(0, 1 - distance / needle.length);
+    }));
+  };
+  return products.map(product => ({
+    product,
+    score: Math.max(similarity(product.name), ...(product.hashtags || []).map(similarity)),
+  }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || String(a.product.id).localeCompare(String(b.product.id)))
+    .slice(0, limit)
+    .map(({ product }) => product);
+};
