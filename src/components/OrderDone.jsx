@@ -9,7 +9,7 @@ import CheckoutShell from './CheckoutShell';
  * 무엇보다 "내가 넣은 게 맞나" 를 확인할 방법이 남지 않았다.
  * 주문번호와 넣은 내역을 남겨서 기사님이 눈으로 확인하고 나가게 한다.
  *
- * 키오스크는 다음 손님이 바로 쓰는 화면이라, 아무도 안 누르면 10초 뒤 목록으로 돌아간다.
+ * 키오스크는 다음 손님이 바로 쓰는 화면이라, 아무도 안 누르면 10초 뒤 처음 화면으로 돌아간다.
  * 남은 시간을 버튼에 같이 보여줘서 갑자기 화면이 바뀐 것처럼 느껴지지 않게 한다.
  */
 const AUTO_HOME_SECONDS = 10;
@@ -23,17 +23,14 @@ const OrderDone = ({ variant, order, customerName, items, onHome }) => {
     useEffect(() => { onHomeRef.current = onHome; });
 
     useEffect(() => {
-        const timer = setInterval(() => {
-            setLeft(prev => {
-                if (prev <= 1) {
-                    clearInterval(timer);
-                    onHomeRef.current();
-                    return 0;
-                }
-                return prev - 1;
-            });
+        const countdown = setInterval(() => {
+            setLeft(prev => Math.max(0, prev - 1));
         }, 1000);
-        return () => clearInterval(timer);
+        const timeout = setTimeout(() => onHomeRef.current(), AUTO_HOME_SECONDS * 1000);
+        return () => {
+            clearInterval(countdown);
+            clearTimeout(timeout);
+        };
     }, []);
 
     return (
