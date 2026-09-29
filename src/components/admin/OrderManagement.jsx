@@ -64,7 +64,15 @@ const OrderManagement = () => {
         });
     };
 
-    const uniqueOrders = Array.from(new Map(orders.map(order => [order.id, order])).values());
+    // 최신 주문이 맨 위에 오도록 시간 내림차순으로 정렬한다.
+    const uniqueOrders = Array.from(new Map(orders.map(order => [order.id, order])).values())
+        .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+    // 가장 마지막에 들어온 주문 한 건만 하이라이트한다 (필터와 무관하게 전체 기준).
+    const latestOrderId = uniqueOrders.reduce(
+        (latest, o) => (o.timestamp && (!latest || new Date(o.timestamp) > new Date(latest.timestamp)) ? o : latest),
+        null
+    )?.id;
 
     const dateAndSearchFilteredOrders = uniqueOrders.filter(order => {
         const matchName = order.customerName.toLowerCase().includes(orderSearchQuery.toLowerCase());
@@ -212,7 +220,7 @@ const OrderManagement = () => {
                 </div>
             </div>
 
-            <div className="glass-panel" style={{ borderRadius: '30px', padding: '25px', marginBottom: '30px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
+            <div className="glass-panel order-filter-panel" style={{ borderRadius: '30px', padding: '25px', marginBottom: '30px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
                     <div className="order-tab-group" style={{ display: 'flex', gap: '10px', background: '#f1f5f9', padding: '6px', borderRadius: '100px' }}>
                         {[
@@ -256,7 +264,7 @@ const OrderManagement = () => {
                         ))}
                     </div>
 
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <div className="order-search-wrap" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                         <div className="search-container" style={{ margin: 0, width: '280px' }}>
                             <input
                                 className="search-input"
@@ -272,8 +280,10 @@ const OrderManagement = () => {
 
                 <div className="order-date-filter" style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'white', padding: '15px 25px', borderRadius: '20px', border: '1px solid #f1f5f9' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontSize: '1.2rem' }}>📅</span>
-                        <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#475569', marginRight: '10px' }}>기간 필터</span>
+                        <span className="order-date-label" style={{ display: 'contents' }}>
+                            <span style={{ fontSize: '1.2rem' }}>📅</span>
+                            <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#475569', marginRight: '10px' }}>기간 필터</span>
+                        </span>
                         <input
                             type="date"
                             className="admin-input-small"
@@ -281,7 +291,7 @@ const OrderManagement = () => {
                             onChange={(e) => setStartDate(e.target.value)}
                             style={{ width: '150px', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '8px 12px' }}
                         />
-                        <span style={{ color: '#cbd5e1', fontWeight: 800 }}>~</span>
+                        <span className="order-date-sep" style={{ color: '#cbd5e1', fontWeight: 800 }}>~</span>
                         <input
                             type="date"
                             className="admin-input-small"
@@ -291,6 +301,7 @@ const OrderManagement = () => {
                         />
                         {(startDate || endDate) && (
                             <button
+                                className="order-date-reset"
                                 onClick={() => { setStartDate(''); setEndDate(''); }}
                                 style={{ background: '#f1f5f9', border: 'none', borderRadius: '10px', padding: '8px 15px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, color: '#ef4444' }}
                             >
@@ -315,7 +326,7 @@ const OrderManagement = () => {
                     </thead>
                     <tbody>
                         {filteredOrders.map(order => (
-                            <tr key={order.id} className="order-row">
+                            <tr key={order.id} className={order.id === latestOrderId ? 'order-row order-row-latest' : 'order-row'}>
                                 <td data-label="주문 시간" style={{ color: '#64748b', fontWeight: 500 }}>
                                     <div style={{ fontSize: '0.9rem' }}>{formatTime(order.timestamp)}</div>
                                 </td>
@@ -323,7 +334,7 @@ const OrderManagement = () => {
                                     <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '1rem' }}>{order.customerName}</div>
                                 </td>
                                 <td data-label="주문 내역">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div className="order-items-cell" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         <div style={{ fontSize: '0.95rem', color: '#475569', fontWeight: 600 }}>
                                             {order.items.length > 1 ? `${order.items[0].name} 외 ${order.items.length - 1}건` : order.items[0]?.name}
                                         </div>
@@ -363,7 +374,7 @@ const OrderManagement = () => {
                                         </select>
                                     </div>
                                 </td>
-                                <td data-label="관리" style={{ textAlign: 'right' }}>
+                                <td data-label="관리" className="order-actions" style={{ textAlign: 'right' }}>
                                     <button
                                         onClick={() => handlePrintStatement(order)}
                                         title="거래명세서 인쇄"

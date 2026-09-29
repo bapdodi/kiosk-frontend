@@ -103,6 +103,14 @@ const AdminLayout = ({
                 </div>
                 <nav style={{ flex: 1, padding: '20px 10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <NavLink
+                        to="/admin/orders"
+                        className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
+                        style={{ textDecoration: 'none' }}
+                    >
+                        <span style={{ fontSize: '1.2rem' }}>🧾</span>
+                        <span style={{ fontWeight: 600 }}>주문 내역 관리</span>
+                    </NavLink>
+                    <NavLink
                         to="/admin/products"
                         className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
                         style={{ textDecoration: 'none' }}
@@ -117,14 +125,6 @@ const AdminLayout = ({
                     >
                         <span style={{ fontSize: '1.2rem' }}>📁</span>
                         <span style={{ fontWeight: 600 }}>카테고리 설정</span>
-                    </NavLink>
-                    <NavLink
-                        to="/admin/orders"
-                        className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
-                        style={{ textDecoration: 'none' }}
-                    >
-                        <span style={{ fontSize: '1.2rem' }}>🧾</span>
-                        <span style={{ fontWeight: 600 }}>주문 내역 관리</span>
                     </NavLink>
                     <NavLink
                         to="/admin/erp-bak"
