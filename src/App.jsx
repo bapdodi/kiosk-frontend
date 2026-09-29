@@ -216,7 +216,7 @@ function App() {
             />
           </ProtectedRoute>
         }>
-          <Route index element={<Navigate to="products" replace />} />
+          <Route index element={<Navigate to="orders" replace />} />
           <Route path="products" element={<ProductManagement />} />
           <Route path="products/new" element={<ProductForm />} />
           <Route path="products/edit/:id" element={<ProductForm />} />
