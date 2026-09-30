@@ -1,3 +1,5 @@
+import { toHangul } from './hangulKeyboard.js';
+
 const CHOSUNG_LIST = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
 
 const EN_TO_KO_JAMO = {
@@ -98,6 +100,8 @@ const getSearchVariants = (name, query) => {
   const normalizedName = normalizeSearchText(name);
   const normalizedQuery = normalizeSearchText(query);
   const keyboardQuery = normalizeSearchText(convertEnglishKeyboardToKorean(query));
+  // 자모만 바꾼 것(초성 검색용)과 글자로 합친 것("xodms" → "태은") 둘 다 찾는다.
+  const composedQuery = normalizeSearchText(toHangul(query));
   const queryPhonetic = normalizeSearchText(expandEnglishToKoreanSound(query));
 
   return {
@@ -107,7 +111,7 @@ const getSearchVariants = (name, query) => {
       normalizeSearchText(expandEnglishToKoreanSound(name)),
       normalizeSearchText(expandEnglishToKoreanSound(name, EN_LETTER_ALT_SOUND)),
     ])],
-    needles: [...new Set([normalizedQuery, keyboardQuery, queryPhonetic])],
+    needles: [...new Set([normalizedQuery, keyboardQuery, composedQuery, queryPhonetic])],
     normalizedQuery,
   };
 };

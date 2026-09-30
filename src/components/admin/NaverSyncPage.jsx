@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
+import { matchesSearchText } from '../../utils/search';
 
 // 사이드바 플라이아웃과 공유되는 탭 정의 (AdminLayout 의 NAVER_TABS 와 key 동일)
 const TABS = [
@@ -277,7 +278,7 @@ const NaverSyncPage = () => {
     const filteredProducts = useMemo(() => {
         const q = productFilter.toLowerCase().trim();
         let list = products;
-        if (q) list = list.filter(p => p.name?.toLowerCase().includes(q) || p.hashtags?.some(t => t.toLowerCase().includes(q)));
+        if (q) list = list.filter(p => matchesSearchText(p.name || '', q) || p.hashtags?.some(t => matchesSearchText(t, q)));
         if (statusFilter) list = list.filter(p => naverStatusKey(p) === statusFilter);
         return list;
         // eslint-disable-next-line react-hooks/exhaustive-deps

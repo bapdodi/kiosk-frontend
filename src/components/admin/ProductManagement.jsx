@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 import { getImageUrl, uploadImage } from '../../utils/imageUtils';
 import BulkImageMatchModal from './BulkImageMatchModal';
 import CategoryEditor from './CategoryEditor';
+import { matchesSearchText } from '../../utils/search';
 
 const ProductManagement = () => {
     const navigate = useNavigate();
@@ -462,8 +463,8 @@ const ProductManagement = () => {
             .filter(p => {
                 // 검색 중에는 카테고리 필터를 무시하고 전체 상품에서 찾는다.
                 if (query) {
-                    return p.name?.toLowerCase().includes(query) ||
-                        p.hashtags?.some(t => t.toLowerCase().includes(query));
+                    return matchesSearchText(p.name || '', query) ||
+                        p.hashtags?.some(t => matchesSearchText(t, query));
                 }
                 if (!activeMainCat) return true;
                 // 상품은 여러 카테고리에 속할 수 있어 하나라도 맞으면 노출한다.

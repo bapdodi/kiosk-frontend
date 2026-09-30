@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { describeError, describeResponseError } from '../../utils/apiError';
+import { matchesSearchText } from '../../utils/search';
 
 // TODO(거래명세서 자동 입력, 이어서 할 작업): 상단에 [명세서 PDF 올리기]를 두고,
 // 서버가 읽어 온 거래처·품목 줄로 이 격자를 채운다. 원본 PDF 를 옆에 띄우고,
@@ -27,6 +28,124 @@ const newRequestId = () => {
     return `${Date.now().toString(16)}-${rand()}-${rand()}`;
 };
 
+const escapeHtml = (v) => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/**
+ * 발주서 인쇄. 새 창에 A4용 표를 만들어 인쇄창을 띄운다(매입처에 팩스/전달하는 용도).
+ * doc: { vendorName, date, voucherNo?, memo?, lines: [{ itemName, gyu, danwi, ea, price, remark }] }
+ */
+let orderCompany = {};   // 발주서 머리에 찍을 우리 회사 정보(ERP 설정에서 읽어 온다)
+
+/** ERP 일자(yy.MM.dd)를 "2026.09.09(수)" 로. */
+const longDate = (erpDate) => {
+    const m = /^(\d{2})\.(\d{2})\.(\d{2})$/.exec(String(erpDate || ''));
+    if (!m) return String(erpDate || '');
+    const d = new Date(2000 + Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return `20${m[1]}.${m[2]}.${m[3]}(${'일월화수목금토'[d.getDay()]})`;
+};
+
+const ORDER_SHEET_ROWS = 30;   // 경영박사 발주서처럼 빈 줄까지 30줄을 고정으로 그린다
+
+/**
+ * 발주서 인쇄. 경영박사 발주서 양식을 따른다: 제목, 문서번호, 수신처 귀하, 발주자 정보 박스,
+ * 합계금액, 30줄 표, "이하여백". 새 창을 열고 단가/금액 표시 여부를 창 위쪽에서 고른 뒤 인쇄한다.
+ * doc: { vendorName, date(yy.MM.dd), voucherNo?, memo?, lines: [{ itemName, gyu, danwi, ea, price, remark }] }
+ * danwi 는 경영박사 양식의 "적요" 칸에 들어간다(발주 줄의 BIGO 가 단위다).
+ */
+const printOrderSheet = (doc) => {
+    const co = orderCompany;
+    const lines = doc.lines.map(l => {
+        const gum = Math.round(Number(l.price || 0)) * Number(l.ea || 0);
+        return { ...l, gum: l.gum ?? gum, vat: l.vat ?? Math.floor(gum / 10) };
+    });
+    const total = lines.reduce((sum, l) => sum + Number(l.gum || 0), 0);
+    const dateText = longDate(doc.date);
+    const shortDate = dateText.replace(/\(.\)$/, '');
+    const compact = String(doc.date || '').replace(/\./g, '');
+    const docNo = doc.voucherNo ? `${compact}-${String(doc.voucherNo).padStart(3, '0')}-1/1` : '';
+    const rowCount = Math.max(ORDER_SHEET_ROWS, lines.length + 2);
+    const body = [];
+    for (let i = 0; i < rowCount; i++) {
+        const l = lines[i];
+        if (l) {
+            body.push(`<tr><td class="c">${i + 1}</td><td>${escapeHtml(l.itemName)}</td><td>${escapeHtml(l.gyu)}</td>
+                <td class="c">${escapeHtml(l.danwi)}</td><td class="r">${won(l.ea)}</td>
+                <td class="r price">${won(l.price)}</td><td class="r amount">${won(l.gum)}</td>
+                <td class="r amount">${won(l.vat)}</td><td class="c">${shortDate}</td></tr>`);
+        } else if (i === lines.length) {
+            body.push('<tr><td class="c">&nbsp;</td><td class="c">=====이하여백=====</td><td></td><td></td><td></td><td class="price"></td><td class="amount"></td><td class="amount"></td><td></td></tr>');
+        } else {
+            body.push('<tr><td class="c">&nbsp;</td><td></td><td></td><td></td><td></td><td class="price"></td><td class="amount"></td><td class="amount"></td><td></td></tr>');
+        }
+    }
+    const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>발주서 - ${escapeHtml(doc.vendorName)}</title>
+<style>
+  @page { size: A4; margin: 10mm 12mm; }
+  body { font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif; color: #111; font-size: 10pt; margin: 0; }
+  .toolbar { display: flex; gap: 18px; align-items: center; padding: 10px 14px; background: #f1f5f9; border-bottom: 1px solid #cbd5e1; font-size: 11pt; }
+  .toolbar button { margin-left: auto; padding: 6px 18px; font-size: 11pt; cursor: pointer; }
+  h1 { text-align: center; letter-spacing: 14px; margin: 6px 0 2px; font-size: 22pt; }
+  .docno { text-align: right; font-size: 9pt; margin-bottom: 4px; }
+  .head { display: flex; justify-content: space-between; align-items: stretch; gap: 10px; margin-bottom: 6px; }
+  .left { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+  .to { font-size: 14pt; font-weight: 700; border-bottom: 1px solid #333; padding-bottom: 2px; }
+  .sumline { font-size: 12pt; border-bottom: 1px solid #333; padding: 4px 0; display: flex; justify-content: space-between; }
+  .box { width: 96mm; }
+  .box table td, .box table th { padding: 2px 5px; font-size: 9pt; }
+  .box th { width: 18mm; background: #f3f3f3; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; }
+  .main th, .main td { border: 1px solid #333; padding: 0 5px; height: 6.3mm; font-size: 9.5pt; }
+  .box td, .box th { border: 1px solid #333; }
+  .main th { background: #eee; }
+  .c { text-align: center; } .r { text-align: right; }
+  .memo { margin-top: 6px; font-size: 9.5pt; }
+  body.no-price td.price, body.no-amount td.amount, body.no-amount .sumamount { visibility: hidden; }
+  @media print { .toolbar { display: none; } }
+</style></head><body>
+<div class="toolbar">
+  <label><input type="checkbox" id="optPrice"> 단가 표시</label>
+  <label><input type="checkbox" id="optAmount"> 금액 표시 (금액·부가세·합계금액)</label>
+  <button type="button" onclick="window.print()">인쇄</button>
+</div>
+<h1>발 주 서</h1>
+<div class="docno">${escapeHtml(dateText)} ${docNo ? `&nbsp; No. ${escapeHtml(docNo)}` : ''}</div>
+<div class="head">
+  <div class="left">
+    <div class="to">${escapeHtml(doc.vendorName)} 귀하</div>
+    <div>
+      <div class="sumline"><span>합계금액</span><span class="sumamount">${won(total + lines.reduce((s, l) => s + Number(l.vat || 0), 0))} 원</span></div>
+      <div style="margin-top:4px">아래와 같이 발주 합니다.</div>
+    </div>
+  </div>
+  <div class="box"><table>
+    <tr><th>사업자번호</th><td colspan="3" class="c" style="font-size:12pt;font-weight:700">${escapeHtml(co.bizNo)}</td></tr>
+    <tr><th>상 호</th><td>${escapeHtml(co.name)}</td><th style="width:16mm">대표자</th><td>${escapeHtml(co.ceo)}</td></tr>
+    <tr><th>주 소</th><td colspan="3">${escapeHtml(co.address)}</td></tr>
+    <tr><th>업 태</th><td>${escapeHtml(co.bizType)}</td><th>종 목</th><td>${escapeHtml(co.bizItem)}</td></tr>
+    <tr><th>전 화</th><td>${escapeHtml(co.tel)}</td><th>팩 스</th><td>${escapeHtml(co.fax)}</td></tr>
+  </table></div>
+</div>
+<table class="main"><thead><tr>
+  <th style="width:9mm">No.</th><th>품 명</th><th style="width:34mm">규 격</th><th style="width:14mm">적요</th>
+  <th style="width:14mm">수량</th><th class="price" style="width:18mm">단가</th><th class="amount" style="width:22mm">금액</th>
+  <th class="amount" style="width:17mm">부가세</th><th style="width:22mm">날짜</th></tr></thead>
+<tbody>${body.join('')}</tbody></table>
+${doc.memo ? `<div class="memo">메모: ${escapeHtml(doc.memo)}</div>` : ''}
+<script>
+  const sync = () => {
+    document.body.classList.toggle('no-price', !document.getElementById('optPrice').checked);
+    document.body.classList.toggle('no-amount', !document.getElementById('optAmount').checked);
+  };
+  document.getElementById('optPrice').onchange = sync;
+  document.getElementById('optAmount').onchange = sync;
+  sync();
+</script>
+</body></html>`;
+    const w = window.open('', '_blank', 'width=900,height=1000');
+    if (!w) { window.alert('팝업이 차단되어 인쇄창을 열 수 없습니다. 팝업을 허용해 주세요.'); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+};
+
 const readError = (res) => describeResponseError(res, '요청을 처리하지 못했습니다.');
 
 /** 격자의 한 줄. itemCode 가 없으면 아직 품목이 안 정해진 빈 줄이다. */
@@ -47,6 +166,8 @@ const emptyRow = () => ({
 
 /** 격자에서 좌우/엔터로 옮겨 다니는 입력 칸 순서. */
 const COLUMNS = ['itemName', 'ea', 'price', 'remark'];
+/** 발주는 단위를 직접 고칠 수 있어 품명 다음에 단위 칸이 끼어든다. */
+const ORDER_COLUMNS = ['itemName', 'danwi', 'ea', 'price', 'remark'];
 
 /**
  * 재고 입고 관리 페이지.
@@ -58,8 +179,22 @@ const COLUMNS = ['itemName', 'ea', 'price', 'remark'];
  * 않도록 마우스 없이 키보드만으로 끝까지 입력할 수 있어야 한다:
  *   품명 입력 → ↑↓ 로 품목 고르고 Enter → 수량 → 단가 → 적요 → Enter 면 다음 줄
  */
-const ErpReceivingPage = () => {
-    const [tab, setTab] = useState('entry');         // 'entry' | 'history'
+const ErpReceivingPage = ({ mode = 'receive' }) => {
+    // 같은 화면을 입고(KIND=4)와 발주(KIND=13)가 나눠 쓴다. 메뉴가 따로라 상태도 따로다.
+    const isOrder = mode === 'order';
+    const kind = isOrder ? 13 : 4;
+    const noun = isOrder ? '발주' : '입고';
+    const columns = isOrder ? ORDER_COLUMNS : COLUMNS;
+
+    const [tab, setTab] = useState('entry');         // 'entry' | 'history' | 'stock'
+    const [stockQuery, setStockQuery] = useState('');
+    const [stockAll, setStockAll] = useState(null);      // null = 아직 불러오는 중
+    const [stockBusy, setStockBusy] = useState(false);
+    const [stockLowOnly, setStockLowOnly] = useState(false);
+    const [stockLimit, setStockLimit] = useState(200);
+    const [reorder, setReorder] = useState(null);        // null = 아직 조회 전
+    const [reorderBusy, setReorderBusy] = useState(false);
+    const [picked, setPicked] = useState({});        // 발주 추천에서 체크한 품목코드
     const [status, setStatus] = useState(null);
     const [date, setDate] = useState(todayInput());
     const [memo, setMemo] = useState('');
@@ -99,6 +234,70 @@ const ErpReceivingPage = () => {
 
     const writeEnabled = status?.writeEnabled === true;
 
+    /** 발주 추천 탭: 최근 매출로 하루 판매량을 구해 곧 떨어질 품목을 뽑는다(읽기 전용 계산). */
+    const loadReorder = async (e) => {
+        if (e) e.preventDefault();
+        setReorderBusy(true);
+        try {
+            const res = await fetch('/api/erp-receiving/admin/reorder');
+            if (!res.ok) { setError(await readError(res)); return; }
+            const data = await res.json();
+            setReorder(data);
+            setPicked({});
+        } catch (err) {
+            setError(describeError(err, '발주 추천을 불러오지 못했습니다.'));
+        } finally {
+            setReorderBusy(false);
+        }
+    };
+
+    /** 발주 추천에서 고른 품목을 발주 입력 격자로 옮긴다(매입처 한 곳씩). 수량·단가는 입력 화면에서 고친다. */
+    const pickToEntry = (vendorKey, items) => {
+        const first = items[0];
+        setRows([...items.map(item => ({
+            ...emptyRow(),
+            itemCode: item.CODE, itemName: String(item.ITEM || '').trim(), gyu: String(item.GYU || '').trim(),
+            danwi: String(item.DANWI || '').trim(), jego: Number(item.JEGO || 0),
+            ea: String(item.suggestQty),
+            price: item.lastPrice != null ? Math.round(Number(item.lastPrice)) : (item.INPR ? Math.round(Number(item.INPR)) : ''),
+            lastVendorCode: item.lastVendorCode ?? null, lastVendorName: item.lastVendorName || '',
+        })), emptyRow()]);
+        if (vendorKey !== 'none') {
+            setVendorCode(Number(first.lastVendorCode));
+            setVendorText(first.lastVendorName || String(first.lastVendorCode));
+        } else {
+            setVendorCode(null); setVendorText('');
+        }
+        setPreview(null); setSaved(null); setError('');
+        requestIdRef.current = newRequestId();
+        setPicked(prev => {
+            const next = { ...prev };
+            items.forEach(item => { delete next[item.CODE]; });
+            return next;
+        });
+        setTab('entry');
+    };
+
+    /** 재고 조회 탭: ERP ITEM 전체를 한 번에 읽어 오고, 검색은 화면에서 거른다. */
+    const loadStock = async () => {
+        setStockBusy(true);
+        try {
+            const res = await fetch('/api/erp-receiving/admin/stock');
+            if (!res.ok) { setError(await readError(res)); return; }
+            setStockAll(await res.json());
+        } catch (err) {
+            setError(describeError(err, '재고 조회에 실패했습니다.'));
+        } finally {
+            setStockBusy(false);
+        }
+    };
+
+    // 발주 추천은 기준을 넣는 화면이 아니다. 탭을 열면 서버가 알아서 분석한다.
+    useEffect(() => {
+        if (tab === 'reorder' && reorder === null && !reorderBusy) loadReorder();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tab]);
+
     const load = useCallback(async (url, setter, onFail) => {
         try {
             const res = await fetch(url);
@@ -110,17 +309,22 @@ const ErpReceivingPage = () => {
     }, []);
 
     const loadHistory = useCallback((from = historyFrom, to = historyTo, q = historyQuery) => {
-        const query = new URLSearchParams({ from, to });
+        const query = new URLSearchParams({ from, to, kind });
         if (q.trim()) query.set('q', q.trim());
-        load(`/api/erp-receiving/admin/history?${query}`, setHistory, '입고 이력을 불러오지 못했습니다.');
-    }, [historyFrom, historyTo, historyQuery, load]);
+        load(`/api/erp-receiving/admin/history?${query}`, setHistory, `${noun} 이력을 불러오지 못했습니다.`);
+    }, [historyFrom, historyTo, historyQuery, load, kind]);
 
     useEffect(() => {
         load('/api/erp-receiving/admin/status', setStatus, '상태를 불러오지 못했습니다.');
         load('/api/erp-receiving/admin/vendors', setVendors, '매입처 목록을 불러오지 못했습니다.');
-        const query = new URLSearchParams({ from: monthStartInput(), to: todayInput() });
-        load(`/api/erp-receiving/admin/history?${query}`, setHistory, '입고 이력을 불러오지 못했습니다.');
-    }, [load]);
+        if (!isOrder) loadStock();
+        if (isOrder) {
+            fetch('/api/erp-receiving/admin/company').then(r => r.ok ? r.json() : {}).then(c => { orderCompany = c; }).catch(() => {});
+        }
+        const query = new URLSearchParams({ from: monthStartInput(), to: todayInput(), kind });
+        load(`/api/erp-receiving/admin/history?${query}`, setHistory, `${noun} 이력을 불러오지 못했습니다.`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [load, kind, noun, isOrder]);
 
     // 품목 검색. 입력 중인 줄의 품명만 대상으로 한다(디바운스 250ms).
     const keyword = searchRow != null ? (rows[searchRow]?.itemName || '').trim() : '';
@@ -223,7 +427,7 @@ const ErpReceivingPage = () => {
 
     /** 격자 키보드 이동. Enter/→ 는 다음 칸, ↑↓ 는 위아래 줄, 마지막 칸 Enter 면 다음 줄 품명. */
     const onCellKeyDown = (e, rowIdx, col) => {
-        const colIdx = COLUMNS.indexOf(col);
+        const colIdx = columns.indexOf(col);
 
         // 품명 칸에서 후보 목록이 열려 있으면 ↑↓/Enter 는 목록 조작에 쓴다.
         if (col === 'itemName' && searchRow === rowIdx && resultsReady) {
@@ -254,7 +458,7 @@ const ErpReceivingPage = () => {
 
         if (e.key === 'Enter') {
             e.preventDefault();
-            if (colIdx < COLUMNS.length - 1) return focusCell(rowIdx, COLUMNS[colIdx + 1]);
+            if (colIdx < columns.length - 1) return focusCell(rowIdx, columns[colIdx + 1]);
             return focusCell(rowIdx + 1, 'itemName');   // 마지막 칸 → 다음 줄
         }
         if (e.key === 'ArrowDown') {
@@ -266,14 +470,14 @@ const ErpReceivingPage = () => {
             return focusCell(rowIdx - 1, col);
         }
         // 숫자 칸에서는 좌우 화살표로 칸을 옮긴다(텍스트 칸은 커서 이동이 우선).
-        if (col !== 'itemName' && col !== 'remark') {
-            if (e.key === 'ArrowRight' && colIdx < COLUMNS.length - 1) {
+        if (col !== 'itemName' && col !== 'remark' && col !== 'danwi') {
+            if (e.key === 'ArrowRight' && colIdx < columns.length - 1) {
                 e.preventDefault();
-                return focusCell(rowIdx, COLUMNS[colIdx + 1]);
+                return focusCell(rowIdx, columns[colIdx + 1]);
             }
             if (e.key === 'ArrowLeft' && colIdx > 0) {
                 e.preventDefault();
-                return focusCell(rowIdx, COLUMNS[colIdx - 1]);
+                return focusCell(rowIdx, columns[colIdx - 1]);
             }
         }
         if (e.key === 'Delete' && (e.ctrlKey || e.shiftKey)) {
@@ -288,8 +492,7 @@ const ErpReceivingPage = () => {
     const vendorMatches = useMemo(() => {
         const q = vendorText.trim();
         if (!q) return vendors.slice(0, 20);
-        const lower = q.toLowerCase();
-        return vendors.filter(v => String(v.NAME || '').toLowerCase().includes(lower)
+        return vendors.filter(v => matchesSearchText(String(v.NAME || ''), q)
             || String(v.CODE).includes(q)).slice(0, 20);
     }, [vendors, vendorText]);
 
@@ -330,7 +533,8 @@ const ErpReceivingPage = () => {
         [filled]
     );
     const totalQty = filled.reduce((sum, r) => sum + (Number(r.ea) || 0), 0);
-    const missingPrice = filled.some(r => r.price === '' || r.price == null);
+    // 발주는 단가 없이도 낸다(경영박사 발주 줄에도 단가 0 이 많다). 입고는 단가가 필수다.
+    const missingPrice = !isOrder && filled.some(r => r.price === '' || r.price == null);
     const canSubmit = filled.length > 0 && !missingPrice && vendorCode != null;
 
     const body = () => ({
@@ -343,6 +547,7 @@ const ErpReceivingPage = () => {
             ea: Number(r.ea) || 0,
             price: Number(r.price) || 0,
             remark: r.remark || '',
+            ...(isOrder ? { unit: (r.danwi || '').trim() } : {}),
         })),
     });
 
@@ -364,7 +569,7 @@ const ErpReceivingPage = () => {
     const runPreview = async () => {
         setBusy('previewing'); setError(''); setSaved(null);
         try {
-            setPreview(await post('/api/erp-receiving/admin/preview', body()));
+            setPreview(await post(isOrder ? '/api/erp-receiving/admin/orders/preview' : '/api/erp-receiving/admin/preview', body()));
         } catch (e) {
             setError(e.message); setPreview(null);
         } finally {
@@ -373,11 +578,12 @@ const ErpReceivingPage = () => {
     };
 
     const save = async () => {
-        if (!window.confirm(`품목 ${filled.length}건, 합계 ${won(total)}원을 ERP 에 입고 처리합니다. 진행할까요?`)) return;
+        if (!window.confirm(`품목 ${filled.length}건, 합계 ${won(total)}원을 ERP 에 ${noun} ${isOrder ? '전표로 기록' : '처리'}합니다. 진행할까요?`)) return;
         setBusy('saving'); setError('');
         try {
-            const result = await post('/api/erp-receiving/admin/vouchers', body());
-            setSaved(result);
+            const snapshot = { vendorName: vendorText, memo, lines: filled.map(r => ({ ...r })) };
+            const result = await post(isOrder ? '/api/erp-receiving/admin/orders' : '/api/erp-receiving/admin/vouchers', body());
+            setSaved({ ...result, print: snapshot });
             setRows([emptyRow()]); setPreview(null); setMemo('');
             requestIdRef.current = newRequestId(); // 다음 전표는 새 멱등키로
             loadHistory();
@@ -392,7 +598,9 @@ const ErpReceivingPage = () => {
         if (!window.confirm(`${row.erpDate} 전표 ${row.voucherNo}번(${row.lineCount}줄)을 ERP 에서 삭제합니다. 진행할까요?`)) return;
         setBusy('cancelling'); setError('');
         try {
-            await post(`/api/erp-receiving/admin/vouchers/${row.id}/cancel`, {});
+            await post(isOrder
+                ? `/api/erp-receiving/admin/orders/${encodeURIComponent(row.orderRequestId)}/cancel`
+                : `/api/erp-receiving/admin/vouchers/${row.id}/cancel`, {});
             loadHistory();
         } catch (e) {
             setError(e.message);
@@ -416,6 +624,7 @@ const ErpReceivingPage = () => {
         setBusy('history-detail'); setError('');
         try {
             const query = new URLSearchParams({
+                kind,
                 date: row.erpDate,
                 voucherNo: row.voucherNo,
                 vendorCode: row.vendorCode,
@@ -446,7 +655,7 @@ const ErpReceivingPage = () => {
     return (
         <div style={{ padding: '24px', maxWidth: '1200px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
-                <h2 style={{ margin: 0, fontSize: '1.4rem' }}>재고 입고 관리</h2>
+                <h2 style={{ margin: 0, fontSize: '1.4rem' }}>{isOrder ? '발주 관리' : '재고 입고 관리'}</h2>
                 {status && (writeEnabled
                     ? <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '999px', fontSize: '0.78rem', fontWeight: 700 }}>ERP 기록 가능</span>
                     : <span style={{ background: '#fef3c7', color: '#92400e', padding: '4px 10px', borderRadius: '999px', fontSize: '0.78rem', fontWeight: 700 }}>읽기 전용</span>
@@ -455,7 +664,13 @@ const ErpReceivingPage = () => {
 
             {/* ── 탭 ── */}
             <div style={{ display: 'flex', gap: '4px', borderBottom: '2px solid #e2e8f0', marginBottom: '18px' }}>
-                {[{ key: 'entry', label: '입고 입력' }, { key: 'history', label: `이전 기록${history.length ? ` (${history.length})` : ''}` }].map(t => (
+                {[
+                    { key: 'entry', label: `${noun} 입력` },
+                    { key: 'history', label: `이전 기록${history.length ? ` (${history.length})` : ''}` },
+                    isOrder
+                        ? { key: 'reorder', label: `발주 추천${reorder ? ` (${reorder.items.length})` : ''}` }
+                        : { key: 'stock', label: '재고 조회' },
+                ].map(t => (
                     <button
                         key={t.key}
                         onClick={() => setTab(t.key)}
@@ -479,9 +694,29 @@ const ErpReceivingPage = () => {
 
             {saved && tab === 'entry' && (
                 <div style={{ background: '#dcfce7', color: '#166534', padding: '14px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.9rem', lineHeight: 1.7 }}>
-                    <strong>입고 완료</strong> — {saved.dDate} 전표 {saved.dNo}번, {saved.lineCount}줄 / {won(saved.totalAmount)}원
+                    <strong>{noun} 완료</strong> — {saved.dDate} 전표 {saved.dNo}번, {saved.lineCount}줄 / {won(saved.totalAmount)}원
                     {saved.duplicate && ' (이미 저장돼 있던 전표입니다)'}
-                    <br />경영박사에서 해당 전표가 정상으로 보이는지 확인해 주세요.
+                    <br />{isOrder
+                        ? '경영박사에서 발주 전표가 보이는지 확인해 주세요. 재고는 바뀌지 않고, 물건이 들어와 입고 처리할 때 반영됩니다.'
+                        : '경영박사에서 해당 전표가 정상으로 보이는지 확인해 주세요.'}
+                    {isOrder && saved.print && (
+                        <button type="button" className="apply-btn" style={{ marginLeft: '12px' }}
+                            onClick={() => printOrderSheet({
+                                vendorName: saved.vendorName || saved.print.vendorName, date: saved.dDate,
+                                voucherNo: saved.dNo, memo: saved.print.memo, lines: saved.print.lines,
+                            })}>발주서 인쇄</button>
+                    )}
+                    {isOrder && !saved.duplicate && (
+                        <button type="button" className="action-btn" style={{ marginLeft: '8px' }} disabled={!!busy}
+                            onClick={async () => {
+                                if (!window.confirm('방금 기록한 발주 전표를 ERP 에서 삭제합니다. 진행할까요?')) return;
+                                setBusy('cancelling'); setError('');
+                                try {
+                                    await post(`/api/erp-receiving/admin/orders/${encodeURIComponent(saved.requestId)}/cancel`, {});
+                                    setSaved(null); loadHistory();
+                                } catch (e) { setError(e.message); } finally { setBusy(''); }
+                            }}>방금 발주 취소</button>
+                    )}
                 </div>
             )}
 
@@ -490,7 +725,7 @@ const ErpReceivingPage = () => {
                     {/* ── 전표 머리 ── */}
                     <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '14px' }}>
                         <div>
-                            <label className="admin-label">입고일자</label>
+                            <label className="admin-label">{noun}일자</label>
                             <input type="date" className="admin-input-small" style={{ width: '170px' }} value={date}
                                 onChange={e => { setDate(e.target.value); setPreview(null); }} />
                         </div>
@@ -554,7 +789,7 @@ const ErpReceivingPage = () => {
                                 <col style={{ width: '42px' }} />
                                 <col />
                                 <col style={{ width: '150px' }} />
-                                <col style={{ width: '60px' }} />
+                                <col style={{ width: isOrder ? '84px' : '60px' }} />
                                 <col style={{ width: '90px' }} />
                                 <col style={{ width: '110px' }} />
                                 <col style={{ width: '120px' }} />
@@ -661,9 +896,24 @@ const ErpReceivingPage = () => {
                                             <td style={{ ...gridCell, padding: '8px 10px', color: '#64748b', fontSize: '0.88rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {r.gyu}
                                             </td>
-                                            <td style={{ ...gridCell, padding: '8px', textAlign: 'center', color: '#64748b', fontSize: '0.88rem' }}>
-                                                {r.danwi}
-                                            </td>
+                                            {isOrder ? (
+                                                <td style={gridCell}>
+                                                    <input
+                                                        ref={el => { cellRefs.current[`${idx}-danwi`] = el; }}
+                                                        disabled={!r.itemCode}
+                                                        maxLength={20}
+                                                        placeholder="단위"
+                                                        style={{ ...cellInput, textAlign: 'center', padding: '10px 4px' }}
+                                                        value={r.danwi}
+                                                        onChange={e => patchRow(idx, { danwi: e.target.value })}
+                                                        onKeyDown={e => onCellKeyDown(e, idx, 'danwi')}
+                                                    />
+                                                </td>
+                                            ) : (
+                                                <td style={{ ...gridCell, padding: '8px', textAlign: 'center', color: '#64748b', fontSize: '0.88rem' }}>
+                                                    {r.danwi}
+                                                </td>
+                                            )}
 
                                             <td style={gridCell}>
                                                 <input
@@ -743,13 +993,23 @@ const ErpReceivingPage = () => {
                             </span>
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                            <button className="action-btn" onClick={runPreview} disabled={!!busy || !canSubmit}>
-                                {busy === 'previewing' ? '확인 중…' : '미리보기'}
-                            </button>
+                            {isOrder ? (
+                                <button className="action-btn" disabled={!canSubmit}
+                                    title={canSubmit ? '' : '매입처와 품목을 먼저 입력하세요'}
+                                    onClick={() => printOrderSheet({
+                                        vendorName: vendorText, date: date.slice(2).replace(/-/g, '.'), memo, lines: filled,
+                                    })}>
+                                    인쇄
+                                </button>
+                            ) : (
+                                <button className="action-btn" onClick={runPreview} disabled={!!busy || !canSubmit}>
+                                    {busy === 'previewing' ? '확인 중…' : '미리보기'}
+                                </button>
+                            )}
                             <button className="apply-btn" onClick={save}
-                                disabled={!!busy || !preview || !writeEnabled}
+                                disabled={!!busy || (isOrder ? !canSubmit : !preview) || !writeEnabled}
                                 title={writeEnabled ? '' : '읽기 전용 모드입니다'}>
-                                {busy === 'saving' ? '저장 중…' : 'ERP 에 저장'}
+                                {busy === 'saving' ? '저장 중…' : isOrder ? 'ERP 에 발주 기록' : 'ERP 에 저장'}
                             </button>
                         </div>
                     </div>
@@ -761,7 +1021,8 @@ const ErpReceivingPage = () => {
                         줄 삭제는 <strong>Ctrl+Delete</strong> 입니다.
                         {vendorCode == null && <><br /><span style={{ color: '#dc2626' }}>상호(매입처)를 먼저 선택해야 저장할 수 있습니다.</span></>}
                         {missingPrice && <><br /><span style={{ color: '#dc2626' }}>단가가 비어 있는 줄이 있습니다.</span></>}
-                        {!preview && canSubmit && <><br />저장하기 전에 <strong>미리보기</strong>로 ERP 에 들어갈 내용을 먼저 확인해 주세요.</>}
+                        {!isOrder && !preview && canSubmit && <><br />저장하기 전에 <strong>미리보기</strong>로 ERP 에 들어갈 내용을 먼저 확인해 주세요.</>}
+                        {isOrder && canSubmit && <><br /><strong>인쇄</strong>는 ERP 에 저장하지 않고 발주서만 뽑습니다. 저장한 뒤에는 「발주서 인쇄」로 전표번호가 찍힌 발주서를 다시 뽑을 수 있습니다.</>}
                     </p>
 
                     {/* ── 미리보기 ── */}
@@ -772,9 +1033,11 @@ const ErpReceivingPage = () => {
                             </div>
                             <div className="admin-section-body">
                                 <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '0 0 12px', lineHeight: 1.7 }}>
-                                    {preview.ilTable} · {preview.dDate} · 전표번호 {preview.dNo} · 매입(KIND 4)<br />
+                                    {preview.ilTable} · {preview.dDate} · 전표번호 {preview.dNo} · {isOrder ? '발주(KIND 13)' : '매입(KIND 4)'}<br />
                                     매입처 {preview.vendorName || preview.vendorCode} · 추적태그 <code>{preview.tag}</code>
-                                    {preview.stockMode === 'NONE' && <><br />현재고(JEGO)는 건드리지 않습니다 — 경영박사가 자기 규칙대로 반영합니다.</>}
+                                    {isOrder
+                                        ? <><br />발주는 재고를 바꾸지 않습니다 — 물건이 들어와 입고 처리할 때 반영됩니다.</>
+                                        : preview.stockMode === 'NONE' && <><br />현재고(JEGO)는 건드리지 않습니다 — 경영박사가 자기 규칙대로 반영합니다.</>}
                                 </p>
                                 <table className="admin-table">
                                     <thead>
@@ -801,6 +1064,12 @@ const ErpReceivingPage = () => {
                                 </table>
                                 <div style={{ textAlign: 'right', marginTop: '12px' }}>
                                     합계 <strong style={{ fontSize: '1.1rem' }}>{won(preview.totalAmount)}</strong>원 · 부가세 {won(preview.totalVat)}원
+                                    {isOrder && (
+                                        <button type="button" className="action-btn" style={{ marginLeft: '12px' }}
+                                            onClick={() => printOrderSheet({
+                                                vendorName: preview.vendorName || preview.vendorCode, date: preview.dDate, memo, lines: preview.lines,
+                                            })}>발주서 미리 인쇄</button>
+                                    )}
                                 </div>
                             </div>
                         </section>
@@ -808,10 +1077,200 @@ const ErpReceivingPage = () => {
                 </>
             )}
 
+            {/* ── 재고 조회 탭 ── */}
+            {tab === 'stock' && (() => {
+                const q = stockQuery.trim();
+                const filtered = (stockAll || []).filter(item =>
+                    (!stockLowOnly || Number(item.JEGO) <= 0)
+                    && (!q || matchesSearchText(`${item.ITEM} ${item.GYU}`, q) || String(item.CODE) === q));
+                const shown = filtered.slice(0, stockLimit);
+                return (
+                    <section className="admin-section">
+                        <div className="admin-section-header">ERP 현재고 조회</div>
+                        <div className="admin-section-body">
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px' }}>
+                                <input className="admin-input-small" style={{ flex: 1, minWidth: '240px' }} value={stockQuery}
+                                    onChange={e => { setStockQuery(e.target.value); setStockLimit(200); }}
+                                    placeholder="품명, 규격 또는 품목코드로 걸러 보세요 (영문 자판으로 쳐도 됩니다)" autoFocus />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
+                                    <input type="checkbox" checked={stockLowOnly}
+                                        onChange={e => { setStockLowOnly(e.target.checked); setStockLimit(200); }} />
+                                    재고 0 이하만
+                                </label>
+                                <button type="button" className="action-btn" disabled={stockBusy} onClick={loadStock}>
+                                    {stockBusy ? '불러오는 중…' : '새로고침'}
+                                </button>
+                                {stockAll && (
+                                    <span style={{ color: '#64748b', fontSize: '0.88rem' }}>
+                                        전체 {stockAll.length.toLocaleString()}개 중 {filtered.length.toLocaleString()}개
+                                    </span>
+                                )}
+                            </div>
+                            {stockAll === null ? (
+                                <p style={{ color: '#94a3b8', margin: 0, textAlign: 'center', padding: '24px 0' }}>
+                                    {stockBusy ? '전체 품목을 불러오는 중입니다…' : '품목을 불러오지 못했습니다. 새로고침을 눌러 주세요.'}
+                                </p>
+                            ) : filtered.length === 0 ? (
+                                <p style={{ color: '#94a3b8', margin: 0, textAlign: 'center', padding: '24px 0' }}>
+                                    조건에 맞는 품목이 없습니다.
+                                </p>
+                            ) : (
+                                <>
+                                    <table className="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th>코드</th><th>품명</th><th>규격</th><th>단위</th>
+                                                <th style={{ textAlign: 'right' }}>현재고</th>
+                                                <th style={{ textAlign: 'right' }}>입고가</th>
+                                                <th style={{ textAlign: 'right' }}>출고A가</th>
+                                                <th style={{ textAlign: 'right' }}>출고B가</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {shown.map(item => (
+                                                <tr key={item.CODE}>
+                                                    <td style={{ fontFamily: 'monospace', color: '#64748b' }}>{item.CODE}</td>
+                                                    <td style={{ fontWeight: 700 }}>{item.ITEM}</td>
+                                                    <td>{item.GYU}</td>
+                                                    <td>{item.DANWI}</td>
+                                                    <td style={{ textAlign: 'right', fontWeight: 700, color: Number(item.JEGO) <= 0 ? '#dc2626' : undefined }}>
+                                                        {Number(item.JEGO).toLocaleString()}
+                                                    </td>
+                                                    <td style={{ textAlign: 'right' }}>{Math.round(Number(item.INPR)).toLocaleString()}</td>
+                                                    <td style={{ textAlign: 'right' }}>{Math.round(Number(item.OUTA)).toLocaleString()}</td>
+                                                    <td style={{ textAlign: 'right' }}>{Math.round(Number(item.OUTB)).toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    {filtered.length > shown.length && (
+                                        <div style={{ textAlign: 'center', marginTop: '14px' }}>
+                                            <button type="button" className="action-btn" onClick={() => setStockLimit(n => n + 300)}>
+                                                더 보기 ({shown.length.toLocaleString()} / {filtered.length.toLocaleString()})
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </section>
+                );
+            })()}
+
+            {/* ── 발주 추천 탭 ── */}
+            {tab === 'reorder' && (
+                <section className="admin-section">
+                    <div className="admin-section-header">주문해야 할 물품</div>
+                    <div className="admin-section-body">
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
+                            padding: '12px 14px', marginBottom: '16px', background: '#f8fafc',
+                            border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.88rem', color: '#475569',
+                        }}>
+                            <span style={{ flex: 1, minWidth: '260px', lineHeight: 1.6 }}>
+                                품목마다 최근 판매 추세와 변동, 발주부터 입고까지 실제로 걸린 기간, 이미 넣어 둔 발주를 함께 계산해
+                                <strong> 지금 주문해야 하는 품목과 수량</strong>을 자동으로 뽑았습니다.
+                            </span>
+                            {reorder && <span>{reorder.from} ~ {reorder.to} 거래 기준 · {reorder.items.length}개 품목</span>}
+                            <button type="button" className="action-btn" disabled={reorderBusy} onClick={() => loadReorder()}>
+                                {reorderBusy ? '분석 중…' : '다시 분석'}
+                            </button>
+                        </div>
+                        {reorder === null ? (
+                            <p style={{ color: '#94a3b8', margin: 0, textAlign: 'center', padding: '24px 0' }}>
+                                {reorderBusy ? '판매·입고 이력을 분석하는 중입니다…' : '분석 결과가 없습니다.'}
+                            </p>
+                        ) : reorder.items.length === 0 ? (
+                            <p style={{ color: '#94a3b8', margin: 0, textAlign: 'center', padding: '24px 0' }}>
+                                지금 주문이 필요한 품목이 없습니다.
+                            </p>
+                        ) : (
+                            <>
+                                {(() => {
+                                    // 체크한 품목을 마지막 매입처별로 묶어, 매입처마다 발주 입력으로 보낸다.
+                                    const groups = new Map();
+                                    reorder.items.filter(item => picked[item.CODE]).forEach(item => {
+                                        const key = item.lastVendorCode != null ? String(item.lastVendorCode) : 'none';
+                                        if (!groups.has(key)) groups.set(key, { name: item.lastVendorName || '매입처 미정', items: [] });
+                                        groups.get(key).items.push(item);
+                                    });
+                                    return (
+                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '14px' }}>
+                                            <button type="button" className="action-btn" onClick={() => setPicked(
+                                                Object.keys(picked).length === reorder.items.length ? {}
+                                                    : Object.fromEntries(reorder.items.map(item => [item.CODE, true])))}>
+                                                전체 선택/해제
+                                            </button>
+                                            {groups.size === 0
+                                                ? <span style={{ color: '#64748b', fontSize: '0.9rem' }}>발주할 품목을 체크하면 매입처별로 발주 입력에 담을 수 있습니다.</span>
+                                                : [...groups.entries()].map(([key, g]) => (
+                                                    <button key={key} type="button" className="apply-btn"
+                                                        onClick={() => pickToEntry(key, g.items)}>
+                                                        {g.name} {g.items.length}건 → 발주 입력
+                                                    </button>
+                                                ))}
+                                        </div>
+                                    );
+                                })()}
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th></th><th>상태</th><th>품명</th><th>규격</th>
+                                                <th style={{ textAlign: 'right' }}>현재고</th>
+                                                <th style={{ textAlign: 'right' }}>하루 평균</th>
+                                                <th style={{ textAlign: 'right' }}>남은 일수</th>
+                                                <th style={{ textAlign: 'right' }}>입고 기간</th>
+                                                <th style={{ textAlign: 'right' }}>입고 예정</th>
+                                                <th style={{ textAlign: 'right' }}>추천 수량</th>
+                                                <th>최근 매입처</th>
+                                                <th style={{ textAlign: 'right' }}>최근 단가</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {reorder.items.map(item => (
+                                                <tr key={item.CODE}>
+                                                    <td><input type="checkbox" checked={!!picked[item.CODE]}
+                                                        onChange={e => setPicked(prev => ({ ...prev, [item.CODE]: e.target.checked }))} /></td>
+                                                    <td>
+                                                        <span style={{
+                                                            fontSize: '0.78rem', fontWeight: 700, padding: '3px 9px', borderRadius: '999px', whiteSpace: 'nowrap',
+                                                            background: ['#fee2e2', '#ffedd5', '#e0f2fe'][item.urgency],
+                                                            color: ['#b91c1c', '#c2410c', '#0369a1'][item.urgency],
+                                                        }}>{['품절', '긴급', '권장'][item.urgency]}</span>
+                                                    </td>
+                                                    <td style={{ fontWeight: 700 }}>{item.ITEM}</td>
+                                                    <td>{item.GYU}</td>
+                                                    <td style={{ textAlign: 'right', fontWeight: 700, color: Number(item.JEGO) <= 0 ? '#dc2626' : undefined }}
+                                                        title={item.negativeStock ? 'ERP 재고가 음수입니다. 경영박사에서 확인해 주세요.' : ''}>
+                                                        {Number(item.JEGO).toLocaleString()}{item.negativeStock ? ' ⚠' : ''}
+                                                    </td>
+                                                    <td style={{ textAlign: 'right' }}>{item.dailyAvg}</td>
+                                                    <td style={{ textAlign: 'right' }}>{item.daysLeft <= 0 ? '품절' : `${item.daysLeft}일`}</td>
+                                                    <td style={{ textAlign: 'right' }}>{item.leadDays}일</td>
+                                                    <td style={{ textAlign: 'right' }}>{item.incoming > 0 ? Number(item.incoming).toLocaleString() : ''}</td>
+                                                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--admin-primary)' }}>
+                                                        {Number(item.suggestQty).toLocaleString()}
+                                                    </td>
+                                                    <td>{item.lastVendorName}</td>
+                                                    <td style={{ textAlign: 'right' }}>
+                                                        {item.lastPrice != null ? Number(item.lastPrice).toLocaleString() : ''}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </section>
+            )}
+
             {/* ── 이전 기록 탭 ── */}
             {tab === 'history' && (
                 <section className="admin-section">
-                    <div className="admin-section-header">입고 전표 찾기</div>
+                    <div className="admin-section-header">{noun} 전표 찾기</div>
                     <div className="admin-section-body">
                         <form onSubmit={e => { e.preventDefault(); loadHistory(); }} style={{
                             display: 'flex', alignItems: 'flex-end', gap: '10px', flexWrap: 'wrap',
@@ -850,7 +1309,7 @@ const ErpReceivingPage = () => {
                         </form>
                         {history.length === 0 ? (
                             <p style={{ color: '#94a3b8', margin: 0, textAlign: 'center', padding: '24px 0' }}>
-                                선택한 기간에 입고 기록이 없습니다.
+                                선택한 기간에 {noun} 기록이 없습니다.
                             </p>
                         ) : (
                             <table className="admin-table">
@@ -882,7 +1341,7 @@ const ErpReceivingPage = () => {
                                             <td style={{ textAlign: 'right' }}>{won(row.totalAmount)}</td>
                                             <td style={{ color: '#64748b', fontSize: '0.85rem' }}>
                                                 경영박사<br />
-                                                <span style={{ color: '#94a3b8' }}>{row.localLogId ? '이 화면에서 등록' : 'ERP 전표'}</span>
+                                                <span style={{ color: '#94a3b8' }}>{(isOrder ? row.orderRequestId : row.localLogId) ? '이 화면에서 등록' : 'ERP 전표'}</span>
                                             </td>
                                             <td>
                                                 <span style={{
@@ -894,7 +1353,7 @@ const ErpReceivingPage = () => {
                                                 </span>
                                             </td>
                                             <td style={{ textAlign: 'right' }}>
-                                                {row.localLogId && (
+                                                {(isOrder ? row.orderRequestId : row.localLogId) && (
                                                     <button className="action-btn delete" onClick={e => { e.stopPropagation(); cancel({ ...row, id: row.localLogId }); }} disabled={!!busy || !writeEnabled}>
                                                         취소
                                                     </button>
@@ -917,16 +1376,24 @@ const ErpReceivingPage = () => {
                         style={{ background: '#fff', borderRadius: '14px', width: 'min(1100px, 96vw)', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(15,23,42,.3)' }}>
                         <div style={{ position: 'sticky', top: 0, zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 22px', background: '#334155', color: '#fff' }}>
                             <div>
-                                <strong style={{ fontSize: '1.18rem' }}>{historyDetail.erpDate} 입고 전표</strong>
+                                <strong style={{ fontSize: '1.18rem' }}>{historyDetail.erpDate} {noun} 전표</strong>
                                 <span style={{ marginLeft: '12px', color: '#cbd5e1' }}>{historyDetail.ilTable} · No {historyDetail.voucherNo}</span>
                             </div>
-                            <button className="action-btn" onClick={() => setHistoryDetail(null)}>닫기</button>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                {isOrder && (
+                                    <button className="action-btn" onClick={() => printOrderSheet({
+                                        vendorName: historyDetail.vendorName || historyDetail.vendorCode, date: historyDetail.erpDate,
+                                        voucherNo: historyDetail.voucherNo, lines: historyDetail.lines,
+                                    })}>발주서 인쇄</button>
+                                )}
+                                <button className="action-btn" onClick={() => setHistoryDetail(null)}>닫기</button>
+                            </div>
                         </div>
                         <div style={{ padding: '20px 22px' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(130px, 1fr))', gap: '10px', marginBottom: '18px' }}>
                                 {[
                                     ['매입처', historyDetail.vendorName || historyDetail.vendorCode],
-                                    ['구분', '매입(입고)'],
+                                    ['구분', isOrder ? '발주' : '매입(입고)'],
                                     ['전표번호', historyDetail.voucherNo],
                                     ['상태', 'ERP 기록됨'],
                                 ].map(([label, value]) => (

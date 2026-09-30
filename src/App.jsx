@@ -225,6 +225,7 @@ function App() {
           <Route path="naver" element={<NaverSyncPage />} />
           <Route path="erp-bak" element={<ErpBakImportPage />} />
           <Route path="erp-receiving" element={<ErpReceivingPage />} />
+          <Route path="erp-order" element={<ErpReceivingPage mode="order" />} />
         </Route>
       </Routes>
     </BrowserRouter>
