@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
 import { printStatement, exportStatementXlsx } from '../../utils/statement';
+import { matchesSearchText } from '../../utils/search';
 
 const OrderManagement = () => {
     // 주문 감시(SSE + 예비 폴링)와 알림음은 AdminLayout 에서 관리한다. 여기서는 상태만 읽는다.
@@ -75,7 +76,7 @@ const OrderManagement = () => {
     )?.id;
 
     const dateAndSearchFilteredOrders = uniqueOrders.filter(order => {
-        const matchName = order.customerName.toLowerCase().includes(orderSearchQuery.toLowerCase());
+        const matchName = matchesSearchText(order.customerName || '', orderSearchQuery);
         let matchDate = true;
 
         if (order.timestamp) {

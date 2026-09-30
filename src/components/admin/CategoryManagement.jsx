@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { describeError, describeResponseError } from '../../utils/apiError';
+import { matchesSearchText } from '../../utils/search';
 
 const CategoryManagement = () => {
     const {
@@ -220,7 +221,7 @@ const CategoryManagement = () => {
     };
 
     const filteredCats = mainCategories.filter(c =>
-        c.name.toLowerCase().includes(catSearchQuery.toLowerCase())
+        matchesSearchText(c.name, catSearchQuery)
     );
 
     const currentCat = selectedCatId ? mainCategories.find(c => c.id === selectedCatId) : mainCategories[0];
