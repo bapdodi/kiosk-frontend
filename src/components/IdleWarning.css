@@ -1,0 +1,57 @@
+/* 대기 화면(10000) 바로 아래, 다른 모든 화면 위에 뜬다. 뒤 화면은 눌리지 않게 덮는다. */
+.idle-warning {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.idle-warning-card {
+  width: min(88vw, 760px);
+  padding: 56px 48px 48px;
+  border-radius: 32px;
+  background: #fff;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.idle-warning-title {
+  margin: 0 0 20px;
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: #1e293b;
+}
+
+.idle-warning-text {
+  margin: 0 0 40px;
+  font-size: 1.6rem;
+  line-height: 1.6;
+  color: #475569;
+}
+
+.idle-warning-text b {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #e5202e;
+}
+
+.idle-warning-extend {
+  width: 100%;
+  min-height: 120px;
+  border: none;
+  border-radius: 24px;
+  background: var(--accent-color, #ff6b00);
+  color: #fff;
+  font-size: 2.2rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(255, 107, 0, 0.3);
+}
+
+.idle-warning-extend:active {
+  transform: scale(0.99);
+}

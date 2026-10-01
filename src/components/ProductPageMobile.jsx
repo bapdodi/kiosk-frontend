@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
 import { useProductSelection } from '../hooks/useProductSelection';
+import { formatPriceRange, formatWon } from '../utils/price';
 import './ProductPageMobile.css';
 
 const FALLBACK_IMAGE = '/no-image.png';
@@ -27,6 +28,7 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
         handleImageTouchStart, handleImageTouchEnd,
         recommendedProducts,
         addedLines, addedTotalQuantity,
+        selectedTotalPrice, priceRange,
         optionSectionRef, handleConfirm,
     } = useProductSelection(product, { cartItems, products, onConfirm });
 
@@ -100,6 +102,11 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
 
                 <div className="mp-summary">
                     <h1 id="mp-title" className="mp-name">{product.name}</h1>
+                    {priceRange && (
+                        <div style={{ margin: '4px 0 8px', fontSize: '1.25rem', fontWeight: 900, color: 'var(--accent-color)' }}>
+                            {formatPriceRange(priceRange)}
+                        </div>
+                    )}
                     {product.gyu && <div className="mp-gyu">규격 {product.gyu}</div>}
                 </div>
 
@@ -234,6 +241,7 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
                 <div className="mp-bar-total">
                     <span>수량</span>
                     <strong>{formatQuantity(safeQuantity || 1)}개</strong>
+                    {selectedTotalPrice != null && <strong>{formatWon(selectedTotalPrice)}</strong>}
                 </div>
                 <button type="button" className="mp-order" onClick={() => handleConfirm(true)}>
                     {allOptionsSelected ? '장바구니 담기' : '규격 선택'}

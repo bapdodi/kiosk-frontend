@@ -1,4 +1,5 @@
 import { getImageUrl } from '../utils/imageUtils';
+import { cartTotal, formatWon } from '../utils/price';
 
 // 주문 마무리 1단계: 주문 넣기를 누른 직후, 상호 선택으로 넘어가기 전에 한 번 더 확인시킨다.
 // 장바구니(CartBar)와 달리 상품 사진을 크게 보여주기 때문에 담은 물건이 맞는지 눈으로 바로 확인할 수 있다.
@@ -7,6 +8,7 @@ import { getImageUrl } from '../utils/imageUtils';
 // 키오스크·PC 는 화면(screen), 폰은 기존처럼 팝업(modal)으로 띄운다.
 const OrderReview = ({ variant, items, onRemove, onQuantityChange, onClose, onConfirm, onSelectProduct }) => {
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    const total = cartTotal(items);
 
     // 같은 상품(id)끼리 묶어서 사진 한 장 아래 옵션별 줄로 표시 (장바구니와 동일한 규칙)
     const groups = [];
@@ -74,6 +76,11 @@ const OrderReview = ({ variant, items, onRemove, onQuantityChange, onClose, onCo
                                                 >
                                                     <span className="review-opt">
                                                         {item.selectedOption}
+                                                        {item.price > 0 && (
+                                                            <span className="review-line-price">
+                                                                {formatWon(item.price)} × {quantity} = {formatWon(item.price * quantity)}
+                                                            </span>
+                                                        )}
                                                     </span>
                                                     <div className="review-step">
                                                         <button
@@ -107,6 +114,13 @@ const OrderReview = ({ variant, items, onRemove, onQuantityChange, onClose, onCo
                         ))
                     )}
                 </div>
+
+                {total > 0 && (
+                    <div className="review-total">
+                        <span>총 {totalCount}개 합계</span>
+                        <strong>{formatWon(total)}</strong>
+                    </div>
+                )}
 
                 <div className="review-foot">
                     <button className="review-back" onClick={onClose}>더 담기</button>

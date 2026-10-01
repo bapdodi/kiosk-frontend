@@ -1,6 +1,8 @@
+import { cartTotal, formatWon } from '../utils/price';
 
 const Cart = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onSelectProduct }) => {
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    const total = cartTotal(items);
 
     // 같은 상품(id)끼리 묶어서 하나의 헤더 아래 옵션별 서브항목으로 표시
     const groups = [];
@@ -67,6 +69,11 @@ const Cart = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onSelect
                                                 >
                                                     {item.selectedOption || '기본'}
                                                 </div>
+                                                {item.price > 0 && (
+                                                    <div style={{ marginTop: '4px', color: '#0f766e', fontWeight: 800, fontSize: '0.9rem' }}>
+                                                        {formatWon(item.price * quantity)}
+                                                    </div>
+                                                )}
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
                                                     <button
                                                         onClick={() => onQuantityChange(item.cartId, -1)}
@@ -101,6 +108,12 @@ const Cart = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onSelect
                 )}
             </div>
             <div className="cart-footer">
+                {total > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px', fontWeight: 800 }}>
+                        <span>합계</span>
+                        <strong style={{ fontSize: '1.3rem', color: '#c2410c' }}>{formatWon(total)}</strong>
+                    </div>
+                )}
                 <button
                     className="checkout-btn"
                     onClick={onCheckout}

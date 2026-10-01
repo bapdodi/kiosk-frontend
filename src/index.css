@@ -124,6 +124,14 @@
     font-size: .85rem;
   }
 
+  .kiosk-container .review-line-price {
+    font-size: 1.15rem;
+  }
+
+  .kiosk-container .review-total {
+    padding: 10px 14px;
+  }
+
   .kiosk-container .review-foot {
     gap: 8px;
     padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
@@ -1315,9 +1323,23 @@ body {
 
 .cart-bar-total {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   line-height: 1.25;
   white-space: nowrap;
+}
+
+.cart-bar-line-price {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f766e;
+}
+
+.cart-bar-total-price {
+  font-size: 1.9rem;
+  font-weight: 900;
+  color: #0f766e;
 }
 
 .cart-bar-total-count {
@@ -2537,6 +2559,31 @@ body {
 .review-step button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.review-line-price {
+  display: block;
+  margin-top: 6px;
+  color: #0f766e;
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+
+.review-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 14px 24px;
+  border-top: 1px solid #f1f5f9;
+  background: #f8fafc;
+  font-weight: 800;
+  color: #334155;
+}
+
+.review-total strong {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #c2410c;
 }
 
 .review-qty {

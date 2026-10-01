@@ -1,4 +1,5 @@
 import { COMBINATION_GROUP } from './optionConstants';
+import { resolvePrice } from './price';
 
 /**
  * 규격(옵션) 해석 규칙.
@@ -105,9 +106,8 @@ export function countOptionValues(product) {
 }
 
 /*
- * 가격은 여기서 다루지 않는다.
- * 손님 화면에는 서버가 단가를 내려주지 않고(공개 API 에서 제거), 주문 금액은
- * 서버가 ERP 코드로 다시 계산한다. 화면이 알아야 하는 것은 "무엇을 몇 개" 뿐이다.
+ * 가격은 서버가 내려주는 `price`(A단가, 모든 손님 동일)를 그대로 보여 줄 뿐이다.
+ * 주문 금액은 서버가 ERP 코드로 다시 계산하므로 주문 요청에는 가격을 싣지 않는다.
  */
 
 /** 현재 선택값(selections)을 장바구니 한 줄로 변환 */
@@ -120,6 +120,7 @@ export function buildLineFromSelections(product, groups, selections, qty) {
         comboId,
         displayName: comboName,
         erpCode: (foundCombo && foundCombo.erpCode) || product.erpCode || null,
+        price: resolvePrice(product, foundCombo),
         quantity: Math.max(1, qty)
     };
 }
@@ -136,6 +137,7 @@ export function buildQuickAddArgs(product, qty) {
             id: line.comboId,
             displayName: line.displayName,
             erpCode: line.erpCode,
+            price: line.price,
         }],
         quantities: { [line.comboId]: Math.max(1, qty) },
     };
