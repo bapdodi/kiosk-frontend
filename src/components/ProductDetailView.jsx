@@ -1,6 +1,7 @@
 import { getImageUrl } from '../utils/imageUtils';
 import './ProductDetailView.css';
 import { useProductSelection } from '../hooks/useProductSelection';
+import { formatPriceRange, formatWon } from '../utils/price';
 
 /**
  * 키오스크·PC 용 상품 상세(규격·수량 선택) 화면.
@@ -24,6 +25,7 @@ const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, 
         failedImages, setFailedImages,
         moveImage, handleImageTouchStart, handleImageTouchEnd,
         recommendedProducts,
+        selectedUnitPrice, selectedTotalPrice, priceRange,
         optionSectionRef, handleConfirm,
     } = useProductSelection(product, { cartItems, products, onConfirm });
 
@@ -137,6 +139,12 @@ const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, 
                             <h2 id="option-product-title" className="option-header-title" style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: '15px', color: '#1e293b', lineHeight: 1.2 }}>
                                 {product.name}
                             </h2>
+
+                            {priceRange && (
+                                <div className="option-price" aria-label="가격">
+                                    {formatPriceRange(priceRange)}
+                                </div>
+                            )}
 
                             {product.gyu && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
@@ -296,6 +304,13 @@ const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, 
                                 </button>
                             </div>
                         </div>
+
+                        {selectedTotalPrice != null && (
+                            <div className="option-total-price" role="status">
+                                <span>{formatWon(selectedUnitPrice)} × {Number(quantity) || 1}개</span>
+                                <strong>합계 {formatWon(selectedTotalPrice)}</strong>
+                            </div>
+                        )}
 
                         {/* 규격 → 수량 → 담기. 정하자마자 바로 누를 수 있게 같은 카드 안에 둔다.
                             아래 푸터에 있을 때는 시선이 화면 끝까지 갔다 와야 했다. */}

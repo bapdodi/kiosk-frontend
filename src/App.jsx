@@ -17,15 +17,18 @@ import OrderReview from './components/OrderReview';
 import CustomerSelect from './components/CustomerSelect';
 import OrderDone from './components/OrderDone';
 import AttractScreen from './components/AttractScreen';
+import IdleWarning from './components/IdleWarning';
 import ProductCard from './components/ProductCard';
 import { getChosungChar, getSearchMatchScore, getSimilarProducts, normalizeSearchText } from './utils/search';
 import { describeError, fetchJson } from './utils/apiError';
 import { useMobileBackClose } from './hooks/useMobileBackClose';
 import { useIsMobile } from './hooks/useIsMobile';
 import ProductPageMobile from './components/ProductPageMobile';
+import { resolvePrice } from './utils/price';
 
-// 키오스크를 이만큼 아무도 안 만지면 장바구니를 비우고 대기 화면으로 돌아간다.
-const IDLE_RESET_MS = 90 * 1000;
+// 키오스크를 이만큼 아무도 안 만지면 자리비움 안내를 띄우고, 안내 후에도(IDLE_WARNING_SECONDS)
+// 연장하지 않으면 장바구니를 비우고 대기 화면으로 돌아간다.
+const IDLE_WARNING_MS = 90 * 1000;
 
 // ... (KioskView & ProtectedRoute components)
 
@@ -538,6 +541,7 @@ function KioskView({
               ...product,
               selectedOption,
               erpCode: combo ? (combo.erpCode || combo.id) : product.erpCode,
+              price: resolvePrice(product, combo),
               quantity: qty,
               cartId: Date.now() + Math.random()
             });
@@ -707,6 +711,8 @@ function KioskView({
 
   // 대기 화면. 폰 손님에게는 띄우지 않는다(키오스크·PC 전용).
   const [isIdle, setIsIdle] = useState(true);
+  // 자리비움 안내를 띄우는 중인가. 이 동안은 터치가 들어와도 자동으로 연장되지 않고 "연장하기"만 이어 준다.
+  const [isIdleWarning, setIsIdleWarning] = useState(false);
 
   // 한동안 아무 입력이 없으면 앞 손님이 담아 둔 것을 전부 지우고 처음으로 돌린다.
   const resetForNextCustomer = () => {
@@ -717,17 +723,18 @@ function KioskView({
     setOrderModal({ isOpen: false, name: '' });
     setOptionQuantities({});
     pendingOrderRequestId.current = null;
+    setIsIdleWarning(false);
     setIsIdle(true);
   };
   const resetRef = useRef(resetForNextCustomer);
   useEffect(() => { resetRef.current = resetForNextCustomer; });
 
   useEffect(() => {
-    if (isMobile || isIdle) return;
+    if (isMobile || isIdle || isIdleWarning) return;
     let timer;
     const restart = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => resetRef.current(), IDLE_RESET_MS);
+      timer = setTimeout(() => setIsIdleWarning(true), IDLE_WARNING_MS);
     };
     const events = ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'];
     events.forEach(e => window.addEventListener(e, restart, { capture: true, passive: true }));
@@ -736,7 +743,7 @@ function KioskView({
       clearTimeout(timer);
       events.forEach(e => window.removeEventListener(e, restart, { capture: true }));
     };
-  }, [isMobile, isIdle]);
+  }, [isMobile, isIdle, isIdleWarning]);
 
   const showCheckout = !isMobile && checkoutStage != null;
 
@@ -871,6 +878,13 @@ function KioskView({
             setSelectingProduct(null);
             setIsCartOpen(true);
           }}
+        />
+      )}
+
+      {!isMobile && !isIdle && isIdleWarning && (
+        <IdleWarning
+          onExtend={() => setIsIdleWarning(false)}
+          onTimeout={() => resetRef.current()}
         />
       )}
 

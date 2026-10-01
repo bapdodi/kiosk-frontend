@@ -4,6 +4,7 @@ import {
     getDefaultSelections,
     getOptionGroups,
 } from '../utils/productOptions';
+import { getPriceRange } from '../utils/price';
 
 // 복합옵션 상품은 규격이 수십 개일 수 있어, 추천 기준으로 보낼 ERP 코드 수를 제한한다.
 const MAX_RECOMMENDATION_SOURCE_CODES = 30;
@@ -165,6 +166,11 @@ export function useProductSelection(product, { cartItems = [], products = [], on
     // 현재 선택값(selections)을 하나의 라인 객체로 변환
     const buildLineFromSelections = (sel, qty) => buildLine(product, groups, sel, qty);
 
+    // 규격을 다 고르면 그 규격의 단가·합계, 아직이면 상품의 가격 범위만 보여 준다.
+    const selectedUnitPrice = product && allOptionsSelected ? buildLineFromSelections(selections, 1).price : null;
+    const selectedTotalPrice = selectedUnitPrice != null ? selectedUnitPrice * Math.max(1, safeQuantity) : null;
+    const priceRange = getPriceRange(product);
+
     const focusMissingProduct = () => {
         setShowProductPrompt(true);
         const target = optionSectionRef.current?.querySelector('[data-option-missing="true"]');
@@ -182,7 +188,8 @@ export function useProductSelection(product, { cartItems = [], products = [], on
         onConfirm(product, [{
             id: line.comboId,
             displayName: line.displayName,
-            erpCode: line.erpCode
+            erpCode: line.erpCode,
+            price: line.price
         }], { [line.comboId]: qty }, stayOpen);
 
         if (stayOpen) {
@@ -205,6 +212,7 @@ export function useProductSelection(product, { cartItems = [], products = [], on
         recommendedProducts,
         addedLines, addedTotalQuantity,
         buildLineFromSelections,
+        selectedUnitPrice, selectedTotalPrice, priceRange,
         optionSectionRef, focusMissingProduct, handleConfirm,
     };
 }
