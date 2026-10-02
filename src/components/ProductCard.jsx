@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
 
 /**
@@ -45,4 +46,5 @@ const ProductCard = ({ product, onOpenDetail }) => {
     );
 };
 
-export default ProductCard;
+// 목록에 1천 장 가까이 그려지므로, 상품이 그대로면 부모가 다시 그려져도 건너뛴다.
+export default memo(ProductCard);

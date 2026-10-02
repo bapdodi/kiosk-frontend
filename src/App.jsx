@@ -1,13 +1,5 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
-import AdminLayout from './components/admin/AdminLayout';
-import CategoryManagement from './components/admin/CategoryManagement';
-import ErpBakImportPage from './components/admin/ErpBakImportPage';
-import ErpReceivingPage from './components/admin/ErpReceivingPage';
-import NaverSyncPage from './components/admin/NaverSyncPage';
-import OrderManagement from './components/admin/OrderManagement';
-import ProductForm from './components/admin/ProductForm';
-import ProductManagement from './components/admin/ProductManagement';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Cart from './components/Cart';
 import CartBar from './components/CartBar';
 import CategoryNav from './components/CategoryNav';
@@ -25,6 +17,9 @@ import { useMobileBackClose } from './hooks/useMobileBackClose';
 import { useIsMobile } from './hooks/useIsMobile';
 import ProductPageMobile from './components/ProductPageMobile';
 import { resolvePrice } from './utils/price';
+
+// 관리자 화면(엑셀 라이브러리 포함)은 손님이 받을 이유가 없어 따로 받는다. AdminRoutes 주석 참고.
+const AdminRoutes = lazy(() => import('./components/admin/AdminRoutes'));
 
 // 키오스크를 이만큼 아무도 안 만지면 자리비움 안내를 띄우고, 안내 후에도(IDLE_WARNING_SECONDS)
 // 연장하지 않으면 장바구니를 비우고 대기 화면으로 돌아간다.
@@ -75,7 +70,7 @@ function App() {
         const res = await fetch('/api/auth/check');
         setIsAuthenticated(res.ok);
         return res.ok;
-      } catch (e) {
+      } catch {
         console.error('Auth check failed');
         setIsAuthenticated(false);
         return false;
@@ -119,7 +114,7 @@ function App() {
         const orderData = await orderRes.json();
         setOrders(Array.isArray(orderData) ? orderData : []);
       }
-    } catch (e) {
+    } catch {
       console.warn('Could not fetch orders');
     }
   };
@@ -196,9 +191,10 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
 
         {/* Admin Routes with Nested Routing */}
-        <Route path="/admin" element={
+        <Route path="/admin/*" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <AdminLayout
+            <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.5rem' }}>관리자 화면을 불러오는 중...</div>}>
+            <AdminRoutes
               products={adminProducts}
               setProducts={updateAdminProducts}
               mainCategories={mainCategories}
@@ -217,19 +213,9 @@ function App() {
                searchQuery={searchQuery}
                setSearchQuery={setSearchQuery}
             />
+            </Suspense>
           </ProtectedRoute>
-        }>
-          <Route index element={<Navigate to="orders" replace />} />
-          <Route path="products" element={<ProductManagement />} />
-          <Route path="products/new" element={<ProductForm />} />
-          <Route path="products/edit/:id" element={<ProductForm />} />
-          <Route path="categories" element={<CategoryManagement />} />
-          <Route path="orders" element={<OrderManagement />} />
-          <Route path="naver" element={<NaverSyncPage />} />
-          <Route path="erp-bak" element={<ErpBakImportPage />} />
-          <Route path="erp-receiving" element={<ErpReceivingPage />} />
-          <Route path="erp-order" element={<ErpReceivingPage mode="order" />} />
-        </Route>
+        } />
       </Routes>
     </BrowserRouter>
   );
@@ -251,12 +237,10 @@ function KioskView({
   setSearchQuery,
   isRefreshing
 }) {
-  const navigate = useNavigate();
   const [selectingProduct, setSelectingProduct] = useState(null);
   const [optionQuantities, setOptionQuantities] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const [isNavVisible, setIsNavVisible] = useState(true);
   const [orderModal, setOrderModal] = useState({ isOpen: false, name: '' });
   const [cartToast, setCartToast] = useState(null);
   const cartToastTimer = useRef(null);
@@ -378,30 +362,15 @@ function KioskView({
       });
   }, []);
 
+  // 상세 화면에서 목록으로 돌아올 때 보던 위치를 되살리려고 스크롤 위치만 기억한다.
+  // 상태로 두면 스크롤할 때마다 상품 카드 전체가 다시 그려진다.
   const handleScroll = (e) => {
-    const currentScrollTop = e.currentTarget.scrollTop;
-    const diff = currentScrollTop - lastScrollTop.current;
-
-    // 1. 최상단 근처에서는 무조건 표시
-    if (currentScrollTop < 10) {
-      if (!isNavVisible) setIsNavVisible(true);
-      lastScrollTop.current = currentScrollTop;
-      return;
-    }
-
-    // 2. 급격한 변화나 미세한 변화(30px 미만)는 무시하여 깜빡임 방지
-    if (Math.abs(diff) < 30) return;
-
-    if (diff > 0 && isNavVisible && currentScrollTop > 150) {
-      // 내려갈 때: 150px 이상 내려온 상태에서만 숨김
-      setIsNavVisible(false);
-    } else if (diff < 0 && !isNavVisible) {
-      // 올라갈 때: 즉시 표시
-      setIsNavVisible(true);
-    }
-
-    lastScrollTop.current = currentScrollTop;
+    lastScrollTop.current = e.currentTarget.scrollTop;
   };
+  // 목록이 다시 붙을 때(상세 → 목록)만 위치를 되살린다. 인라인 함수면 렌더마다 불려 관성 스크롤을 끊는다.
+  const restoreListScroll = useCallback((el) => {
+    if (el) el.scrollTop = lastScrollTop.current;
+  }, []);
 
   const isSearching = normalizeSearchText(searchQuery) !== "";
 
@@ -480,19 +449,18 @@ function KioskView({
     setSearchQuery(''); // 다른 카테고리를 고르면 검색어는 지운다
     setActiveMainCat(id);
     setActiveSubCat(null);
-    setIsNavVisible(true); // 카테고리 변경 시 네비게이션 무조건 노출
   };
 
   const handleSubCatChange = (id) => {
     setSearchQuery('');
     setActiveSubCat(id);
-    setIsNavVisible(true); // 카테고리 변경 시 네비게이션 무조건 노출
   };
 
-  const handleAddToCartClick = (product) => {
+  // 상품 카드(memo)에 넘기므로 참조를 고정해야 장바구니가 바뀔 때 카드 1천 장이 다시 그려지지 않는다.
+  const handleAddToCartClick = useCallback((product) => {
     setSelectingProduct(product);
     setOptionQuantities({});
-  };
+  }, []);
 
   // 장바구니의 항목을 누르면 해당 상품의 주문(옵션 선택) 화면을 다시 연다.
   const openProductFromCart = (item) => {
@@ -558,7 +526,7 @@ function KioskView({
   };
 
   const removeFromCart = (cartId) => {
-    setCart(cart.filter(item => item.cartId !== cartId));
+    setCart(prev => prev.filter(item => item.cartId !== cartId));
   };
 
   // 장바구니 전체 비우기. 실수로 눌러 주문을 날리는 일이 없게 한 번 확인한다.
@@ -641,7 +609,7 @@ function KioskView({
         const errorText = await response.text();
         alert(errorText || '주문 처리 중 오류가 발생했습니다.');
       }
-    } catch (e) {
+    } catch {
       alert('서버 연결 오류가 발생했습니다.');
     }
   };
@@ -794,7 +762,7 @@ function KioskView({
         <main
           className="kiosk-main"
           onScroll={handleScroll}
-          ref={(el) => { if (el) el.scrollTop = lastScrollTop.current; }}
+          ref={restoreListScroll}
         >
           {showingSimilar && (
             <div role="status" style={{ gridColumn: '1/-1', padding: '16px 20px', background: '#fff3e8', borderRadius: '12px', color: '#663c15' }}>
