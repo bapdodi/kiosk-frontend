@@ -63,58 +63,93 @@ const allowedTypoCount = (length) => {
 
 // 문장 일부와 검색어 사이의 최소 오타 개수를 한 번의 행렬 계산으로 구한다.
 // 삽입·삭제·교체와 인접한 두 글자의 순서가 바뀐 오타까지 처리한다.
-const closestSubstringDistance = (text, query, maxDistance) => {
+// 검색 한 글자마다 상품 수 × 표기 조합만큼 불리므로 행렬 전체 대신 세 줄만 돌려 쓰고,
+// cutoff 를 넘은 게 확정되면(연속 두 줄이 모두 cutoff 초과) 바로 Infinity 로 끝낸다.
+const closestSubstringDistance = (text, query, maxDistance, cutoff = Number.POSITIVE_INFINITY) => {
   if (!text || !query || maxDistance === 0) return Number.POSITIVE_INFINITY;
 
-  const rows = query.length + 1;
   const columns = text.length + 1;
-  const distance = Array.from({ length: rows }, () => Array(columns).fill(0));
+  // 문장의 앞부분은 무료로 건너뛰어 모든 부분 문자열을 동시에 비교한다(0번 줄은 전부 0).
+  let twoBack = new Array(columns).fill(0);
+  let previous = new Array(columns).fill(0);
+  let current = new Array(columns).fill(0);
+  let previousRowMin = 0;
 
-  for (let row = 0; row < rows; row += 1) distance[row][0] = row;
-  // 문장의 앞부분은 무료로 건너뛰어 모든 부분 문자열을 동시에 비교한다.
-  for (let column = 0; column < columns; column += 1) distance[0][column] = 0;
-
-  for (let row = 1; row < rows; row += 1) {
+  for (let row = 1; row <= query.length; row += 1) {
+    current[0] = row;
+    let rowMin = row;
+    const queryChar = query[row - 1];
     for (let column = 1; column < columns; column += 1) {
-      const substitutionCost = query[row - 1] === text[column - 1] ? 0 : 1;
-      distance[row][column] = Math.min(
-        distance[row - 1][column] + 1,
-        distance[row][column - 1] + 1,
-        distance[row - 1][column - 1] + substitutionCost,
+      const substitutionCost = queryChar === text[column - 1] ? 0 : 1;
+      let value = Math.min(
+        previous[column] + 1,
+        current[column - 1] + 1,
+        previous[column - 1] + substitutionCost,
       );
 
       if (
         row > 1 && column > 1 &&
-        query[row - 1] === text[column - 2] &&
+        queryChar === text[column - 2] &&
         query[row - 2] === text[column - 1]
       ) {
-        distance[row][column] = Math.min(distance[row][column], distance[row - 2][column - 2] + 1);
+        value = Math.min(value, twoBack[column - 2] + 1);
       }
+      current[column] = value;
+      if (value < rowMin) rowMin = value;
     }
+
+    // 다음 줄의 값은 바로 위 두 줄의 최솟값보다 작아질 수 없다.
+    if (rowMin > cutoff && previousRowMin > cutoff) return Number.POSITIVE_INFINITY;
+    previousRowMin = rowMin;
+    [twoBack, previous, current] = [previous, current, twoBack];
   }
 
-  return Math.min(...distance[query.length].slice(1));
+  let best = Number.POSITIVE_INFINITY;
+  for (let column = 1; column < columns; column += 1) {
+    if (previous[column] < best) best = previous[column];
+  }
+  return best;
 };
 
-const getSearchVariants = (name, query) => {
-  const normalizedName = normalizeSearchText(name);
+// 같은 상품명·검색어의 변형(초성, 영문 발음, 자판 변환)을 키 입력마다 다시 만들지 않도록 기억한다.
+// 상품·거래처 이름은 유한하지만, 혹시 모를 무한 증가를 막으려고 상한을 넘으면 비운다.
+const VARIANT_CACHE_LIMIT = 50000;
+const haystackCache = new Map();
+const needleCache = new Map();
+
+const remember = (cache, key, build) => {
+  let value = cache.get(key);
+  if (value === undefined) {
+    if (cache.size >= VARIANT_CACHE_LIMIT) cache.clear();
+    value = build(key);
+    cache.set(key, value);
+  }
+  return value;
+};
+
+const buildHaystacks = (name) => [...new Set([
+  normalizeSearchText(name),
+  normalizeSearchText(getChosungText(name)),
+  normalizeSearchText(expandEnglishToKoreanSound(name)),
+  normalizeSearchText(expandEnglishToKoreanSound(name, EN_LETTER_ALT_SOUND)),
+])];
+
+const buildNeedles = (query) => {
   const normalizedQuery = normalizeSearchText(query);
   const keyboardQuery = normalizeSearchText(convertEnglishKeyboardToKorean(query));
   // 자모만 바꾼 것(초성 검색용)과 글자로 합친 것("xodms" → "태은") 둘 다 찾는다.
   const composedQuery = normalizeSearchText(toHangul(query));
   const queryPhonetic = normalizeSearchText(expandEnglishToKoreanSound(query));
-
   return {
-    haystacks: [...new Set([
-      normalizedName,
-      normalizeSearchText(getChosungText(name)),
-      normalizeSearchText(expandEnglishToKoreanSound(name)),
-      normalizeSearchText(expandEnglishToKoreanSound(name, EN_LETTER_ALT_SOUND)),
-    ])],
     needles: [...new Set([normalizedQuery, keyboardQuery, composedQuery, queryPhonetic])],
     normalizedQuery,
   };
 };
+
+const getSearchVariants = (name, query) => ({
+  haystacks: remember(haystackCache, name || '', buildHaystacks),
+  ...remember(needleCache, query || '', buildNeedles),
+});
 
 // 검색어를 공백 단위 단어로 나눈다. 공백만 있으면 빈 배열이다.
 const tokenizeQuery = (query) => (query || '')
@@ -138,7 +173,7 @@ const getTokenMatchScore = (name, query) => {
     for (const needle of needles) {
       if (!needle) continue;
       const needleMaxDistance = Math.min(maxDistance, allowedTypoCount(needle.length));
-      best = Math.min(best, closestSubstringDistance(text, needle, needleMaxDistance));
+      best = Math.min(best, closestSubstringDistance(text, needle, needleMaxDistance, Math.min(best, maxDistance)));
     }
   }
 
