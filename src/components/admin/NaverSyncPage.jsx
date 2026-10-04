@@ -462,8 +462,8 @@ const NaverSyncPage = () => {
 
             {!configured && (
                 <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', padding: '12px 16px', borderRadius: '10px', marginBottom: '20px' }}>
-                    ⚠ 네이버 커머스API 자격증명(client_id/secret)이 아직 설정되지 않았습니다. 백엔드 <code>.env</code> 의
-                    <code> NAVER_COMMERCE_CLIENT_ID / SECRET </code> 를 채운 뒤 백엔드를 재시작하세요.
+                    ⚠ 네이버 연동이 꺼져 있거나 커머스API 자격증명(client_id/secret)이 없습니다. 백엔드 <code>.env</code> 의
+                    <code> NAVER_INTEGRATION_ENABLED=true </code> 와 <code> NAVER_COMMERCE_CLIENT_ID / SECRET </code> 를 확인한 뒤 백엔드를 재시작하세요.
                 </div>
             )}
 

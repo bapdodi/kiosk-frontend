@@ -40,6 +40,14 @@ const AdminLayout = ({
     // 좁은 화면에서는 사이드바를 서랍으로 접는다. 화면을 이동하면 자동으로 닫는다.
     const [isNavOpen, setIsNavOpen] = useState(false);
     useEffect(() => { setIsNavOpen(false); }, [location.pathname, location.search]);
+    // 네이버 연동은 백엔드 NAVER_INTEGRATION_ENABLED 로 켠다. 꺼져 있으면 메뉴를 숨긴다.
+    const [naverEnabled, setNaverEnabled] = useState(false);
+    useEffect(() => {
+        fetch('/api/channels/naver/admin/config-status')
+            .then(r => (r.ok ? r.json() : null))
+            .then(d => setNaverEnabled(!!d?.configured))
+            .catch(() => setNaverEnabled(false));
+    }, []);
 
     return (
         <div className="admin-page-container">
@@ -150,35 +158,37 @@ const AdminLayout = ({
                         <span style={{ fontSize: '1.2rem' }}>📝</span>
                         <span style={{ fontWeight: 600 }}>발주 관리</span>
                     </NavLink>
-                    <div className="admin-nav-group">
-                        <NavLink
-                            to="/admin/naver"
-                            className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
-                            style={{ textDecoration: 'none' }}
-                        >
-                            <svg width="1.2rem" height="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <rect width="24" height="24" rx="5" fill="#03C75A" />
-                                <path d="M14.13 12.32 9.86 6H6.4v12h3.7v-6.32L14.36 18h3.46V6h-3.7v6.32Z" fill="#fff" />
-                            </svg>
-                            <span style={{ fontWeight: 600 }}>네이버 스토어</span>
-                            <span className="admin-nav-caret">›</span>
-                        </NavLink>
-                        <div className="admin-flyout">
-                            <div className="admin-flyout-title">네이버 스토어</div>
-                            {NAVER_TABS.map((t, i) => (
-                                <NavLink
-                                    key={t.key}
-                                    to={t.key === 'mapping' ? '/admin/naver' : `/admin/naver?tab=${t.key}`}
-                                    // 함수형 className: NavLink 자동 active 주입을 끄고, 실제 선택된 탭만 표시
-                                    className={() => `admin-flyout-item ${onNaver && naverTab === t.key ? 'active' : ''}`}
-                                    style={{ textDecoration: 'none' }}
-                                >
-                                    <span className="admin-flyout-num">{i + 1}</span>
-                                    {t.label}
-                                </NavLink>
-                            ))}
+                    {naverEnabled && (
+                        <div className="admin-nav-group">
+                            <NavLink
+                                to="/admin/naver"
+                                className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
+                                style={{ textDecoration: 'none' }}
+                            >
+                                <svg width="1.2rem" height="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect width="24" height="24" rx="5" fill="#03C75A" />
+                                    <path d="M14.13 12.32 9.86 6H6.4v12h3.7v-6.32L14.36 18h3.46V6h-3.7v6.32Z" fill="#fff" />
+                                </svg>
+                                <span style={{ fontWeight: 600 }}>네이버 스토어</span>
+                                <span className="admin-nav-caret">›</span>
+                            </NavLink>
+                            <div className="admin-flyout">
+                                <div className="admin-flyout-title">네이버 스토어</div>
+                                {NAVER_TABS.map((t, i) => (
+                                    <NavLink
+                                        key={t.key}
+                                        to={t.key === 'mapping' ? '/admin/naver' : `/admin/naver?tab=${t.key}`}
+                                        // 함수형 className: NavLink 자동 active 주입을 끄고, 실제 선택된 탭만 표시
+                                        className={() => `admin-flyout-item ${onNaver && naverTab === t.key ? 'active' : ''}`}
+                                        style={{ textDecoration: 'none' }}
+                                    >
+                                        <span className="admin-flyout-num">{i + 1}</span>
+                                        {t.label}
+                                    </NavLink>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </nav>
             </aside>
 
