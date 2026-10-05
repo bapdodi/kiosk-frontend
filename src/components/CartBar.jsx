@@ -39,7 +39,7 @@ const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onRes
             </div>
             <div className="cart-bar-items">
                 {items.length === 0 ? (
-                    <div className="cart-bar-empty">상품을 선택하면 여기에 표시됩니다.</div>
+                    <div className="cart-bar-empty">장바구니가 비어 있습니다.</div>
                 ) : (
                     groups.map((group) => (
                         <div key={group.id} className="cart-bar-chip">
@@ -111,7 +111,7 @@ const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onRes
                     onClick={onCheckout}
                     disabled={items.length === 0}
                 >
-                    주문 넣기
+                    주문하기
                 </button>
             </div>
         </section>

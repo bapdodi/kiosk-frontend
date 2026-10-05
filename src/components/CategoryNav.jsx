@@ -12,6 +12,7 @@ const CategoryNav = ({
     onSearchChange
 }) => {
     const recognitionRef = useRef(null);
+    const mainCatScrollRef = useRef(null);
     const [isListening, setIsListening] = useState(false);
     const [voiceSupported, setVoiceSupported] = useState(false);
     const [voiceError, setVoiceError] = useState('');
@@ -101,10 +102,18 @@ const CategoryNav = ({
         }
     };
 
+    const scrollMainCats = (dir) => {
+        const el = mainCatScrollRef.current;
+        if (el) el.scrollBy({ left: dir * el.clientWidth, behavior: 'smooth' });
+    };
+
     return (
         <nav className="top-nav">
             <div className="header-top">
-                <div className="logo">동광배관자재 010-7612-6524</div>
+                <div className="logo">
+                    <span className="logo-name">동광배관자재</span>{' '}
+                    <span className="logo-phone">010-7612-6524</span>
+                </div>
                 <div className="search-container">
                     <span className="search-icon">🔍</span>
                     <input
@@ -161,22 +170,27 @@ const CategoryNav = ({
                 </select>
             </label>
 
-            <div className="categories-scroll main-categories" style={{ borderBottom: '1px solid #f1f3f5' }}>
-                <button
-                    className={`category-tab ${!activeMainCat ? 'active' : ''}`}
-                    onClick={() => onMainCatChange(null)}
-                >
-                    전체
-                </button>
-                {mainCategories.map((cat) => (
+            {/* 키오스크·PC: 두 줄로 놓고 양옆 화살표로 넘긴다. 폰은 위의 대분류 선택창을 쓴다. */}
+            <div className="main-cat-row">
+                <button type="button" className="main-cat-arrow" onClick={() => scrollMainCats(-1)} aria-label="이전 분류">◀</button>
+                <div ref={mainCatScrollRef} className="categories-scroll main-categories" style={{ borderBottom: '1px solid #f1f3f5' }}>
                     <button
-                        key={cat.id}
-                        className={`category-tab ${activeMainCat === cat.id ? 'active' : ''}`}
-                        onClick={() => onMainCatChange(cat.id)}
+                        className={`category-tab ${!activeMainCat ? 'active' : ''}`}
+                        onClick={() => onMainCatChange(null)}
                     >
-                        {cat.name}
+                        전체
                     </button>
-                ))}
+                    {mainCategories.map((cat) => (
+                        <button
+                            key={cat.id}
+                            className={`category-tab ${activeMainCat === cat.id ? 'active' : ''}`}
+                            onClick={() => onMainCatChange(cat.id)}
+                        >
+                            {cat.name}
+                        </button>
+                    ))}
+                </div>
+                <button type="button" className="main-cat-arrow" onClick={() => scrollMainCats(1)} aria-label="다음 분류">▶</button>
             </div>
 
             {activeMainCat && (

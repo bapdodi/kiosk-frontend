@@ -18,7 +18,7 @@ const formatQuantity = (n) => (n || 0).toLocaleString('ko-KR');
 const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, onCancel, onSelectProduct, onOpenCart }) => {
     const {
         groups,
-        selections, setSelections,
+        selections, toggleOption,
         allOptionsSelected,
         showProductPrompt,
         quantity, setQuantity, safeQuantity,
@@ -119,18 +119,18 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
 
                 <section className="mp-block" ref={optionSectionRef}>
                     {groups.length > 0 ? groups.map(group => {
-                        const chosen = selections[group.name];
-                        const missing = showProductPrompt && chosen == null;
+                        const chosen = selections[group.name] || [];
+                        const missing = showProductPrompt && chosen.length === 0;
                         return (
                             <div
                                 key={group.name}
                                 className={`mp-group${missing ? ' is-missing' : ''}`}
-                                data-option-missing={chosen == null ? 'true' : undefined}
+                                data-option-missing={chosen.length === 0 ? 'true' : undefined}
                             >
                                 <h2 className="mp-block-title">
                                     {group.displayLabel}
-                                    <span className={`mp-badge${chosen ? ' is-done' : ''}`}>
-                                        {chosen ? '선택 완료' : '선택 필수'}
+                                    <span className={`mp-badge${chosen.length > 0 ? ' is-done' : ''}`}>
+                                        {chosen.length > 0 ? `${chosen.length}개 선택` : '선택 필수'}
                                     </span>
                                 </h2>
                                 <div className="mp-options">
@@ -139,10 +139,10 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
                                             key={value}
                                             type="button"
                                             className="mp-option"
-                                            aria-pressed={chosen === value}
-                                            onClick={() => setSelections(prev => ({ ...prev, [group.name]: value }))}
+                                            aria-pressed={chosen.includes(value)}
+                                            onClick={() => toggleOption(group.name, value)}
                                         >
-                                            <span className="mp-check" aria-hidden="true">{chosen === value ? '✓' : ''}</span>
+                                            <span className="mp-check" aria-hidden="true">{chosen.includes(value) ? '✓' : ''}</span>
                                             {value}
                                         </button>
                                     ))}

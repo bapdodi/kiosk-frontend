@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import {
     buildLineFromSelections as buildLine,
+    expandSelections,
     getDefaultSelections,
-    getOptionGroups,
+    getPriceSortedOptionGroups,
 } from '../utils/productOptions';
 import { getPriceRange } from '../utils/price';
 
@@ -10,6 +11,12 @@ import { getPriceRange } from '../utils/price';
 const MAX_RECOMMENDATION_SOURCE_CODES = 30;
 // 한 줄로 훑을 수 있는 개수. 더 늘리면 스크롤해야 보여서 눌리지 않는다.
 const VISIBLE_RECOMMENDATIONS = 6;
+
+// 그룹마다 한 값만 선택한다. 공통 가격·장바구니 로직에 맞춰 값은 배열로 보관한다.
+// 값이 하나뿐인 그룹은 선택의 여지가 없으므로 처음부터 체크해 둔다.
+const getInitialSelections = (groups) => Object.fromEntries(
+    Object.entries(getDefaultSelections(groups)).map(([name, value]) => [name, [value]])
+);
 
 /**
  * 상품 선택(규격·수량·사진·추천·장바구니 담기) 로직.
@@ -20,15 +27,24 @@ const VISIBLE_RECOMMENDATIONS = 6;
  */
 export function useProductSelection(product, { cartItems = [], products = [], onConfirm }) {
     // 규격 해석 규칙은 목록 카드와도 공유해야 해서 utils/productOptions.js 에 있다.
-    const groups = getOptionGroups(product);
+    const groups = getPriceSortedOptionGroups(product);
 
     const [selections, setSelections] = useState({});
     const [quantity, setQuantity] = useState(1);
     const [showProductPrompt, setShowProductPrompt] = useState(false);
     const optionSectionRef = useRef(null);
 
-    // 모든 옵션 그룹이 선택되어야 담을 수 있다 (자동 디폴트가 없으므로 직접 선택 필수).
-    const allOptionsSelected = groups.every(g => selections[g.name] != null);
+    // 모든 옵션 그룹에서 한 값을 선택해야 담을 수 있다.
+    const allOptionsSelected = groups.every(g => (selections[g.name] || []).length > 0);
+
+    // 같은 그룹의 기존 선택을 교체한다. 이미 선택한 값은 다시 눌러도 유지한다.
+    const toggleOption = (groupName, value) => {
+        const nextSelections = { ...selections, [groupName]: [value] };
+        setSelections(nextSelections);
+        setShowProductPrompt(!groups.every(g => (nextSelections[g.name] || []).length > 0));
+        setCurrentImageIndex(0);
+        setFailedImages({});
+    };
 
     // ── 사진 ───────────────────────────────────────────────────────────────
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -40,10 +56,10 @@ export function useProductSelection(product, { cartItems = [], products = [], on
     // 현재 선택된 옵션값들에 등록된 사진을 모으고, 하나도 없으면 메인 사진으로 폴백한다.
     const matchedOptionImages = [];
     groups.forEach(g => {
-        const sel = selections[g.name];
-        if (!sel) return;
+        const picked = selections[g.name] || [];
+        if (picked.length === 0) return;
         optionImages
-            .filter(oi => oi.groupName === g.name && oi.optionValue === sel)
+            .filter(oi => oi.groupName === g.name && picked.includes(oi.optionValue))
             .forEach(oi => matchedOptionImages.push(oi.imageUrl));
     });
     const images = matchedOptionImages.length > 0 ? matchedOptionImages : (product?.images || []);
@@ -110,7 +126,7 @@ export function useProductSelection(product, { cartItems = [], products = [], on
     // 옵션이 2개 이상인 그룹은 사용자가 직접 고르도록 디폴트 선택하지 않는다.
     // (값이 하나뿐인 그룹은 선택의 여지가 없으므로 그대로 선택해 둔다.)
     useEffect(() => {
-        setSelections(getDefaultSelections(groups));
+        setSelections(getInitialSelections(groups));
         setQuantity(1);
         setCurrentImageIndex(0);
         setFailedImages({});
@@ -163,12 +179,18 @@ export function useProductSelection(product, { cartItems = [], products = [], on
         .filter(Boolean)
         .slice(0, VISIBLE_RECOMMENDATIONS);
 
-    // 현재 선택값(selections)을 하나의 라인 객체로 변환
+    // 체크한 선택값(selections)을 담을 라인 객체들로 변환
     const buildLineFromSelections = (sel, qty) => buildLine(product, groups, sel, qty);
+    const selectedLines = product && allOptionsSelected
+        ? expandSelections(groups, selections).map(sel => buildLineFromSelections(sel, 1))
+        : [];
 
     // 규격을 다 고르면 그 규격의 단가·합계, 아직이면 상품의 가격 범위만 보여 준다.
-    const selectedUnitPrice = product && allOptionsSelected ? buildLineFromSelections(selections, 1).price : null;
-    const selectedTotalPrice = selectedUnitPrice != null ? selectedUnitPrice * Math.max(1, safeQuantity) : null;
+    // 여러 규격을 체크했으면 단가는 의미가 없으므로 합계만 낸다(가격 없는 규격은 0 으로 센다).
+    const selectedUnitPrice = selectedLines.length === 1 ? selectedLines[0].price : null;
+    const selectedTotalPrice = selectedLines.some(l => l.price != null)
+        ? selectedLines.reduce((sum, l) => sum + (l.price || 0), 0) * Math.max(1, safeQuantity)
+        : null;
     const priceRange = getPriceRange(product);
 
     const focusMissingProduct = () => {
@@ -184,16 +206,16 @@ export function useProductSelection(product, { cartItems = [], products = [], on
             return;
         }
         const qty = safeQuantity < 1 ? 1 : safeQuantity;
-        const line = buildLineFromSelections(selections, qty);
-        onConfirm(product, [{
+        const lines = selectedLines.map(l => ({ ...l, quantity: qty }));
+        onConfirm(product, lines.map(line => ({
             id: line.comboId,
             displayName: line.displayName,
             erpCode: line.erpCode,
             price: line.price
-        }], { [line.comboId]: qty }, stayOpen);
+        })), Object.fromEntries(lines.map(line => [line.comboId, qty])), stayOpen);
 
         if (stayOpen) {
-            setSelections(getDefaultSelections(groups));
+            setSelections(getInitialSelections(groups));
             setQuantity(1);
             setShowProductPrompt(true);
         }
@@ -201,7 +223,7 @@ export function useProductSelection(product, { cartItems = [], products = [], on
 
     return {
         groups,
-        selections, setSelections,
+        selections, toggleOption,
         allOptionsSelected,
         showProductPrompt, setShowProductPrompt,
         quantity, setQuantity, safeQuantity,
@@ -211,7 +233,7 @@ export function useProductSelection(product, { cartItems = [], products = [], on
         moveImage, handleImageTouchStart, handleImageTouchEnd,
         recommendedProducts,
         addedLines, addedTotalQuantity,
-        buildLineFromSelections,
+        selectedLines,
         selectedUnitPrice, selectedTotalPrice, priceRange,
         optionSectionRef, focusMissingProduct, handleConfirm,
     };
