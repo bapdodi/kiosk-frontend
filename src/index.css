@@ -4113,3 +4113,314 @@ body {
     padding: 10px !important;
   }
 }
+
+/* ══ 키오스크·PC 테마: 짙은 녹색 바탕 + 주황 포인트 ═════════════════════════
+   폰(767px 이하)은 위에서 따로 정리돼 있어 건드리지 않는다. 가장 마지막에 두어
+   앞선 규칙을 덮어쓴다. 색만 바꾸고 배치는 그대로다. */
+@media (min-width: 768px) {
+  .kiosk-container {
+    --kiosk-green: #050d1d;
+    --kiosk-green-deep: #050d1d;
+    background: var(--kiosk-green);
+  }
+
+  .kiosk-container .nav-wrapper {
+    background: var(--kiosk-green);
+    border-bottom: 0;
+  }
+
+  .kiosk-container .top-nav {
+    background: var(--kiosk-green-deep);
+    border: 0;
+    box-shadow: none;
+  }
+
+  .kiosk-container .logo {
+    color: var(--accent-color);
+  }
+
+  .kiosk-container .search-input {
+    background: #fff;
+    border: 3px solid var(--accent-color);
+  }
+
+  .kiosk-container .category-tab,
+  .kiosk-container .category-tab.sub-tab {
+    background: #fff;
+    border-color: var(--accent-color);
+    color: #1f2937;
+  }
+
+  .kiosk-container .category-tab.active {
+    background: var(--accent-color);
+    color: #fff;
+    box-shadow: none;
+  }
+
+  .kiosk-container .main-categories {
+    border-bottom-color: transparent !important;
+  }
+}
+
+/* 장바구니: 녹색 바탕 위에 떠 있는 주황 테두리 패널 */
+@media (min-width: 768px) and (min-height: 900px),
+       (min-width: 1024px) and (min-height: 600px) {
+  .kiosk-container .kiosk-cart-bar {
+    margin: 0 15px 15px 0;
+    background: #fff;
+    border: 3px solid var(--accent-color);
+    border-radius: 24px;
+    box-shadow: none;
+  }
+
+  .kiosk-container .cart-bar-head {
+    background: var(--accent-color);
+    border-bottom: 0;
+    color: #fff;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .kiosk-container .cart-bar-head .cart-clear-btn {
+    background: transparent;
+    border: 2px solid #fff;
+    color: #fff;
+  }
+
+  .kiosk-container .cart-bar-head .cart-clear-btn:disabled {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.55);
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .kiosk-container .cart-bar-items {
+    background: #fff;
+  }
+
+  .kiosk-container .cart-bar-chip {
+    background: #fff;
+    border-top: 0;
+    border-bottom: 2px solid #fdba74;
+  }
+
+  .kiosk-container .cart-bar-chip-name,
+  .kiosk-container .cart-bar-line-opt-value,
+  .kiosk-container .cart-bar-line-price {
+    color: #1f2937;
+  }
+
+  .kiosk-container .cart-bar-line {
+    border-left-color: var(--accent-color);
+  }
+
+  .kiosk-container .cart-bar-line-opt-label {
+    color: var(--accent-color);
+  }
+
+  .kiosk-container .cart-bar-step {
+    border-color: #fdba74;
+  }
+
+  .kiosk-container .cart-bar-step button {
+    background: #ffedd5;
+    color: #c2410c;
+  }
+
+  .kiosk-container .cart-bar-step button:last-child {
+    background: var(--accent-color);
+    color: #fff;
+  }
+
+  .kiosk-container .cart-bar-step button:disabled {
+    background: #f1f5f9;
+    color: #94a3b8;
+  }
+
+  .kiosk-container .cart-bar-summary {
+    background: #fff;
+    border-top: 2px solid #fdba74;
+    border-radius: 0 0 20px 20px;
+  }
+
+  .kiosk-container .cart-bar-total-price {
+    color: #c2410c;
+  }
+
+  .kiosk-container .cart-bar-checkout {
+    background: var(--accent-color);
+    font-size: 1.6rem;
+    padding: 22px;
+  }
+
+  .kiosk-container .cart-bar-checkout:disabled {
+    background: #f1f3f5;
+    color: #adb5bd;
+  }
+}
+
+/* 판매 화면 전체(상품 상세·주문 확인·상호 선택·완료)도 같은 녹색 바탕 위에 주황 테두리 카드로 맞춘다. */
+@media (min-width: 768px) {
+  .kiosk-container .product-detail-view {
+    background: var(--kiosk-green);
+    padding: 0 12px 12px;
+    box-sizing: border-box;
+  }
+
+  .kiosk-container .product-detail-view .option-scroll-body {
+    background: #fff;
+    border: 3px solid var(--accent-color);
+    border-radius: 24px;
+    overflow-x: hidden;
+  }
+
+  .kiosk-container .product-detail-view .option-reco {
+    margin-top: 12px;
+    border: 3px solid var(--accent-color);
+    border-radius: 24px;
+    background: #fff;
+    padding: 16px 24px 8px;
+  }
+
+  .kiosk-container .checkout-view {
+    background: var(--kiosk-green);
+  }
+
+  .kiosk-container .checkout-card {
+    border: 3px solid var(--accent-color);
+    box-shadow: none;
+  }
+}
+
+/* ══ 기준 시안(남색 바탕) 맞춤 ═══════════════════════════════════════════════ */
+.main-cat-row { display: contents; }
+.main-cat-arrow { display: none; }
+
+@media (min-width: 768px) {
+  .kiosk-container .logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 0 0 auto;
+    line-height: 1.15;
+  }
+
+  .kiosk-container .logo-name { font-size: 2.3rem; font-weight: 900; }
+  .kiosk-container .logo-phone { font-size: 1.3rem; font-weight: 800; letter-spacing: .06em; }
+
+  .kiosk-container .main-cat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .kiosk-container .main-cat-arrow {
+    display: block;
+    flex: 0 0 auto;
+    padding: 6px;
+    border: 0;
+    background: transparent;
+    color: var(--accent-color);
+    font-size: 2rem;
+    cursor: pointer;
+  }
+
+  .kiosk-container .categories-scroll.main-categories {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    grid-template-rows: repeat(2, auto);
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    gap: 8px;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 2px;
+  }
+}
+
+@media (min-width: 768px) and (min-height: 900px),
+       (min-width: 1024px) and (min-height: 600px) {
+  .kiosk-container .cart-bar-head {
+    background: #fff;
+    color: var(--accent-color);
+    border-bottom: 2px solid #fdba74;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .kiosk-container .cart-bar-head .cart-clear-btn {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+  }
+
+  .kiosk-container .cart-bar-head .cart-clear-btn:disabled {
+    border-color: #fdba74;
+    color: #fdba74;
+  }
+
+  .kiosk-container .cart-bar-remove {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+  }
+
+  .kiosk-container .cart-bar-remove:hover {
+    background: #bfdbfe;
+    color: #1e40af;
+  }
+}
+
+/* 키오스크·PC: 컨테이너 바깥(body)이 비쳐 연한 띠로 보이지 않게 같은 색으로 */
+@media (min-width: 768px) {
+  body:has(.kiosk-container) { background-color: #050d1d; }
+}
+
+/* 카테고리: 3줄 × 한 화면에 3칸씩. 칸 폭을 고정하고 한 페이지씩 넘겨서 칩이 잘리지 않는다. */
+@media (min-width: 768px) {
+  .kiosk-container .main-cat-row {
+    margin: 0 -14px;
+    gap: 4px;
+  }
+
+  .kiosk-container .main-cat-arrow {
+    padding: 0 2px;
+    font-size: 1.8rem;
+  }
+
+  .kiosk-container .categories-scroll.main-categories {
+    grid-template-rows: repeat(3, 1fr);
+    grid-auto-columns: calc((100% - 16px) / 3);
+    scroll-snap-type: x mandatory;
+    padding: 2px 0;
+  }
+
+  .kiosk-container .main-categories .category-tab {
+    scroll-snap-align: start;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    padding: 6px 12px;
+    text-align: center;
+    white-space: normal;
+    word-break: keep-all;
+    line-height: 1.2;
+    font-size: 1.05rem;
+  }
+}
+
+/* 주문 집중형 상세와 장바구니: 검은 바탕, 얇은 경계, 흰 카드. */
+@media (min-width: 768px) {
+  .kiosk-container .product-detail-view.order-focused-detail { background: #050d1d; padding: 20px; }
+  .kiosk-container .order-focused-detail .option-scroll-body { background: #fff; border: 1px solid #e6e9ee; border-radius: 20px; overflow-x: hidden; }
+  .kiosk-container .order-focused-detail .option-reco { margin-top: 26px; padding: 0; border: 0; border-radius: 0; background: #fff; }
+  .kiosk-container:has(.order-focused-detail) { grid-template-columns: minmax(0, 1fr) var(--kiosk-cart-width, 330px); }
+  .kiosk-container:has(.order-focused-detail) .kiosk-cart-bar { margin: 20px 20px 20px 0; border: 1px solid #e6e9ee; border-radius: 20px; background: #fff; }
+  .kiosk-container:has(.order-focused-detail) .cart-bar-head { padding: 24px; background: #fff; color: #202b3b; border-bottom: 1px solid #edf0f3; font-size: 1.25rem; }
+  .kiosk-container:has(.order-focused-detail) .cart-clear-btn { border: 0; color: #697586; font-size: .85rem; padding: 8px; }
+  .kiosk-container:has(.order-focused-detail) .cart-clear-btn:disabled { border: 0; color: #97a0ac; }
+  .kiosk-container:has(.order-focused-detail) .cart-bar-empty { display: flex; align-items: center; justify-content: center; height: 100%; padding: 24px; color: #7b8794; font-size: 1rem; }
+  .kiosk-container:has(.order-focused-detail) .cart-bar-summary { padding: 22px; border-top: 1px solid #edf0f3; }
+  .kiosk-container:has(.order-focused-detail) .cart-bar-total { justify-content: space-between; }
+  .kiosk-container:has(.order-focused-detail) .cart-bar-total-count { font-size: 1rem; }
+  .kiosk-container:has(.order-focused-detail) .cart-bar-total-price { color: #202b3b; font-size: 1.5rem; }
+  .kiosk-container:has(.order-focused-detail) .cart-bar-checkout { min-height: 62px; border-radius: 12px; padding: 16px; font-size: 1.15rem; }
+}

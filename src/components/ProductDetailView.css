@@ -1,189 +1,67 @@
-/* 팝업이 아니라 목록 자리를 대신 차지하는 화면이라, 남는 공간을 그대로 채운다. */
-.product-detail-view { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; background: #fff; overflow: hidden; }
-.guided-option-modal .option-back-btn { position: absolute; top: 20px; left: 20px; z-index: 20; display: inline-flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 18px; border: 0; border-radius: 14px; background: rgba(15, 23, 42, .88); color: #fff; font-size: 1.05rem; font-weight: 800; cursor: pointer; box-shadow: 0 8px 24px rgba(15, 23, 42, .24); backdrop-filter: blur(8px); }
-.guided-option-modal .option-back-btn:active { transform: scale(.98); }
-.guided-option-modal .option-scroll-body { flex: 0 1 auto; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); overflow: hidden; }
-.guided-option-modal .option-detail-layout { display: block; min-width: 0; border-right: 1px solid #e2e8f0; }
-.guided-option-modal .option-detail-layout > div { display: flex !important; flex-direction: column; height: 100%; box-sizing: border-box; padding: 24px !important; gap: 20px; align-items: stretch; }
-.guided-option-modal .option-image-area { min-height: 0 !important; height: 320px !important; flex: 0 0 320px; border-radius: 16px; }
-.guided-option-modal .option-image-area img { object-fit: contain !important; }
-.guided-option-modal .option-detail-layout .option-info-padding { padding: 0 !important; }
-.guided-option-modal .option-header-title { font-size: 1.6rem !important; margin: 0 0 10px; overflow-wrap: anywhere; }
-/* 상품 설명은 접지 않고 항상 펼쳐서 보여준다. */
-.guided-option-modal .option-description { color: #475569; font-size: 1rem; line-height: 1.6; }
-.guided-option-modal .option-description p { margin: 0; overflow-wrap: anywhere; }
-.option-description-title { font-weight: 800; color: #334155; margin-bottom: 6px; }
-.guided-option-modal .option-choice-section { min-height: 0; overflow-y: auto; padding: 24px !important; }
-/* 내용만큼만 차지한다. 100% 로 늘리면 규격이 3~4개뿐일 때 빈 주황 면이 화면을 덮는다. */
-.guided-option-modal .option-choice-section > div { min-height: 0; box-sizing: border-box; padding: 24px !important; border: 2px solid #fed7aa !important; background: #fffaf5 !important; }
-.guided-option-modal .option-choice-section.needs-product-selection > div { border-color: #ea580c !important; box-shadow: inset 0 0 0 2px #ea580c, 0 0 0 5px #ffedd5; }
-.guided-option-modal .option-choice-section.product-selection-complete > div { border-color: #cbd5e1 !important; background: #fff !important; box-shadow: none; }
-.guided-option-modal .product-selection-complete .option-step { background: #475569; }
-.guided-option-modal .product-selection-complete .option-required { color: #475569; background: #f1f5f9; }
-.guided-option-modal .product-selection-complete .option-choice-button[aria-pressed="true"] { background: #f1f5f9 !important; border-color: #64748b !important; color: #1e293b !important; box-shadow: none !important; }
-.guided-option-modal .product-selection-complete .option-choice-button[aria-pressed="true"] .option-choice-check { background: #475569; border-color: #475569; }
-.guided-option-modal h3 { margin: 0 0 8px !important; }
-.option-step { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; background: #c2410c; color: white; font-size: 1.1rem; font-weight: 800; }
-.option-choice-help { margin: 0 0 24px; color: #475569; line-height: 1.6; }
-.option-required { display: inline-block; font-size: .85rem; color: #9a3412; background: #ffedd5; border-radius: 6px; padding: 4px 8px; margin-left: 8px; }
-.guided-option-modal .option-choice-button { min-height: 64px; flex: 1 1 210px; text-align: left; }
-.guided-option-modal .option-choice-button[aria-pressed="true"] { background: #fff0df !important; border-color: #c2410c !important; color: #9a3412 !important; }
-.option-choice-check { width: 24px; height: 24px; border: 2px solid #94a3b8; border-radius: 50%; flex-shrink: 0; text-align: center; line-height: 20px; }
-[aria-pressed="true"] .option-choice-check { background: #c2410c; border-color: #c2410c; color: white; }
-.option-quantity-label { font-size: 1.25rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.option-quantity-label small { font-size: .85rem; color: #475569; font-weight: 500; }
-.guided-option-modal .qty-controls { width: 100%; scale: 1; gap: 8px; justify-content: space-between; box-sizing: border-box; }
-/* 2단계 수량은 제품 선택과 같은 카드 안에서 바로 이어 붙인다. */
-.guided-option-modal .option-quantity-block { margin-top: 24px; padding-top: 20px; border-top: 2px dashed #e2e8f0; display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); align-items: center; column-gap: 16px; row-gap: 10px; }
-.guided-option-modal .ready-for-quantity { border-top-color: #fdba74; }
-.guided-option-modal .ready-for-quantity .option-quantity-label { color: #c2410c; }
-.guided-option-modal .ready-for-quantity .option-step { background: #c2410c; }
-.guided-option-modal .ready-for-quantity .qty-controls { outline: 3px solid #ea580c; box-shadow: 0 0 0 6px #ffedd5; }
-.guided-option-modal .qty-btn { min-width: 48px; height: 52px !important; }
-.guided-option-modal .qty-num { flex: 1; min-width: 48px; max-width: 180px; margin: 0 !important; height: 52px; background: white !important; border: 2px solid #94a3b8 !important; border-radius: 8px; font-size: 1.5rem !important; }
-.option-quantity-unit { font-weight: 800; color: #334155; }
-/* 가격: 상품명 아래 단가(범위), 규격·수량을 정하면 담기 위에 합계. */
-.guided-option-modal .option-price { margin: 0 0 18px; font-size: 2rem; font-weight: 900; color: var(--accent-color); }
-.guided-option-modal .option-total-price { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 20px; padding: 16px 22px; border-radius: 16px; background: #fff7ed; border: 2px solid #fed7aa; color: #475569; font-weight: 700; font-size: 1.15rem; }
-.guided-option-modal .option-total-price strong { font-size: 1.7rem; font-weight: 900; color: #c2410c; }
-/* 담기는 규격·수량을 정한 카드 안, 수량 바로 아래에 붙는다. */
-.guided-option-modal .option-action-row { display: grid; grid-template-columns: 1.05fr 1fr; gap: 16px; margin-top: 20px; }
-.guided-option-modal .option-browse-btn { white-space: nowrap; min-height: 88px; padding: 0 12px; border: 2px solid #0284c7; border-radius: 20px; background: #0ea5e9; color: #fff; font-weight: 800; font-size: 1.35rem; cursor: pointer; box-shadow: 0 10px 20px rgba(14, 165, 233, .28); }
-.guided-option-modal .option-browse-btn:active { transform: scale(0.99); }
-.guided-option-modal .option-order-btn { display: block; width: 100%; min-height: 88px; padding: 0 24px; border: none; border-radius: 20px; background: var(--accent-color); color: #fff; font-weight: 900; font-size: 1.6rem; letter-spacing: .02em; cursor: pointer; box-shadow: 0 12px 24px rgba(255, 107, 0, .25); }
-.guided-option-modal .option-order-btn:active { transform: scale(0.99); }
-/* 계속 담기로 쌓인 항목 목록. 푸터 바로 위에 붙여 항상 보이게 한다. */
-
-.guided-option-modal button:focus-visible, .guided-option-modal input:focus-visible, .guided-option-modal summary:focus-visible { outline: 3px solid #2563eb !important; outline-offset: 3px; }
-
-/* 키오스크: 터치 입력을 지원하는 세로형 화면에서만 전용 배치를 적용한다. */
-@media (min-width: 768px) and (min-height: 900px) and (max-aspect-ratio: 4/3) and (any-pointer: coarse) {
-  /* 본문은 내용만큼만(flex: 0 1 auto). 늘려서 채우면 추천 줄이 화면 맨 아래로 밀려 눈에 안 띈다.
-     세로 가운데 정렬도 쓰지 않는다 — 상품이 아래로 밀려 위가 빈 칸이 된다. */
-  .guided-option-modal .option-scroll-body { display: block; overflow-y: auto; }
-  .guided-option-modal .option-detail-layout { border-right: 0; }
-  .guided-option-modal .option-detail-layout > div { display: grid !important; grid-template-columns: 1fr 1fr !important; height: auto; padding: 0 !important; gap: 0; align-items: stretch; }
-  /* 세로 1920 키오스크는 남는 높이가 많다. 빈 칸으로 두지 말고 사진에 준다. */
-  .guided-option-modal .option-image-area { height: 420px !important; min-height: 0 !important; max-height: none; flex: none; border-radius: 0; }
-  .guided-option-modal .option-detail-layout .option-info-padding { padding: 40px !important; }
-  .guided-option-modal .option-header-title { font-size: 2rem !important; }
-  .guided-option-modal .option-choice-section { overflow: visible; padding: 0 40px 32px !important; }
-  .guided-option-modal .option-choice-section > div { min-height: 0; padding: 28px !important; }
-  .guided-option-modal .option-choice-button { min-height: 72px; flex-basis: 190px; font-size: 1.2rem !important; }
-  .guided-option-modal .option-quantity-block { grid-template-columns: 1fr; row-gap: 12px; }
+/* 주문 집중형: 사진, 규격, 수량, 담기 순서로 하나의 카드 안에 배치한다. */
+.order-focused-detail { min-width: 0; min-height: 0; height: 100%; }
+.order-focused-detail .option-scroll-body { height: 100%; max-height: none; overflow-y: auto; padding: 20px 28px; background: #fff; border: 1px solid #e6e9ee; border-radius: 20px; }
+.order-focused-detail .option-back-btn { display: inline-flex; align-items: center; min-height: 48px; margin: -8px 0 12px; padding: 0; border: 0; background: transparent; color: #536071; font-size: 1rem; font-weight: 700; cursor: pointer; }
+.order-focused-detail .option-detail-layout { display: grid; grid-template-columns: minmax(160px, 220px) minmax(0, 1fr); align-items: center; gap: 28px; padding-bottom: 20px; border-bottom: 1px solid #edf0f3; }
+.order-focused-detail .option-image-area { position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 1; min-height: 0; overflow: hidden; border-radius: 16px; background: #f7f8fa; }
+.order-focused-detail .option-image-area > img { width: 100%; height: 100%; object-fit: contain; }
+.order-focused-detail .no-image-placeholder { font-size: 1rem; color: #8490a0; }
+.order-focused-detail .option-image-counter { position: absolute; top: 10px; left: 10px; padding: 4px 10px; border-radius: 12px; background: #202b3baa; color: white; font-size: .8rem; }
+.order-focused-detail .option-image-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border: 1px solid #e6e9ee; border-radius: 50%; background: #fffffff0; color: #202b3b; font-size: 2rem; cursor: pointer; }
+.order-focused-detail .option-image-arrow.prev { left: 8px; }
+.order-focused-detail .option-image-arrow.next { right: 8px; }
+.order-focused-detail .option-image-dots { position: absolute; bottom: 10px; display: flex; gap: 8px; padding: 8px; border-radius: 16px; background: #202b3baa; }
+.order-focused-detail .option-image-dots button { width: 12px; height: 12px; padding: 0; border: 0; border-radius: 50%; background: #ffffff70; cursor: pointer; }
+.order-focused-detail .option-image-dots button[aria-pressed="true"] { background: white; }
+.order-focused-detail .option-header-title { margin: 0; color: #202b3b; font-size: clamp(1.5rem, 2.2vw, 2rem); font-weight: 900; line-height: 1.4; word-break: keep-all; overflow-wrap: anywhere; }
+.order-focused-detail .option-product-spec { margin-top: 12px; color: #788393; font-size: 1rem; }
+.order-focused-detail .option-price { margin-top: 20px; color: #202b3b; font-size: clamp(1.2rem, 1.8vw, 1.65rem); font-weight: 800; overflow-wrap: anywhere; }
+.order-focused-detail .option-choice-section { padding-top: 20px; }
+.order-focused-detail .option-group + .option-group { margin-top: 24px; }
+.order-focused-detail h3, .order-focused-detail .option-quantity-label { display: block; margin: 0 0 14px; color: #202b3b; font-size: 1.2rem; font-weight: 800; }
+.order-focused-detail .option-choice-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.order-focused-detail .option-choice-button { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 72px; padding: 16px; border: 1px solid #dfe4ea; border-radius: 12px; background: white; color: #536071; text-align: left; cursor: pointer; }
+.order-focused-detail .option-choice-value { min-width: 0; overflow-wrap: anywhere; font-size: 1.15rem; font-weight: 800; }
+.order-focused-detail .option-choice-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; text-align: right; }
+.order-focused-detail .option-choice-price { font-size: 1rem; font-weight: 800; overflow-wrap: anywhere; }
+.order-focused-detail .option-choice-check { font-size: 1rem; font-weight: 800; }
+.order-focused-detail .option-choice-button[aria-pressed="true"] { border-color: var(--accent-color); background: #fff4ec; color: #c44c0c; box-shadow: inset 0 0 0 1px var(--accent-color); }
+.order-focused-detail .needs-product-selection [data-option-missing="true"] .option-choice-grid { border-radius: 12px; outline: 2px solid #ea580c; outline-offset: 4px; }
+.order-focused-detail .option-quantity-block { margin-top: 20px; }
+.order-focused-detail .qty-controls { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 7px; border-radius: 14px; background: #f1f4f8; }
+.order-focused-detail .qty-btn { flex: 0 0 52px; min-width: 0; width: 52px; height: 52px; padding: 0; border: 1px solid #e1e5eb; border-radius: 10px; background: white; color: #263343; font-size: 1.4rem; font-weight: 700; touch-action: manipulation; user-select: none; cursor: pointer; }
+.order-focused-detail .qty-bulk { font-size: .9rem; }
+.order-focused-detail .qty-num { flex: 0 1 150px; width: 150px; min-width: 56px; height: 52px; margin: 0; padding: 0 4px; border: 1px solid #a6b4c7; border-radius: 9px; background: white; color: #202b3b; text-align: center; font: inherit; font-size: 1.4rem; font-weight: 800; appearance: textfield; }
+.order-focused-detail .qty-num::-webkit-inner-spin-button { appearance: none; }
+.order-focused-detail .option-quantity-unit { font-size: .95rem; color: #536071; }
+.order-focused-detail .option-action-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #edf0f3; }
+.order-focused-detail .option-total-price { display: flex; flex-direction: column; gap: 5px; color: #7b8794; font-size: .9rem; }
+.order-focused-detail .option-total-price strong { color: #202b3b; font-size: 1.6rem; font-weight: 900; }
+.order-focused-detail .option-browse-btn, .order-focused-detail .option-order-btn { min-height: 62px; padding: 12px 22px; border: 1px solid #cad2df; border-radius: 12px; background: white; color: #455364; font: inherit; font-size: 1.05rem; font-weight: 800; cursor: pointer; }
+.order-focused-detail .option-browse-btn { border-color: #2563eb; background: #2563eb; color: white; }
+.order-focused-detail .option-order-btn { border-color: var(--accent-color); background: var(--accent-color); color: white; }
+.order-focused-detail .option-reco { margin-top: 26px; padding: 0; background: white; border: 0; }
+.order-focused-detail .option-reco-list { display: flex; gap: 12px; overflow-x: auto; padding: 2px 0 8px; }
+.order-focused-detail .option-reco-card { display: flex; flex-direction: column; gap: 10px; flex: 0 0 calc((100% - 36px) / 4); min-width: 130px; padding: 10px; border: 1px solid #e5e9ee; border-radius: 12px; background: white; text-align: left; cursor: pointer; }
+.order-focused-detail .option-reco-thumb { height: 104px; width: 100%; overflow: hidden; border-radius: 8px; background: #f7f8fa; }
+.order-focused-detail .option-reco-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.order-focused-detail .option-reco-name { color: #202b3b; font-size: .95rem; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+.order-focused-detail button:focus-visible, .order-focused-detail input:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+.order-focused-detail button:active { filter: brightness(.96); }
+@media (max-width: 1200px) {
+  .order-focused-detail .option-detail-layout { grid-template-columns: 200px minmax(0, 1fr); gap: 20px; }
+  .order-focused-detail .option-choice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .order-focused-detail .option-scroll-body { padding: 20px; }
+  .order-focused-detail .qty-controls { gap: 6px; }
+  .order-focused-detail .qty-btn { flex-basis: 48px; width: 48px; }
+  .order-focused-detail .option-browse-btn, .order-focused-detail .option-order-btn { padding: 12px 16px; }
 }
-
 @media (max-width: 760px) {
-  .guided-option-modal .option-scroll-body { display: block; overflow-y: auto; }
-  .guided-option-modal .option-detail-layout { border-right: 0; }
-  .guided-option-modal .option-detail-layout > div { display: grid !important; grid-template-columns: 100px minmax(0, 1fr) !important; height: auto; padding: 16px 56px 16px 16px !important; gap: 12px; align-items: center; }
-  .guided-option-modal .option-image-area { height: 100px !important; flex: none; }
-  .guided-option-modal .option-choice-section { overflow: visible; padding: 0 12px 16px !important; }
-  .guided-option-modal .option-choice-section > div { min-height: 0; padding: 16px !important; }
-  .guided-option-modal .option-quantity-block { grid-template-columns: 1fr; margin-top: 16px; padding-top: 14px; }
-  .guided-option-modal .option-order-btn { min-height: 72px; font-size: 1.35rem; }
-  .guided-option-modal .option-browse-btn { min-height: 72px; font-size: 1.1rem; }
-}
-@media (max-width: 480px) {
-  .guided-option-modal .option-detail-layout > div { grid-template-columns: 72px minmax(0, 1fr) !important; padding: 16px 56px 16px 16px; gap: 12px; }
-  .guided-option-modal .option-image-area { height: 80px !important; }
-  .guided-option-modal .option-header-title { font-size: 1.15rem !important; }
-  .guided-option-modal .option-choice-section { padding: 0 12px 16px !important; }
-  .guided-option-modal .option-choice-section > div { padding: 16px !important; }
-  .guided-option-modal .option-choice-button { padding: 14px !important; font-size: 1.1rem !important; }
-  .guided-option-modal .qty-controls { gap: 4px; }
-  .guided-option-modal .qty-btn { min-width: 40px; }
-  .option-quantity-label small { width: 100%; }
-}
-
-/* ── 동시구매 추천 ────────────────────────────────────────────────────────── */
-/* 옵션·수량 선택을 끝낸 뒤 눈이 가는 자리(푸터 바로 위)에 가로 한 줄로 놓는다.
-   주문 버튼을 가리지 않으면서, 빠뜨린 자재를 떠올리게 하는 위치다. */
-.option-reco {
-  border-top: 1px solid #e2e8f0;
-  padding: 16px 40px 8px;
-  background: #f8fafc;
-}
-
-.option-reco-head {
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: #334155;
-  margin-bottom: 12px;
-}
-
-.option-reco-list {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-  -webkit-overflow-scrolling: touch;
-}
-
-.option-reco-card {
-  flex: 0 0 132px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 10px;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.option-reco-card:active {
-  border-color: #ff6b00;
-  transform: scale(0.97);
-}
-
-.option-reco-thumb {
-  width: 100%;
-  height: 96px;
-  border-radius: 10px;
-  background: #f1f5f9;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.option-reco-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.option-reco-thumb-empty {
-  font-size: .75rem;
-  color: #94a3b8;
-}
-
-.option-reco-name {
-  margin-bottom: auto;
-  font-size: .95rem;
-  font-weight: 700;
-  color: #1e293b;
-  line-height: 1.3;
-  /* 자재명이 길어도 카드 높이를 맞춰야 가로 줄이 흐트러지지 않는다. */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-
-@media (max-width: 760px) {
-  .guided-option-modal .option-reco { padding: 12px 12px 4px; }
-  .guided-option-modal .option-reco-card { flex-basis: 112px; }
-  .guided-option-modal .option-reco-thumb { height: 76px; }
-}
-
-/* 선택 칸이 좁아지는 폭(키오스크 1080 등)에서는 수량 라벨과 +/- 컨트롤을
-   위아래로 쌓아 스테퍼가 잘리지 않게 한다. */
-@media (max-width: 1279px) {
-  .guided-option-modal .option-quantity-block { grid-template-columns: minmax(0, 1fr); }
-  .guided-option-modal .qty-controls { gap: 4px; }
-  .guided-option-modal .qty-btn { min-width: 42px; }
+  .order-focused-detail .option-detail-layout { grid-template-columns: 100px minmax(0, 1fr); gap: 16px; }
+  .order-focused-detail .option-scroll-body { padding: 16px; }
+  .order-focused-detail .qty-controls { gap: 4px; }
+  .order-focused-detail .qty-btn { flex-basis: 40px; width: 40px; font-size: 1.1rem; }
+  .order-focused-detail .qty-bulk { font-size: .8rem; }
+  .order-focused-detail .option-action-row { grid-template-columns: 1fr 1fr; }
+  .order-focused-detail .option-total-price { grid-column: 1 / -1; }
 }

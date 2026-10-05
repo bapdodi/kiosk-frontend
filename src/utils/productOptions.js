@@ -1,5 +1,5 @@
-import { COMBINATION_GROUP } from './optionConstants';
-import { resolvePrice } from './price';
+import { COMBINATION_GROUP } from './optionConstants.js';
+import { getPriceRange, resolvePrice } from './price.js';
 
 /**
  * 규격(옵션) 해석 규칙.
@@ -110,6 +110,22 @@ export function countOptionValues(product) {
  * 주문 금액은 서버가 ERP 코드로 다시 계산하므로 주문 요청에는 가격을 싣지 않는다.
  */
 
+/**
+ * 그룹마다 여러 값을 체크한 선택(`{그룹명: [값, ...]}`)을 담을 줄 단위로 펼친다.
+ * 그룹이 둘 이상이면 체크한 값끼리의 모든 조합이 한 줄씩 된다(규격 2개 × 원산지 2개 = 4줄).
+ * 어느 그룹이든 체크가 없으면 담을 줄이 없으므로 빈 배열을 돌려준다.
+ * 돌려주는 각 항목은 buildLineFromSelections 가 받는 `{그룹명: 값}` 모양이다.
+ */
+export function expandSelections(groups, picked) {
+    return groups.reduce(
+        (rows, g) => {
+            const values = picked[g.name] || [];
+            return rows.flatMap(row => values.map(v => ({ ...row, [g.name]: v })));
+        },
+        [{}]
+    );
+}
+
 /** 현재 선택값(selections)을 장바구니 한 줄로 변환 */
 export function buildLineFromSelections(product, groups, selections, qty) {
     const comboName = groups.map(g => selections[g.name]).join(' / ');
@@ -141,4 +157,32 @@ export function buildQuickAddArgs(product, qty) {
         }],
         quantities: { [line.comboId]: Math.max(1, qty) },
     };
+}
+
+/** 해당 옵션과 현재 다른 그룹 선택에 해당하는 실제 조합의 가격 범위. */
+export function getOptionPriceRange(product, groups, groupName, value, selections = {}) {
+    const combos = (product.combinations || []).filter(combo => !combo.deleted);
+    if (combos.length === 0) return getPriceRange(product);
+    const matches = combos.filter(combo => {
+        const values = groups.length === 1 ? [combo.name] : combo.name.split(' / ');
+        return groups.every((group, index) => {
+            if (group.name === groupName) return values[index] === value;
+            const picked = selections[group.name] || [];
+            return picked.length === 0 || picked.includes(values[index]);
+        });
+    });
+    return matches.length > 0 ? getPriceRange({ ...product, combinations: matches }) : null;
+}
+
+/** 표시 순서만 변경한다. 같은 가격은 기존 순서, 가격 없는 옵션은 마지막에 둔다. */
+export function getPriceSortedOptionGroups(product) {
+    const groups = getOptionGroups(product);
+    return groups.map(group => {
+        const pricedValues = group.values.map(value => ({
+            value,
+            price: getOptionPriceRange(product, groups, group.name, value)?.min ?? Infinity,
+        }));
+        pricedValues.sort((a, b) => a.price - b.price);
+        return { ...group, values: pricedValues.map(item => item.value) };
+    });
 }
