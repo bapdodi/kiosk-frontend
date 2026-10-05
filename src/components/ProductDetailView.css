@@ -20,7 +20,7 @@
 .order-focused-detail .option-group + .option-group { margin-top: 24px; }
 .order-focused-detail h3, .order-focused-detail .option-quantity-label { display: block; margin: 0 0 14px; color: #202b3b; font-size: 1.2rem; font-weight: 800; }
 .order-focused-detail .option-choice-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.order-focused-detail .option-choice-button { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 72px; padding: 16px; border: 1px solid #dfe4ea; border-radius: 12px; background: white; color: #536071; text-align: left; cursor: pointer; }
+.order-focused-detail .option-choice-button { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 72px; padding: 16px; border: 1px solid #000; border-radius: 12px; background: white; color: #536071; text-align: left; cursor: pointer; }
 .order-focused-detail .option-choice-value { min-width: 0; overflow-wrap: anywhere; font-size: 1.15rem; font-weight: 800; }
 .order-focused-detail .option-choice-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; text-align: right; }
 .order-focused-detail .option-choice-price { font-size: 1rem; font-weight: 800; overflow-wrap: anywhere; }
