@@ -444,7 +444,7 @@ body {
   border: 2px solid transparent;
   border-radius: 14px;
   /* 키오스크에서 잘 보이도록 기존의 약 2배 크기 */
-  padding: 16px 76px 16px 64px;
+  padding: 16px 138px 16px 64px;
   font-size: 1.8rem;
   transition: all 0.2s;
 }
@@ -498,7 +498,27 @@ body {
 }
 
 .search-clear-btn {
-  display: none;
+  position: absolute;
+  top: 50%;
+  right: 72px;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--accent-color);
+  font-size: 2.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.search-clear-btn:hover {
+  background: #fff4ec;
+  color: var(--accent-color);
 }
 
 .voice-error-toast {
@@ -2737,7 +2757,7 @@ body {
 
   .kiosk-container .search-input {
     height: 48px;
-    padding: 0 78px 0 42px;
+    padding: 0 90px 0 42px;
     border: 1px solid #e2e8f0;
     border-radius: 14px;
     background: #f4f6f8;
@@ -2767,15 +2787,15 @@ body {
     right: 44px;
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     padding: 0;
     transform: translateY(-50%);
     border: 0;
     border-radius: 50%;
     background: transparent;
-    color: #64748b;
-    font-size: 1.35rem;
+    color: var(--accent-color);
+    font-size: 2rem;
     cursor: pointer;
   }
 
