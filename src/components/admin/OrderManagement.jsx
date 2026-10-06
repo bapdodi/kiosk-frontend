@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 
 import { printStatement, exportStatementXlsx } from '../../utils/statement';
 import { matchesSearchText } from '../../utils/search';
+import AdminSearchClearButton from './AdminSearchClearButton';
 
 const OrderManagement = () => {
     // 주문 감시(SSE + 예비 폴링)와 알림음은 AdminLayout 에서 관리한다. 여기서는 상태만 읽는다.
@@ -272,9 +273,10 @@ const OrderManagement = () => {
                                 placeholder="주문자 이름 검색..."
                                 value={orderSearchQuery}
                                 onChange={(e) => setOrderSearchQuery(e.target.value)}
-                                style={{ padding: '12px 15px 12px 45px', fontSize: '0.95rem', borderRadius: '15px', border: '1px solid #e2e8f0', background: 'white' }}
+                                style={{ padding: '12px 52px 12px 45px', fontSize: '0.95rem', borderRadius: '15px', border: '1px solid #e2e8f0', background: 'white' }}
                             />
                             <span className="search-icon" style={{ left: '18px', fontSize: '1rem' }}>🔍</span>
+                            <AdminSearchClearButton value={orderSearchQuery} onClear={() => setOrderSearchQuery('')} />
                         </div>
                     </div>
                 </div>

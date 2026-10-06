@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import AdminSearchClearButton from './AdminSearchClearButton';
 
 const SearchableProductSelect = ({ value, products, onChange }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -30,13 +31,14 @@ const SearchableProductSelect = ({ value, products, onChange }) => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
                     width: '100%',
-                    padding: '10px 12px',
+                    padding: '10px 48px 10px 12px',
                     fontSize: '0.9rem',
                     borderRadius: '8px',
                     border: '1px solid #e2e8f0',
                     background: '#fff'
                 }}
             />
+            {isOpen && <AdminSearchClearButton value={searchTerm} onClear={() => setSearchTerm('')} />}
             {isOpen && (
                 <div style={{
                     position: 'absolute',

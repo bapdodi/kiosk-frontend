@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { matchesSearchText } from '../../utils/search';
+import AdminSearchClearButton from './AdminSearchClearButton';
 
 // 사이드바 플라이아웃과 공유되는 탭 정의 (AdminLayout 의 NAVER_TABS 와 key 동일)
 const TABS = [
@@ -581,13 +582,16 @@ const NaverSyncPage = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                     <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>상품</h3>
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <input
-                            type="text"
-                            placeholder="초성 또는 상품명으로 검색해주셔요..."
-                            value={productFilter}
-                            onChange={e => { setProductFilter(e.target.value); setProductPage(1); }}
-                            style={{ ...inputStyle, width: '220px' }}
-                        />
+                        <div style={{ position: 'relative', width: '220px' }}>
+                            <input
+                                type="text"
+                                placeholder="초성 또는 상품명으로 검색해주셔요..."
+                                value={productFilter}
+                                onChange={e => { setProductFilter(e.target.value); setProductPage(1); }}
+                                style={{ ...inputStyle, width: '100%', paddingRight: '48px' }}
+                            />
+                            <AdminSearchClearButton value={productFilter} onClear={() => { setProductFilter(''); setProductPage(1); }} />
+                        </div>
                         <select
                             value={statusFilter}
                             onChange={e => { setStatusFilter(e.target.value); setProductPage(1); }}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { describeError, describeResponseError } from '../../utils/apiError';
 import { matchesSearchText } from '../../utils/search';
+import AdminSearchClearButton from './AdminSearchClearButton';
 
 const CategoryManagement = () => {
     const {
@@ -269,9 +270,10 @@ const CategoryManagement = () => {
                             placeholder="명칭으로 찾기..."
                             value={catSearchQuery}
                             onChange={(e) => setCatSearchQuery(e.target.value)}
-                            style={{ padding: '12px 15px 12px 40px', borderRadius: '10px', border: '1px solid #e2e8f0', width: '250px' }}
+                            style={{ padding: '12px 52px 12px 40px', borderRadius: '10px', border: '1px solid #e2e8f0', width: '250px' }}
                         />
                         <span style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)' }}>🔍</span>
+                        <AdminSearchClearButton value={catSearchQuery} onClear={() => setCatSearchQuery('')} />
                     </div>
                     <button
                         onClick={() => openCatModal('main')}
