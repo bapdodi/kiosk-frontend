@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { describeError, describeResponseError } from '../../utils/apiError';
 import { matchesSearchText } from '../../utils/search';
+import AdminSearchClearButton from './AdminSearchClearButton';
 
 // TODO(거래명세서 자동 입력, 이어서 할 작업): 상단에 [명세서 PDF 올리기]를 두고,
 // 서버가 읽어 온 거래처·품목 줄로 이 격자를 채운다. 원본 PDF 를 옆에 띄우고,
@@ -1089,9 +1090,12 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                         <div className="admin-section-header">ERP 현재고 조회</div>
                         <div className="admin-section-body">
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px' }}>
-                                <input className="admin-input-small" style={{ flex: 1, minWidth: '240px' }} value={stockQuery}
-                                    onChange={e => { setStockQuery(e.target.value); setStockLimit(200); }}
-                                    placeholder="품명, 규격 또는 품목코드로 걸러 보세요 (영문 자판으로 쳐도 됩니다)" autoFocus />
+                                <div style={{ position: 'relative', flex: '1 1 240px', minWidth: '240px' }}>
+                                    <input className="admin-input-small" style={{ width: '100%', boxSizing: 'border-box', paddingRight: '50px' }} value={stockQuery}
+                                        onChange={e => { setStockQuery(e.target.value); setStockLimit(200); }}
+                                        placeholder="품명, 규격 또는 품목코드로 걸러 보세요 (영문 자판으로 쳐도 됩니다)" autoFocus />
+                                    <AdminSearchClearButton value={stockQuery} onClear={() => { setStockQuery(''); setStockLimit(200); }} />
+                                </div>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
                                     <input type="checkbox" checked={stockLowOnly}
                                         onChange={e => { setStockLowOnly(e.target.checked); setStockLimit(200); }} />
@@ -1290,9 +1294,12 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                             </div>
                             <div style={{ minWidth: '260px', flex: '1 1 260px' }}>
                                 <label className="admin-label">매입처 또는 품목</label>
-                                <input className="admin-input-small" value={historyQuery}
-                                    onChange={e => setHistoryQuery(e.target.value)}
-                                    placeholder="상호, 품명, 규격을 입력하세요" />
+                                <div style={{ position: 'relative' }}>
+                                    <input className="admin-input-small" style={{ width: '100%', boxSizing: 'border-box', paddingRight: '50px' }} value={historyQuery}
+                                        onChange={e => setHistoryQuery(e.target.value)}
+                                        placeholder="상호, 품명, 규격을 입력하세요" />
+                                    <AdminSearchClearButton value={historyQuery} onClear={() => setHistoryQuery('')} />
+                                </div>
                             </div>
                             <button type="submit" className="apply-btn">검색</button>
                             <button type="button" className="action-btn" onClick={() => {

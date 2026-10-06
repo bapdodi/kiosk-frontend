@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { getImageUrl, uploadImage } from '../../utils/imageUtils';
 import BulkImageMatchModal from './BulkImageMatchModal';
+import AdminSearchClearButton from './AdminSearchClearButton';
 import CategoryEditor from './CategoryEditor';
 import { matchesSearchText } from '../../utils/search';
 
@@ -499,9 +500,10 @@ const ProductManagement = () => {
                             placeholder="초성 또는 상품명으로 검색해주셔요..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            style={{ padding: '10px 15px 10px 40px' }}
+                            style={{ padding: '10px 52px 10px 40px' }}
                         />
                         <span className="search-icon" style={{ left: '15px' }}>🔍</span>
+                        <AdminSearchClearButton value={searchQuery} onClear={() => setSearchQuery('')} />
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>
                         <button className="apply-btn" style={{ background: '#3b82f6' }} onClick={() => setIsBulkModalOpen(true)}>
