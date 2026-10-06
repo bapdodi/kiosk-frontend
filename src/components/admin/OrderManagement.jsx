@@ -379,11 +379,11 @@ const OrderManagement = () => {
                                 </td>
                                 <td data-label="관리" className="order-actions" style={{ textAlign: 'right' }}>
                                     <button
-                                        onClick={() => handlePrintStatement(order)}
-                                        title="거래명세서 인쇄"
-                                        style={{ border: 'none', background: '#eef2ff', color: '#4338ca', padding: '10px 18px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', marginRight: '8px' }}
+                                        className="action-btn delete order-delete-btn"
+                                        onClick={() => deleteOrder(order.id)}
+                                        style={{ border: 'none', background: '#fef2f2', color: '#ef4444', padding: '10px 18px', borderRadius: '12px', marginRight: '8px' }}
                                     >
-                                        🧾 명세서
+                                        🗑️ 삭제
                                     </button>
                                     <button
                                         onClick={() => handleExportStatementXlsx(order)}
@@ -393,11 +393,12 @@ const OrderManagement = () => {
                                         📊 엑셀
                                     </button>
                                     <button
-                                        className="action-btn delete"
-                                        onClick={() => deleteOrder(order.id)}
-                                        style={{ border: 'none', background: '#fef2f2', color: '#ef4444', padding: '10px 18px', borderRadius: '12px' }}
+                                        className="order-statement-btn"
+                                        onClick={() => handlePrintStatement(order)}
+                                        title="거래명세서 인쇄"
+                                        style={{ border: 'none', background: '#eef2ff', color: '#4338ca', padding: '10px 18px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}
                                     >
-                                        🗑️ 삭제
+                                        🧾 명세서
                                     </button>
                                 </td>
                             </tr>

@@ -3977,10 +3977,10 @@ body {
     font-size: 0.8rem !important;
   }
 
-  /* 관리 버튼 3개는 라벨 없이 같은 폭으로 한 줄에 */
+  /* 삭제는 왼쪽, 가장 자주 쓰는 명세서는 오른쪽에 넓고 크게 배치한다. */
   .order-row td.order-actions {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr 1fr 1.9fr;
     gap: 8px;
     padding-top: 10px;
   }
@@ -3994,6 +3994,14 @@ body {
     padding: 10px 4px !important;
     font-size: 0.85rem;
     white-space: nowrap;
+  }
+
+  .order-row td.order-actions button.order-delete-btn,
+  .order-row td.order-actions button.order-statement-btn {
+    min-height: 56px;
+    padding: 14px 4px !important;
+    font-size: 1.05rem;
+    font-weight: 800;
   }
 
   /* 상태 설정: 한눈에 보이고 손가락으로 누르기 쉽게 크게 */
