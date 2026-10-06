@@ -3,20 +3,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { getImageUrl, uploadImage } from '../../utils/imageUtils';
 import { COMBINATION_GROUP } from '../../utils/optionConstants';
+import { buildProductUpdate } from '../../utils/productUpdate';
 import CategoryEditor from './CategoryEditor';
-
-// 원산지 카테고리(네이버 originAreaInfo.originAreaCode).
-// code 는 네이버가 요구하는 실제 원산지 코드다. 국산=00 은 라이브 스토어에서 검증됨
-// (2026-07-04 기준 등록된 네이버 상품 31개 전부 국산/00, 수입산 없음).
-// 수입산을 추가하려면: 스마트스토어센터에서 상품 원산지를 "수입산 > 해당 국가"로 고른 뒤
-// 표시되는 코드를 확인해 아래에 { label:'중국산', code:'<확인한코드>' } 형태로 넣으면
-// 즉시 드롭다운 카테고리로 노출된다. (네이버는 원산지 코드 조회 API를 제공하지 않음.)
-// 목록에 없는 코드는 언제든 '직접 입력'으로 넣을 수 있다.
-const ORIGIN_OPTIONS = [
-    { label: '기본값 사용 (미지정)', code: '' },
-    { label: '국산', code: '00' },
-    // { label: '중국산', code: '' },  // ← 판매자센터에서 코드 확인 후 채워서 주석 해제
-];
 
 const ProductForm = () => {
     const navigate = useNavigate();
@@ -26,19 +14,17 @@ const ProductForm = () => {
         mainCategories,
         subCategories, refreshCategories
     } = useOutletContext();
-    const isEditMode = Boolean(id);
+    const product = products.find(p => p.id === Number(id));
 
     const [productData, setProductData] = useState({
-        name: '',
         description: '',
         categories: [],
-        priceC: 0,
         hashtags: '',
         images: []
     });
 
-    const [optionGroups, setOptionGroups] = useState([]);
     const [combinations, setCombinations] = useState([]);
+    const [combinationSettingsChanged, setCombinationSettingsChanged] = useState(false);
     // 옵션값 단위 사진. API 와 동일한 평면 배열: [{ groupName, optionValue, imageUrl }]
     const [optionImages, setOptionImages] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -46,47 +32,23 @@ const ProductForm = () => {
     const [dragState, setDragState] = useState(null);
     // 어떤 옵션 행에서 "대표 이미지에서 선택" 패널이 열려 있는지: `${groupName}::${value}` 또는 null
     const [imgPickerKey, setImgPickerKey] = useState(null);
-    // 원산지 "직접 입력(코드)" 모드가 사용자 조작으로 열려 있는지
-    const [originCustomOpen, setOriginCustomOpen] = useState(false);
 
     useEffect(() => {
-        if (isEditMode) {
-            const product = products.find(p => p.id === parseInt(id));
-            if (product) {
-                setProductData(prev => ({
-                    ...prev,
-                    ...product,
-                    categories: product.categories || [],
-                    hashtags: product.hashtags ? product.hashtags.join(', ') : '',
-                    images: product.images || (product.image ? [product.image] : [])
-                }));
-                const combos = product.combinations || [];
-                // 활성 조합을 앞에, 삭제(소프트삭제)된 조합을 뒤에 모아 둔다.
-                setCombinations([
-                    ...combos.filter(c => !c.deleted),
-                    ...combos.filter(c => c.deleted)
-                ]);
-                setOptionGroups(product.optionGroups?.map(g => ({
-                    name: g.name,
-                    values: g.values ? g.values.join(', ') : ''
-                })) || []);
-                setOptionImages(product.optionImages || []);
-            }
-        }
-    }, [isEditMode, id, products]);
-
-    useEffect(() => {
-        // 신규 상품 등록 시, 카테고리가 비어 있으면 첫 번째 (대분류+중분류)로 한 개 기본 시드.
-        if (!isEditMode && mainCategories.length > 0) {
-            setProductData(prev => {
-                if (prev.categories && prev.categories.length > 0) return prev;
-                const mId = mainCategories[0].id;
-                const sId = subCategories[mId]?.[0]?.id || '';
-                return { ...prev, categories: [{ mainCategory: mId, subCategory: sId }] };
-            });
-        }
-    }, [mainCategories, subCategories, isEditMode]);
-
+        if (!product) return;
+        setProductData({
+            description: product.description || '',
+            categories: product.categories || [],
+            hashtags: (product.hashtags || []).join(', '),
+            images: product.images || (product.image ? [product.image] : [])
+        });
+        const combos = product.combinations || [];
+        setCombinations([
+            ...combos.filter(c => !c.deleted),
+            ...combos.filter(c => c.deleted)
+        ]);
+        setCombinationSettingsChanged(false);
+        setOptionImages(product.optionImages || []);
+    }, [product]);
 
     const handleImageUpload = async (eOrFiles) => {
         let files = [];
@@ -149,9 +111,8 @@ const ProductForm = () => {
 
         if (type === 'images') {
             setProductData(prev => ({ ...prev, images: moveItem(prev.images, dragState.index, targetIndex) }));
-        } else if (type === 'groups') {
-            setOptionGroups(prev => moveItem(prev, dragState.index, targetIndex));
         } else if (type === 'combinations') {
+            setCombinationSettingsChanged(true);
             setCombinations(prev => {
                 const active = prev.filter(c => !c.deleted);
                 const deleted = prev.filter(c => c.deleted);
@@ -202,7 +163,7 @@ const ProductForm = () => {
         );
     };
 
-    // 옵션값 한 행의 사진 편집기(업로드 + 대표에서 선택 + 등록된 사진 목록). 옵션그룹/조합 양쪽에서 공용으로 쓴다.
+    // 규격별 사진 편집기(업로드 + 대표에서 선택 + 등록된 사진 목록).
     const renderOptionImageEditor = (groupName, value, inputId) => {
         const imgs = getOptionImagesFor(groupName, value);
         const rowKey = `${groupName}::${value}`;
@@ -272,10 +233,6 @@ const ProductForm = () => {
         );
     };
 
-    // "옵션값" 문자열(쉼표 구분)을 배열로 파싱
-    const parseValues = (valuesStr) =>
-        (valuesStr || '').split(',').map(v => v.trim()).filter(Boolean);
-
     const handleDragOver = (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
@@ -297,54 +254,35 @@ const ProductForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!product) return;
         setIsLoading(true);
 
-        // 현재 옵션 그룹에 존재하는 (그룹명, 값) 쌍만 남겨 고아 옵션 사진을 정리한다.
-        const validPairs = new Set();
-        optionGroups
-            .filter(g => g.name.trim() && g.values.trim())
-            .forEach(g => parseValues(g.values).forEach(v => validPairs.add(`${g.name.trim()} ${v}`)));
-        // 조합(combinations) 기반 옵션 사진도 보존한다. 소프트삭제된 조합도 포함해 복구 시 사진이 살아있게 한다.
-        combinations.forEach(c => validPairs.add(`${COMBINATION_GROUP} ${c.name}`));
+        // 숨긴 규격도 포함해 복구할 때 사진 연결이 유지되도록 한다.
+        const validPairs = new Set(combinations.map(c => `${COMBINATION_GROUP} ${c.name}`));
         const cleanedOptionImages = optionImages.filter(oi =>
             validPairs.has(`${oi.groupName} ${oi.optionValue}`)
         );
 
-        const payload = {
+        const payload = buildProductUpdate(product, {
             ...productData,
             optionImages: cleanedOptionImages,
-            priceC: parseInt(productData.priceC || 0),
-            hashtags: typeof productData.hashtags === 'string'
-                ? productData.hashtags.split(',').map(tag => {
-                    const t = tag.trim();
-                    return t.startsWith('#') ? t : `#${t}`;
-                }).filter(t => t !== '#')
-                : productData.hashtags,
-            isComplexOptions: combinations.filter(c => !c.deleted).length > 0,
-            optionGroups: optionGroups.filter(g => g.name.trim() && g.values.trim()).map(g => ({
-                name: g.name.trim(),
-                values: g.values.split(',').map(v => v.trim()).filter(v => v)
-            })),
-            combinations: combinations
-        };
-
-        const method = isEditMode ? 'PUT' : 'POST';
-        const url = isEditMode ? `/api/products/admin/${id}` : '/api/products/admin';
+            hashtags: productData.hashtags.split(',').map(tag => {
+                const t = tag.trim();
+                return t.startsWith('#') ? t : `#${t}`;
+            }).filter(t => t !== '#'),
+            ...(combinationSettingsChanged ? { combinations } : {})
+        });
 
         try {
-            const res = await fetch(url, {
-                method,
+            const res = await fetch(`/api/products/admin/${id}`, {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             if (res.ok) {
                 const savedProduct = await res.json();
-                if (isEditMode) {
-                    setProducts(products.map(p => p.id === savedProduct.id ? savedProduct : p));
-                } else {
-                    setProducts([...products, savedProduct]);
-                }
+                setProducts(products.map(p => p.id === savedProduct.id ? savedProduct : p));
                 navigate('/admin/products');
             } else {
                 alert('저장에 실패했습니다.');
@@ -362,8 +300,8 @@ const ProductForm = () => {
             <div className="admin-form-content">
                 <header className="admin-form-header">
                     <div className="header-info">
-                        <h2>{isEditMode ? '상품 정보 수정' : '새로운 상품 등록'}</h2>
-                        <p>{isEditMode ? '상품의 상세 정보를 관리하고 업데이트합니다.' : '키오스크 메뉴에 노출될 새로운 상품을 등록합니다.'}</p>
+                        <h2>상품 정보 수정</h2>
+                        <p>{product?.name || '상품 정보를 불러오는 중입니다.'}</p>
                     </div>
                     <button className="flat-btn gray" onClick={() => navigate('/admin/products')}>
                         목록으로 돌아가기
@@ -388,87 +326,6 @@ const ProductForm = () => {
                         <div className="section-title">📦 기본 정보</div>
                         <div className="section-form">
                             <div className="form-item">
-                                <label>상품명 <span className="req">*</span></label>
-                                <input
-                                    required
-                                    className="form-input"
-                                    placeholder="상품명을 입력하세요"
-                                    value={productData.name}
-                                    onChange={(e) => setProductData({ ...productData, name: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-item">
-                                <label>ERP 상품 코드</label>
-                                <input
-                                    className="form-input"
-                                    placeholder="ERP 시스템의 상품 코드를 입력하세요 (예: 1001)"
-                                    value={productData.erpCode || ''}
-                                    onChange={(e) => setProductData({ ...productData, erpCode: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-item">
-                                <label>규격 (단일 규격 상품)</label>
-                                <input
-                                    className="form-input"
-                                    placeholder="단일 규격을 입력하세요 (예: 15A). 옵션이 여러 개면 비워두세요."
-                                    value={productData.gyu || ''}
-                                    onChange={(e) => setProductData({ ...productData, gyu: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-row">
-                                <div className="form-item">
-                                    <label>브랜드 (네이버 검색품질)</label>
-                                    <input
-                                        className="form-input"
-                                        placeholder="브랜드명을 입력하세요. 비우면 '기타'로 등록됩니다."
-                                        value={productData.brandName || ''}
-                                        onChange={(e) => setProductData({ ...productData, brandName: e.target.value })}
-                                    />
-                                </div>
-                                <div className="form-item">
-                                    <label>원산지</label>
-                                    {(() => {
-                                        const code = productData.originAreaCode || '';
-                                        const knownCodes = ORIGIN_OPTIONS.map(o => o.code);
-                                        // 목록에 없는 코드(수입산 등 직접 입력분)거나 사용자가 직접입력을 연 경우
-                                        const isCustom = originCustomOpen || (code && !knownCodes.includes(code));
-                                        return (
-                                            <>
-                                                <select
-                                                    className="form-input"
-                                                    value={isCustom ? '__custom__' : code}
-                                                    onChange={(e) => {
-                                                        const v = e.target.value;
-                                                        if (v === '__custom__') {
-                                                            setOriginCustomOpen(true);
-                                                        } else {
-                                                            setOriginCustomOpen(false);
-                                                            setProductData({ ...productData, originAreaCode: v });
-                                                        }
-                                                    }}
-                                                >
-                                                    {ORIGIN_OPTIONS.map(o => (
-                                                        <option key={o.code || '__none__'} value={o.code}>
-                                                            {o.label}{o.code ? ` (${o.code})` : ''}
-                                                        </option>
-                                                    ))}
-                                                    <option value="__custom__">직접 입력 (수입산 등 코드)</option>
-                                                </select>
-                                                {isCustom && (
-                                                    <input
-                                                        className="form-input"
-                                                        style={{ marginTop: '8px' }}
-                                                        placeholder="네이버 원산지 코드 (예: 국산=00, 수입산=02…)"
-                                                        value={code}
-                                                        onChange={(e) => setProductData({ ...productData, originAreaCode: e.target.value })}
-                                                    />
-                                                )}
-                                            </>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-                            <div className="form-item">
                                 <label>상품 설명</label>
                                 <textarea
                                     className="form-textarea"
@@ -477,26 +334,14 @@ const ProductForm = () => {
                                     onChange={(e) => setProductData({ ...productData, description: e.target.value })}
                                 />
                             </div>
-                            <div className="form-row">
-                                <div className="form-item">
-                                    <label>판매가 (원) <span className="req">*</span></label>
-                                    <input
-                                        type="number"
-                                        required
-                                        className="form-input"
-                                        value={productData.priceC}
-                                        onChange={(e) => setProductData({ ...productData, priceC: e.target.value })}
-                                    />
-                                </div>
-                                <div className="form-item">
-                                    <label>해시태그</label>
-                                    <input
-                                        className="form-input"
-                                        placeholder="#태그 #입력"
-                                        value={productData.hashtags}
-                                        onChange={(e) => setProductData({ ...productData, hashtags: e.target.value })}
-                                    />
-                                </div>
+                            <div className="form-item">
+                                <label>해시태그</label>
+                                <input
+                                    className="form-input"
+                                    placeholder="#태그 #입력"
+                                    value={productData.hashtags}
+                                    onChange={(e) => setProductData({ ...productData, hashtags: e.target.value })}
+                                />
                             </div>
                         </div>
                     </section>
@@ -561,147 +406,27 @@ const ProductForm = () => {
                     </section>
 
                     <section className="admin-section">
-                        <div className="section-title">⚙️ 옵션 설정</div>
+                        <div className="section-title">⚙️ 규격 설정</div>
                         <div className="section-form">
-                            <div className="option-header">
-                                <button
-                                    type="button"
-                                    className="flat-btn border"
-                                    onClick={() => setOptionGroups([...optionGroups, { name: '', values: '' }])}
-                                >
-                                    ＋ 옵션 그룹 추가
-                                </button>
-                            </div>
-
-                            {optionGroups.length > 0 ? (
-                                <div className="option-group-wrapper">
-                                    {optionGroups.map((group, idx) => (
-                                        <div key={idx} className="option-group-item"
-                                            draggable="true"
-                                            onDragStart={() => handleReorderDragStart('groups', idx)}
-                                            onDragOver={(e) => e.preventDefault()}
-                                            onDrop={() => handleReorderDrop('groups', idx)}
-                                            style={{ cursor: 'grab' }}>
-                                            <input
-                                                placeholder="옵션명 (예: 색상)"
-                                                value={group.name}
-                                                onChange={(e) => {
-                                                    const updated = [...optionGroups];
-                                                    updated[idx].name = e.target.value;
-                                                    setOptionGroups(updated);
-                                                }}
-                                                className="form-input small"
-                                            />
-                                            <input
-                                                placeholder="옵션값 (쉼표 구분: 빨강, 파랑)"
-                                                value={group.values}
-                                                onChange={(e) => {
-                                                    const updated = [...optionGroups];
-                                                    updated[idx].values = e.target.value;
-                                                    setOptionGroups(updated);
-                                                }}
-                                                className="form-input"
-                                            />
-                                            <div style={{ display: 'flex', gap: '4px' }}>
-                                                <button
-                                                    type="button"
-                                                    className="mini-add-btn"
-                                                    onClick={() => {
-                                                        if (idx === 0) return;
-                                                        const updated = [...optionGroups];
-                                                        [updated[idx - 1], updated[idx]] = [updated[idx], updated[idx - 1]];
-                                                        setOptionGroups(updated);
-                                                    }}
-                                                    title="위로 이동"
-                                                >▲</button>
-                                                <button
-                                                    type="button"
-                                                    className="mini-add-btn"
-                                                    onClick={() => {
-                                                        if (idx === optionGroups.length - 1) return;
-                                                        const updated = [...optionGroups];
-                                                        [updated[idx + 1], updated[idx]] = [updated[idx], updated[idx + 1]];
-                                                        setOptionGroups(updated);
-                                                    }}
-                                                    title="아래로 이동"
-                                                >▼</button>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                className="icon-btn-del"
-                                                onClick={() => setOptionGroups(optionGroups.filter((_, i) => i !== idx))}
-                                            >
-                                                삭제
-                                            </button>
-                                        </div>
-                                    ))}
-                                    <button
-                                        type="button"
-                                        className="flat-btn navy"
-                                        style={{ marginTop: '10px' }}
-                                        onClick={() => {
-                                            const validGroups = optionGroups.filter(g => g.name.trim() && g.values.trim());
-                                            if (validGroups.length === 0) return alert('옵션 명과 값을 입력해주세요.');
-                                            const groupValues = validGroups.map(g => g.values.split(',').map(v => v.trim()).filter(v => v));
-                                            const cartesian = (...a) => a.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())));
-                                            const results = groupValues.length > 1 ? cartesian(...groupValues) : groupValues[0].map(v => [v]);
-                                            setCombinations(results.map((res, i) => ({
-                                                id: `c-${i}`,
-                                                name: Array.isArray(res) ? res.join(' / ') : res,
-                                                priceC: 0
-                                            })));
-                                        }}
-                                    >
-                                        옵션 조합 생성하기
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="empty-info">옵션이 없는 상품입니다.</div>
-                            )}
-
-                            {(optionGroups.some(g => g.name.trim() && parseValues(g.values).length > 0) || combinations.filter(c => !c.deleted).length > 1) && (
+                            {combinations.filter(c => !c.deleted).length > 1 && (
                                 <div className="option-img-section">
                                     <div className="option-img-section-title">
-                                        🖼️ 옵션별 사진
-                                        <span>옵션값(또는 옵션 조합)마다 사진을 등록하면 키오스크에서 해당 옵션 선택 시 그 사진을 보여줍니다. 없으면 메인 사진이 표시됩니다.</span>
+                                        🖼️ 규격별 사진
+                                        <span>규격마다 사진을 등록하면 키오스크에서 해당 규격 선택 시 보여줍니다. 등록된 사진이 없으면 대표 사진이 표시됩니다.</span>
                                     </div>
-                                    {optionGroups.map((group, gIdx) => {
-                                        const name = group.name.trim();
-                                        const values = parseValues(group.values);
-                                        if (!name || values.length === 0) return null;
-                                        return (
-                                            <div key={gIdx} className="option-img-group">
-                                                <div className="option-img-group-name">{name}</div>
-                                                {values.map((val, vIdx) => {
-                                                    const inputId = `opt-img-${gIdx}-${vIdx}`;
-                                                    return (
-                                                        <div key={vIdx} className="option-img-row">
-                                                            <div className="option-img-value-label">{val}</div>
-                                                            {renderOptionImageEditor(name, val, inputId)}
-                                                        </div>
-                                                    );
-                                                })}
+                                    <div className="option-img-group">
+                                        {combinations.filter(c => !c.deleted).map((c, cIdx) => (
+                                            <div key={cIdx} className="option-img-row">
+                                                <div className="option-img-value-label">{c.name}</div>
+                                                {renderOptionImageEditor(COMBINATION_GROUP, c.name, `opt-img-combo-${cIdx}`)}
                                             </div>
-                                        );
-                                    })}
-
-                                    {/* 옵션 그룹이 없는 ERP 조합 상품: 조합 이름별로 사진을 등록한다. */}
-                                    {!optionGroups.some(g => g.name.trim() && parseValues(g.values).length > 0)
-                                        && combinations.filter(c => !c.deleted).length > 1 && (
-                                        <div className="option-img-group">
-                                            <div className="option-img-group-name">옵션 조합</div>
-                                            {combinations.filter(c => !c.deleted).map((c, cIdx) => {
-                                                const inputId = `opt-img-combo-${cIdx}`;
-                                                return (
-                                                    <div key={cIdx} className="option-img-row">
-                                                        <div className="option-img-value-label">{c.name}</div>
-                                                        {renderOptionImageEditor(COMBINATION_GROUP, c.name, inputId)}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
+                                        ))}
+                                    </div>
                                 </div>
+                            )}
+
+                            {!combinations.length && (
+                                <div className="empty-info">등록된 규격이 없습니다.</div>
                             )}
 
                             {combinations.some(c => !c.deleted) && (
@@ -710,9 +435,8 @@ const ProductForm = () => {
                                         <thead>
                                             <tr>
                                                 <th width="50">순서</th>
-                                                <th>옵션 조합</th>
-                                                <th width="150">추가 금액</th>
-                                                <th width="60">삭제</th>
+                                                <th>규격</th>
+                                                <th width="60">표시</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -733,6 +457,7 @@ const ProductForm = () => {
                                                                     if (i === 0 || combinations[i - 1].deleted) return;
                                                                     const updated = [...combinations];
                                                                     [updated[i - 1], updated[i]] = [updated[i], updated[i - 1]];
+                                                                    setCombinationSettingsChanged(true);
                                                                     setCombinations(updated);
                                                                 }}
                                                             >▲</button>
@@ -744,6 +469,7 @@ const ProductForm = () => {
                                                                     if (i === combinations.length - 1 || combinations[i + 1].deleted) return;
                                                                     const updated = [...combinations];
                                                                     [updated[i + 1], updated[i]] = [updated[i], updated[i + 1]];
+                                                                    setCombinationSettingsChanged(true);
                                                                     setCombinations(updated);
                                                                 }}
                                                             >▼</button>
@@ -751,37 +477,20 @@ const ProductForm = () => {
                                                     </td>
                                                     <td>{c.name}</td>
                                                     <td>
-                                                        <input
-                                                            type="number"
-                                                            className="form-input tiny"
-                                                            value={c.priceC}
-                                                            onChange={(e) => {
-                                                                const updated = [...combinations];
-                                                                updated[i].priceC = parseInt(e.target.value || 0);
-                                                                setCombinations(updated);
-                                                            }}
-                                                        />
-                                                    </td>
-                                                    <td>
                                                         <button
                                                             type="button"
                                                             className="icon-btn-del"
-                                                            title="이 옵션 조합 삭제 (소프트삭제: postgres에 보존되며 복구 가능)"
+                                                            title="이 규격 숨기기 (복구 가능)"
                                                             onClick={() => {
                                                                 const target = combinations[i];
                                                                 const rest = combinations.filter((_, idx) => idx !== i);
-                                                                if (target.id_db) {
-                                                                    // 이미 저장된 조합: 소프트삭제 플래그만 세우고 목록 끝으로 모은다.
-                                                                    const active = rest.filter(x => !x.deleted);
-                                                                    const removed = rest.filter(x => x.deleted);
-                                                                    setCombinations([...active, ...removed, { ...target, deleted: true }]);
-                                                                } else {
-                                                                    // 아직 저장된 적 없는 조합: DB에 없으므로 그냥 제거.
-                                                                    setCombinations(rest);
-                                                                }
+                                                                const active = rest.filter(x => !x.deleted);
+                                                                const removed = rest.filter(x => x.deleted);
+                                                                setCombinationSettingsChanged(true);
+                                                                setCombinations([...active, ...removed, { ...target, deleted: true }]);
                                                             }}
                                                         >
-                                                            삭제
+                                                            숨김
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -794,7 +503,7 @@ const ProductForm = () => {
                             {combinations.some(c => c.deleted) && (
                                 <div className="deleted-combo-wrap">
                                     <div className="deleted-combo-title">
-                                        🗑️ 삭제된 옵션 조합 <span>저장하면 postgres에 보존됩니다 · 복구 가능</span>
+                                        🗑️ 숨긴 규격 <span>복구할 수 있습니다</span>
                                     </div>
                                     {combinations.map((c, i) => c.deleted ? (
                                         <div key={i} className="deleted-combo-row">
@@ -808,6 +517,7 @@ const ProductForm = () => {
                                                     const active = rest.filter(x => !x.deleted);
                                                     const removed = rest.filter(x => x.deleted);
                                                     // 복구 시 활성 목록 맨 뒤에 끼워 넣어 활성/삭제 구역을 분리 유지.
+                                                    setCombinationSettingsChanged(true);
                                                     setCombinations([...active, { ...target, deleted: false }, ...removed]);
                                                 }}
                                             >
@@ -825,8 +535,8 @@ const ProductForm = () => {
                             <span className="status-msg">{isLoading ? '데이터를 처리 중입니다...' : '모든 정보를 입력하셨나요?'}</span>
                             <div className="footer-btns">
                                 <button type="button" className="flat-btn border large" onClick={() => navigate('/admin/products')}>취소</button>
-                                <button type="submit" className="flat-btn navy large" disabled={isLoading}>
-                                    {isEditMode ? '수정 내용 저장' : '새 상품 등록하기'}
+                                <button type="submit" className="flat-btn navy large" disabled={isLoading || !product}>
+                                    수정 내용 저장
                                 </button>
                             </div>
                         </div>
@@ -881,7 +591,6 @@ const ProductForm = () => {
                 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
                 .form-item { display: flex; flex-direction: column; gap: 8px; }
                 .form-item label { font-size: 0.9rem; font-weight: 700; color: #475569; }
-                .req { color: #ef4444; }
 
                 .form-input, .form-textarea, .form-select {
                     padding: 12px 15px;
@@ -1020,7 +729,6 @@ const ProductForm = () => {
                 .option-img-section-title { font-size: 0.95rem; font-weight: 800; color: #334155; }
                 .option-img-section-title span { display: block; font-weight: 500; font-size: 0.78rem; color: #94a3b8; margin-top: 4px; }
                 .option-img-group { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
-                .option-img-group-name { font-size: 0.9rem; font-weight: 800; color: #1e293b; }
                 .option-img-row { display: flex; flex-direction: column; gap: 8px; }
                 .option-img-value-label { font-size: 0.85rem; font-weight: 700; color: #475569; }
                 .img-add-square.as-btn { line-height: 1.2; text-align: center; gap: 0; }
@@ -1043,8 +751,6 @@ const ProductForm = () => {
                     display: flex; align-items: center; justify-content: center;
                 }
 
-                .option-group-wrapper { display: flex; flex-direction: column; gap: 10px; padding: 15px; background: #f8fafc; border-radius: 10px; }
-                .option-group-item { display: flex; gap: 10px; align-items: center; }
                 .icon-btn-del { width: 32px; height: 32px; border-radius: 6px; border: none; background: #fee2e2; color: #ef4444; cursor: pointer; }
                 .mini-add-btn { 
                     padding: 2px 8px; 

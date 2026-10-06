@@ -15,7 +15,7 @@ import { getPriceRange, resolvePrice } from './price.js';
  */
 
 /**
- * 데이터 구조가 여러 갈래(optionGroups / sizes+origins / combinations)라 한 형태로 모은다.
+ * 규격 데이터(sizes+origins / combinations)를 화면 선택지로 모은다.
  * displayLabel 은 손님에게 보여줄 이름. COMBINATION_GROUP 은 내부용 sentinel 이라
  * 그대로 쓰면 화면에 "__combination__" 이 노출된다.
  */
@@ -24,40 +24,36 @@ export function getOptionGroups(product) {
 
     const groups = [];
 
-    if (product.optionGroups && product.optionGroups.length > 0) {
-        groups.push(...product.optionGroups.map(g => ({ ...g, values: g.values || [] })));
-    } else {
-        if (product.sizes && product.sizes.length > 0) {
-            groups.push({ name: '규격 (Size)', values: product.sizes.map(s => s.name), legacySource: 'sizes' });
-        }
-        if (product.origins && product.origins.length > 0) {
-            groups.push({ name: '원산지 (Origin)', values: product.origins.map(o => o.name), legacySource: 'origins' });
-        }
+    if (product.sizes && product.sizes.length > 0) {
+        groups.push({ name: '규격 (Size)', values: product.sizes.map(s => s.name), legacySource: 'sizes' });
+    }
+    if (product.origins && product.origins.length > 0) {
+        groups.push({ name: '원산지 (Origin)', values: product.origins.map(o => o.name), legacySource: 'origins' });
+    }
 
-        // ERP 로 묶여 들어온 상품은 규격 하나짜리 선택지로 다룬다.
-        const activeCombos = (product.combinations || []).filter(c => !c.deleted);
-        // 규격이 하나뿐이어도 그룹으로 만든다. 상세 화면에서 '이미 선택된 규격'으로
-        // 보여 주기 위해서다(고를 것이 없으므로 needsOptionChoice 는 여전히 false).
-        if (groups.length === 0 && activeCombos.length > 0) {
-            groups.push({
-                name: COMBINATION_GROUP,
-                label: '',
-                values: activeCombos.map(c => c.name),
-                legacySource: 'combinations'
-            });
-        }
+    // ERP 로 묶여 들어온 상품은 규격 하나짜리 선택지로 다룬다.
+    const activeCombos = (product.combinations || []).filter(c => !c.deleted);
+    // 규격이 하나뿐이어도 그룹으로 만든다. 상세 화면에서 '이미 선택된 규격'으로
+    // 보여 주기 위해서다(고를 것이 없으므로 needsOptionChoice 는 여전히 false).
+    if (groups.length === 0 && activeCombos.length > 0) {
+        groups.push({
+            name: COMBINATION_GROUP,
+            label: '',
+            values: activeCombos.map(c => c.name),
+            legacySource: 'combinations'
+        });
+    }
 
-        // 규격 줄이 아예 없는 단일 품목(ERP 에서 조합 없이 한 줄로 내려온 상품).
-        // 화면에 규격 칸이 통째로 사라지면 손님은 "규격을 못 고르는" 것인지
-        // "규격이 하나뿐인" 것인지 구분할 수 없다. 하나뿐임을 보여 주고 선택해 둔다.
-        if (groups.length === 0) {
-            groups.push({
-                name: COMBINATION_GROUP,
-                label: '',
-                values: [product.gyu || '기본'],
-                legacySource: 'single'
-            });
-        }
+    // 규격 줄이 아예 없는 단일 품목(ERP 에서 조합 없이 한 줄로 내려온 상품).
+    // 화면에 규격 칸이 통째로 사라지면 손님은 "규격을 못 고르는" 것인지
+    // "규격이 하나뿐인" 것인지 구분할 수 없다. 하나뿐임을 보여 주고 선택해 둔다.
+    if (groups.length === 0) {
+        groups.push({
+            name: COMBINATION_GROUP,
+            label: '',
+            values: [product.gyu || '기본'],
+            legacySource: 'single'
+        });
     }
 
     return groups.map(g => ({

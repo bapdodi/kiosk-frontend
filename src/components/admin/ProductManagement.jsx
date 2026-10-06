@@ -5,6 +5,7 @@ import BulkImageMatchModal from './BulkImageMatchModal';
 import AdminSearchClearButton from './AdminSearchClearButton';
 import CategoryEditor from './CategoryEditor';
 import { matchesSearchText } from '../../utils/search';
+import { buildProductUpdate } from '../../utils/productUpdate';
 
 const ProductManagement = () => {
     const navigate = useNavigate();
@@ -91,10 +92,7 @@ const ProductManagement = () => {
             const res = await fetch(`/api/products/admin/${product.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...product,
-                    categories: tempCategories
-                })
+                body: JSON.stringify(buildProductUpdate(product, { categories: tempCategories }))
             });
             if (res.ok) {
                 const updated = await res.json();
@@ -435,10 +433,9 @@ const ProductManagement = () => {
                 uploadedUrls.push(data.fileUrl);
             }
 
-            const updatedProduct = {
-                ...product,
+            const updatedProduct = buildProductUpdate(product, {
                 images: [...(product.images || []), ...uploadedUrls]
-            };
+            });
 
             const res = await fetch(`/api/products/admin/${productId}`, {
                 method: 'PUT',

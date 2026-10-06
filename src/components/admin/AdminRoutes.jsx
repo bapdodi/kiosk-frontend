@@ -20,7 +20,7 @@ export default function AdminRoutes(layoutProps) {
       <Route element={<AdminLayout {...layoutProps} />}>
         <Route index element={<Navigate to="orders" replace />} />
         <Route path="products" element={<ProductManagement />} />
-        <Route path="products/new" element={<ProductForm />} />
+        <Route path="products/new" element={<Navigate to="/admin/products" replace />} />
         <Route path="products/edit/:id" element={<ProductForm />} />
         <Route path="categories" element={<CategoryManagement />} />
         <Route path="orders" element={<OrderManagement />} />
