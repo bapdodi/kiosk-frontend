@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import AdminSearchClearButton from './AdminSearchClearButton';
+import { buildProductUpdate } from '../../utils/productUpdate';
 
 const SearchableProductSelect = ({ value, products, onChange }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -233,10 +234,9 @@ const BulkImageMatchModal = ({ isOpen, onClose, products, onUpdateSuccess }) => 
             for (const productId in productImageMap) {
                 const product = products.find(p => p.id === parseInt(productId));
                 if (product) {
-                    productsToUpdate.push({
-                        ...product,
-                        images: productImageMap[productId] // 여기서는 업로드한 것들로 교체
-                    });
+                    productsToUpdate.push(buildProductUpdate(product, {
+                        images: productImageMap[productId]
+                    }));
                 }
             }
 
