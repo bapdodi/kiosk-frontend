@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getOptionGroups, getOptionPriceRange, getPriceSortedOptionGroups } from './productOptions.js';
+import { getOptionGroups, getOptionPriceRange } from './productOptions.js';
 
-test('options sort by ascending price, keep equal-price order and place missing prices last', () => {
+test('options preserve configured specification order regardless of price', () => {
     const product = { combinations: [
         { name: '150A', price: 219000 },
         { name: '가격 없음', price: 0 },
@@ -10,7 +10,7 @@ test('options sort by ascending price, keep equal-price order and place missing 
         { name: '50A 수입', price: 45000 },
         { name: '삭제 규격', price: 100, deleted: true },
     ] };
-    assert.deepEqual(getPriceSortedOptionGroups(product)[0].values, ['50A', '50A 수입', '150A', '가격 없음']);
+    assert.deepEqual(getOptionGroups(product)[0].values, ['150A', '가격 없음', '50A', '50A 수입']);
     assert.deepEqual(product.combinations.map(c => c.name), ['150A', '가격 없음', '50A', '50A 수입', '삭제 규격']);
 });
 
