@@ -33,6 +33,8 @@ function App() {
   // 한 벌로 쓰면 관리자 화면이 단가 없는 목록으로 상품을 저장해 가격을 0 으로 덮어쓴다.
   const [products, setProducts] = useState([]);
   const [adminProducts, setAdminProducts] = useState([]);
+  const [adminProductsStatus, setAdminProductsStatus] = useState('idle');
+  const adminProductsRequest = useRef(null);
   const [mainCategories, setMainCategories] = useState([]);
   const [subCategories, setSubCategories] = useState({});
   const [orders, setOrders] = useState([]);
@@ -85,16 +87,29 @@ function App() {
         return;
       }
 
+      const initialPath = window.location.pathname.replace(/\/+$/, '') || '/';
+      if (initialPath === '/login') {
+        setLoading(false);
+        return;
+      }
+
       try {
         const [isAuth] = await Promise.all([
           checkAuth(),
           refreshCategories()
         ]);
 
-        await fetchProducts(true);
+        // The kiosk and Naver screens need the public catalog. Admin product data
+        // is loaded only when its management screen is opened.
+        if (initialPath === '/' || initialPath.startsWith('/admin/naver')) {
+          await fetchProducts(true);
+        }
 
         if (isAuth) {
-          await Promise.all([fetchOrders(), fetchAdminProducts()]);
+          if (initialPath.startsWith('/admin/products')) {
+            void fetchAdminProducts();
+          }
+          await fetchOrders();
         }
       } catch (error) {
         console.error('Error fetching initial data:', error);
@@ -137,18 +152,31 @@ function App() {
   };
 
   // 관리자 목록은 단가가 들어 있어 로그인한 관리자만 받을 수 있다.
-  const fetchAdminProducts = async () => {
+  const fetchAdminProducts = async (force = false) => {
+    if (!force && adminProductsStatus === 'success') return true;
+    if (adminProductsRequest.current) return adminProductsRequest.current;
+
+    setAdminProductsStatus('loading');
     try {
       setIsRefreshing(true);
-      const res = await fetch('/api/products/admin/all');
-      if (!res.ok) throw new Error('상품 데이터를 불러오는데 실패했습니다.');
+      const request = (async () => {
+        const res = await fetch('/api/products/admin/all');
+        if (!res.ok) throw new Error('상품 데이터를 불러오는데 실패했습니다.');
 
-      const data = await res.json();
-      setAdminProducts(Array.isArray(data) ? data : []);
+        const data = await res.json();
+        setAdminProducts(Array.isArray(data) ? data : []);
+        setAdminProductsStatus('success');
+        return true;
+      })();
+      adminProductsRequest.current = request;
+      return await request;
     } catch (e) {
       console.error('Fetch admin products failed:', e);
+      setAdminProductsStatus('error');
+      return false;
     } finally {
       setIsRefreshing(false);
+      adminProductsRequest.current = null;
     }
   };
 
@@ -197,6 +225,8 @@ function App() {
             <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.5rem' }}>관리자 화면을 불러오는 중...</div>}>
             <AdminRoutes
               products={adminProducts}
+              adminProductsStatus={adminProductsStatus}
+              fetchAdminProducts={fetchAdminProducts}
               setProducts={updateAdminProducts}
               mainCategories={mainCategories}
               setMainCategories={setMainCategories}
@@ -206,7 +236,7 @@ function App() {
                orders={orders}
                setOrders={setOrders}
                isRefreshing={isRefreshing}
-               onRefresh={() => { fetchAdminProducts(); fetchProducts(); }}
+               onRefresh={() => { fetchAdminProducts(true); fetchProducts(); }}
                activeMainCat={activeMainCat}
                setActiveMainCat={setActiveMainCat}
                activeSubCat={activeSubCat}

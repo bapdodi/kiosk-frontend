@@ -14,6 +14,8 @@ const NAVER_TABS = [
 const AdminLayout = ({
     products,
     setProducts,
+    adminProductsStatus,
+    fetchAdminProducts,
     mainCategories,
     setMainCategories,
     subCategories,
@@ -216,6 +218,7 @@ const AdminLayout = ({
                 <div className="admin-content-inner" style={{ maxWidth: '1100px', margin: '60px auto 0 auto' }}>
                     <Outlet context={{
                         products, setProducts,
+                        adminProductsStatus, fetchAdminProducts,
                         mainCategories, setMainCategories,
                         subCategories, setSubCategories, refreshCategories,
                         orders, setOrders,
