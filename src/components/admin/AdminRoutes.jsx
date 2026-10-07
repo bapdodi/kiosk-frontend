@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Navigate, Route, Routes, useOutletContext } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import CategoryManagement from './CategoryManagement';
 import ErpBakImportPage from './ErpBakImportPage';
@@ -19,9 +20,9 @@ export default function AdminRoutes(layoutProps) {
     <Routes>
       <Route element={<AdminLayout {...layoutProps} />}>
         <Route index element={<Navigate to="orders" replace />} />
-        <Route path="products" element={<ProductManagement />} />
+        <Route path="products" element={<AdminProductsGate><ProductManagement /></AdminProductsGate>} />
         <Route path="products/new" element={<Navigate to="/admin/products" replace />} />
-        <Route path="products/edit/:id" element={<ProductForm />} />
+        <Route path="products/edit/:id" element={<AdminProductsGate><ProductForm /></AdminProductsGate>} />
         <Route path="categories" element={<CategoryManagement />} />
         <Route path="orders" element={<OrderManagement />} />
         <Route path="naver" element={<NaverSyncPage />} />
@@ -31,4 +32,31 @@ export default function AdminRoutes(layoutProps) {
       </Route>
     </Routes>
   );
+}
+
+function AdminProductsGate({ children }) {
+  const { adminProductsStatus, fetchAdminProducts } = useOutletContext();
+
+  useEffect(() => {
+    if (adminProductsStatus === 'idle') fetchAdminProducts();
+  }, [adminProductsStatus, fetchAdminProducts]);
+
+  if (adminProductsStatus === 'idle' || adminProductsStatus === 'loading') {
+    return (
+      <div role="status" style={{ minHeight: '50vh', display: 'grid', placeItems: 'center', fontSize: '1.2rem', fontWeight: 700 }}>
+        상품 정보를 불러오는 중…
+      </div>
+    );
+  }
+
+  if (adminProductsStatus === 'error') {
+    return (
+      <div role="alert" style={{ minHeight: '50vh', display: 'grid', placeContent: 'center', gap: '12px', textAlign: 'center' }}>
+        <p>상품 정보를 불러오지 못했습니다.</p>
+        <button type="button" onClick={() => fetchAdminProducts(true)}>다시 불러오기</button>
+      </div>
+    );
+  }
+
+  return children;
 }
