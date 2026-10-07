@@ -11,8 +11,8 @@ const product = {
 
 test('기존 상품을 넘겨도 ERP와 브랜드·원산지는 요청에 포함하지 않는다', () => {
     assert.deepEqual(buildProductUpdate(product, { ...product, images: ['new.jpg'] }), {
-        id: 1, categories: product.categories, images: ['new.jpg'],
-        combinations: [{ id_db: 10, deleted: false, sortOrder: 0 }]
+        id: 1, name: 'ERP 상품', categories: product.categories, images: ['new.jpg'],
+        combinations: [{ id_db: 10, deleted: false, sortOrder: 0, kioskName: '' }]
     });
     assert.deepEqual(buildProductUpdate(product, { images: ['new.jpg'] }), {
         id: 1, images: ['new.jpg']
@@ -27,6 +27,15 @@ test('규격 설정은 기존 ID와 순서·숨김만 보내고 새 규격은 �
     assert.deepEqual(buildProductUpdate(product, {
         combinations: [{ id_db: 20, priceA: 500, deleted: true }, { name: '수동 규격' }]
     }), {
-        id: 1, combinations: [{ id_db: 20, deleted: true, sortOrder: 0 }]
+        id: 1, combinations: [{ id_db: 20, deleted: true, sortOrder: 0, kioskName: '' }]
     });
+});
+
+test('키오스크용 규격 이름은 그대로 보내고 비어 있으면 빈 문자열로 보낸다', () => {
+    assert.deepEqual(buildProductUpdate(product, {
+        combinations: [{ id_db: 10, kioskName: '연결관 15' }, { id_db: 11 }]
+    }).combinations, [
+        { id_db: 10, deleted: false, sortOrder: 0, kioskName: '연결관 15' },
+        { id_db: 11, deleted: false, sortOrder: 1, kioskName: '' }
+    ]);
 });
