@@ -56,7 +56,7 @@ const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, 
                                     return (
                                         <button type="button" key={value} className="option-choice-button" aria-pressed={selected}
                                             onClick={() => toggleOption(group.name, value)}>
-                                            <span className="option-choice-value">{value}</span>
+                                            <span className="option-choice-value">{group.valueLabels?.[value] ?? value}</span>
                                             <span className="option-choice-meta">
                                                 {optionPrice && <span className="option-choice-price">{formatPriceRange(optionPrice)}</span>}
                                                 {selected && <span className="option-choice-check" aria-hidden="true">✓</span>}

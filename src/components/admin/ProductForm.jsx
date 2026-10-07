@@ -17,6 +17,7 @@ const ProductForm = () => {
     const product = products.find(p => p.id === Number(id));
 
     const [productData, setProductData] = useState({
+        name: '',
         description: '',
         categories: [],
         hashtags: '',
@@ -36,6 +37,7 @@ const ProductForm = () => {
     useEffect(() => {
         if (!product) return;
         setProductData({
+            name: product.name || '',
             description: product.description || '',
             categories: product.categories || [],
             hashtags: (product.hashtags || []).join(', '),
@@ -326,6 +328,19 @@ const ProductForm = () => {
                         <div className="section-title">📦 기본 정보</div>
                         <div className="section-form">
                             <div className="form-item">
+                                <label>상품명 <span className="req">*</span></label>
+                                <input
+                                    required
+                                    className="form-input"
+                                    placeholder="키오스크에 표시할 상품명"
+                                    value={productData.name}
+                                    onChange={(e) => setProductData({ ...productData, name: e.target.value })}
+                                />
+                                {product?.name !== productData.name && (
+                                    <small style={{ color: '#94a3b8' }}>기존: {product?.name}</small>
+                                )}
+                            </div>
+                            <div className="form-item">
                                 <label>상품 설명</label>
                                 <textarea
                                     className="form-textarea"
@@ -435,7 +450,8 @@ const ProductForm = () => {
                                         <thead>
                                             <tr>
                                                 <th width="50">순서</th>
-                                                <th>규격</th>
+                                                <th>규격 (ERP 원본)</th>
+                                                <th>키오스크용 이름</th>
                                                 <th width="60">표시</th>
                                             </tr>
                                         </thead>
@@ -476,6 +492,21 @@ const ProductForm = () => {
                                                         </div>
                                                     </td>
                                                     <td>{c.name}</td>
+                                                    <td>
+                                                        <input
+                                                            type="text"
+                                                            style={{ width: '100%', padding: '6px 8px', border: '1px solid #d5dbe5', borderRadius: 6 }}
+                                                            value={c.kioskName || ''}
+                                                            placeholder={c.name}
+                                                            maxLength={255}
+                                                            draggable="false"
+                                                            onChange={(e) => {
+                                                                const value = e.target.value;
+                                                                setCombinationSettingsChanged(true);
+                                                                setCombinations(prev => prev.map((x, idx) => idx === i ? { ...x, kioskName: value } : x));
+                                                            }}
+                                                        />
+                                                    </td>
                                                     <td>
                                                         <button
                                                             type="button"

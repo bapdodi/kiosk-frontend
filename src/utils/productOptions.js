@@ -40,6 +40,8 @@ export function getOptionGroups(product) {
             name: COMBINATION_GROUP,
             label: '',
             values: activeCombos.map(c => c.name),
+            // 선택·가격 계산의 키는 ERP 규격명(name)이고, 키오스크 전용 이름은 화면 표시에만 쓴다.
+            valueLabels: Object.fromEntries(activeCombos.filter(c => c.kioskName).map(c => [c.name, c.kioskName])),
             legacySource: 'combinations'
         });
     }

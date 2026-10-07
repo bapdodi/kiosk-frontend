@@ -1,6 +1,6 @@
 // 관리자 저장 요청에는 키오스크에서 관리하는 항목만 담는다.
 const EDITABLE_FIELDS = [
-    'description', 'categories', 'hashtags', 'images', 'optionImages', 'sortOrder'
+    'name', 'description', 'categories', 'hashtags', 'images', 'optionImages', 'sortOrder'
 ];
 
 export function buildProductUpdate(product, changes = {}) {
@@ -15,7 +15,8 @@ export function buildProductUpdate(product, changes = {}) {
             .map((combo, index) => ({
                 id_db: combo.id_db,
                 deleted: Boolean(combo.deleted),
-                sortOrder: index
+                sortOrder: index,
+                kioskName: combo.kioskName ?? ''
             }));
     }
     return payload;
