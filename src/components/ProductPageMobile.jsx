@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
 import { useProductSelection } from '../hooks/useProductSelection';
 import { formatPriceRange, formatWon } from '../utils/price';
+import { getOptionPriceRange } from '../utils/productOptions';
 import './ProductPageMobile.css';
 
 const FALLBACK_IMAGE = '/no-image.png';
@@ -134,7 +135,9 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
                                     </span>
                                 </h2>
                                 <div className="mp-options">
-                                    {group.values.map(value => (
+                                    {group.values.map(value => {
+                                        const optionPrice = getOptionPriceRange(product, groups, group.name, value, selections);
+                                        return (
                                         <button
                                             key={value}
                                             type="button"
@@ -143,9 +146,11 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
                                             onClick={() => toggleOption(group.name, value)}
                                         >
                                             <span className="mp-check" aria-hidden="true">{chosen.includes(value) ? '✓' : ''}</span>
-                                            {value}
+                                            <span className="mp-option-label">{group.valueLabels?.[value] ?? value}</span>
+                                            {optionPrice && <span className="mp-option-price">{formatPriceRange(optionPrice)}</span>}
                                         </button>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         );

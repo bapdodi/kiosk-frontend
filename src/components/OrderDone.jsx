@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import CheckoutShell from './CheckoutShell';
+import OrderStampGlove from './OrderStampGlove';
 
 /**
  * 주문 마무리 3단계: 완료.
@@ -15,6 +16,7 @@ import CheckoutShell from './CheckoutShell';
 const AUTO_HOME_SECONDS = 10;
 
 const OrderDone = ({ variant, order, customerName, items, onHome }) => {
+    const hasStamp = Number.isInteger(order?.stampCount) && order.stampCount >= 1 && order.stampCount <= 5;
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
     const [left, setLeft] = useState(AUTO_HOME_SECONDS);
 
@@ -33,32 +35,39 @@ const OrderDone = ({ variant, order, customerName, items, onHome }) => {
         };
     }, []);
 
+    const orderLines = items.map((item) => (
+        <div key={item.cartId} className="order-done-line">
+            <span className="order-done-name">
+                {item.name}
+                {item.selectedOption ? <em> · {item.selectedOption}</em> : null}
+            </span>
+            <span className="order-done-qty">{item.quantity || 1}개</span>
+        </div>
+    ));
+
     return (
-        <CheckoutShell variant={variant}>
+        <CheckoutShell variant={variant} className={`order-done-shell${hasStamp ? " order-done-shell-stamped" : ""}`}>
             <div className="order-done-head">
                 <div className="order-done-check" aria-hidden="true">✓</div>
-                <h3 className="order-done-title">주문이 들어갔습니다</h3>
+                <h3 className="order-done-title">주문이 완료되었습니다</h3>
                 <p className="order-done-sub">
                     <b>{customerName}</b>님, 총 <b>{totalCount}개</b>를 주문했습니다.
                 </p>
-                {order?.id != null && (
-                    <div className="order-done-no">주문번호 <b>{order.id}</b></div>
-                )}
+
             </div>
 
             <div className="order-done-body">
-                {items.map((item) => (
-                    <div key={item.cartId} className="order-done-line">
-                        <span className="order-done-name">
-                            {item.name}
-                            {item.selectedOption ? <em> · {item.selectedOption}</em> : null}
-                        </span>
-                        <span className="order-done-qty">{item.quantity || 1}개</span>
-                    </div>
-                ))}
+                <OrderStampGlove key={order?.id} order={order} />
+                {!hasStamp && orderLines}
             </div>
 
             <div className="order-done-foot">
+                {hasStamp && (
+                    <details className="order-done-items">
+                        <summary>주문 내역 · 총 {totalCount}개</summary>
+                        <div>{orderLines}</div>
+                    </details>
+                )}
                 <button className="order-done-home" onClick={onHome}>
                     처음으로 <span className="order-done-count">{left}</span>
                 </button>

@@ -17,6 +17,7 @@ import { useMobileBackClose } from './hooks/useMobileBackClose';
 import { useIsMobile } from './hooks/useIsMobile';
 import ProductPageMobile from './components/ProductPageMobile';
 import { resolvePrice } from './utils/price';
+import { createRequestId } from './utils/requestId';
 
 // 관리자 화면(엑셀 라이브러리 포함)은 손님이 받을 이유가 없어 따로 받는다. AdminRoutes 주석 참고.
 const AdminRoutes = lazy(() => import('./components/admin/AdminRoutes'));
@@ -585,7 +586,7 @@ function KioskView({
 
     try {
       if (!pendingOrderRequestId.current) {
-        pendingOrderRequestId.current = crypto.randomUUID();
+        pendingOrderRequestId.current = createRequestId();
       }
       const response = await fetch('/api/orders', {
         method: 'POST',
