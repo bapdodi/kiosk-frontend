@@ -169,16 +169,3 @@ export function getOptionPriceRange(product, groups, groupName, value, selection
     });
     return matches.length > 0 ? getPriceRange({ ...product, combinations: matches }) : null;
 }
-
-/** 표시 순서만 변경한다. 같은 가격은 기존 순서, 가격 없는 옵션은 마지막에 둔다. */
-export function getPriceSortedOptionGroups(product) {
-    const groups = getOptionGroups(product);
-    return groups.map(group => {
-        const pricedValues = group.values.map(value => ({
-            value,
-            price: getOptionPriceRange(product, groups, group.name, value)?.min ?? Infinity,
-        }));
-        pricedValues.sort((a, b) => a.price - b.price);
-        return { ...group, values: pricedValues.map(item => item.value) };
-    });
-}

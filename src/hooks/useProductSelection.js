@@ -3,7 +3,7 @@ import {
     buildLineFromSelections as buildLine,
     expandSelections,
     getDefaultSelections,
-    getPriceSortedOptionGroups,
+    getOptionGroups,
 } from '../utils/productOptions';
 import { getPriceRange } from '../utils/price';
 
@@ -27,7 +27,7 @@ const getInitialSelections = (groups) => Object.fromEntries(
  */
 export function useProductSelection(product, { cartItems = [], products = [], onConfirm }) {
     // 규격 해석 규칙은 목록 카드와도 공유해야 해서 utils/productOptions.js 에 있다.
-    const groups = getPriceSortedOptionGroups(product);
+    const groups = getOptionGroups(product);
 
     const [selections, setSelections] = useState({});
     const [quantity, setQuantity] = useState(1);
