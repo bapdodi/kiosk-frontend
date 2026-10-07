@@ -44,6 +44,18 @@ const OrderManagement = () => {
         }
     };
 
+    const redeemStampReward = async (order) => {
+        try {
+            const res = await fetch(`/api/orders/admin/${order.id}/stamp-reward`, { method: 'PUT' });
+            if (!res.ok) throw new Error('지급 상태를 저장하지 못했습니다.');
+            const updated = await res.json();
+            setOrders(prev => prev.map(o => o.id === updated.id ? updated : o));
+            setSelectedOrder(prev => prev?.id === updated.id ? updated : prev);
+        } catch {
+            alert('장갑 지급 상태를 저장하지 못했습니다. 다시 시도해 주세요.');
+        }
+    };
+
     const handlePrintStatement = (order) => {
         if (!order) return;
         printStatement(order);
@@ -118,6 +130,19 @@ const OrderManagement = () => {
                                     <span style={{ color: '#1e293b', fontWeight: 600 }}>{formatTime(selectedOrder.timestamp)}</span>
                                 </div>
                             </div>
+
+                            {selectedOrder.stampCount != null && (
+                                <div className="admin-stamp-reward">
+                                    <strong>주문 도장 {selectedOrder.stampCount} / 5</strong>
+                                    {selectedOrder.stampRewardEarned && (
+                                        selectedOrder.stampRewardRedeemed ? <span>장갑 지급 완료</span> : (
+                                            <button disabled={selectedOrder.status === 'cancelled'} onClick={() => redeemStampReward(selectedOrder)}>
+                                                장갑을 건넨 뒤 지급 완료 처리
+                                            </button>
+                                        )
+                                    )}
+                                </div>
+                            )}
 
                             <h4 style={{ marginBottom: '15px', fontSize: '1.1rem', fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 🛍️ 주문 상품 ({selectedOrder.items.length})
@@ -335,6 +360,7 @@ const OrderManagement = () => {
                                 </td>
                                 <td data-label="주문자">
                                     <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '1rem' }}>{order.customerName}</div>
+                                    {order.stampRewardEarned && <div className="admin-stamp-badge">🎁 {order.stampRewardRedeemed ? '장갑 지급 완료' : '장갑 지급 대상'}</div>}
                                 </td>
                                 <td data-label="주문 내역">
                                     <div className="order-items-cell" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

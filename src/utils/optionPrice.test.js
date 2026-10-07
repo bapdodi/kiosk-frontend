@@ -22,7 +22,8 @@ test('an ERP specification containing a slash retains its exact price', () => {
 
 test('multiple option groups show a range and narrow it to the other selection', () => {
     const product = {
-        optionGroups: [{ name: '규격', values: ['50A', '65A'] }, { name: '원산지', values: ['수입', '국산'] }],
+        sizes: [{ name: '50A' }, { name: '65A' }],
+        origins: [{ name: '수입' }, { name: '국산' }],
         combinations: [
             { name: '50A / 수입', price: 45000 },
             { name: '50A / 국산', price: 55000 },
@@ -30,9 +31,10 @@ test('multiple option groups show a range and narrow it to the other selection',
         ],
     };
     const groups = getOptionGroups(product);
-    assert.deepEqual(getOptionPriceRange(product, groups, '규격', '50A'), { min: 45000, max: 55000 });
-    assert.deepEqual(getOptionPriceRange(product, groups, '규격', '50A', { 원산지: ['국산'] }), { min: 55000, max: 55000 });
-    assert.equal(getOptionPriceRange(product, groups, '규격', '65A', { 원산지: ['국산'] }), null);
+    const [sizeGroup, originGroup] = groups;
+    assert.deepEqual(getOptionPriceRange(product, groups, sizeGroup.name, '50A'), { min: 45000, max: 55000 });
+    assert.deepEqual(getOptionPriceRange(product, groups, sizeGroup.name, '50A', { [originGroup.name]: ['국산'] }), { min: 55000, max: 55000 });
+    assert.equal(getOptionPriceRange(product, groups, sizeGroup.name, '65A', { [originGroup.name]: ['국산'] }), null);
 });
 
 test('options use the product price fallback and ignore deleted combinations', () => {

@@ -4480,3 +4480,151 @@ body {
   .kiosk-container:has(.order-focused-detail) .cart-bar-total-price { color: #202b3b; font-size: 1.5rem; }
   .kiosk-container:has(.order-focused-detail) .cart-bar-checkout { min-height: 62px; border-radius: 12px; padding: 16px; font-size: 1.15rem; }
 }
+
+/* 고객별 주문 도장: 왼쪽 소지 → 오른쪽 엄지 */
+.order-stamp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin: 16px 0;
+  padding: 18px;
+  border-radius: 20px;
+  background: #faf7f1;
+}
+.order-stamp-glove { width: clamp(150px, 24vh, 280px); flex: 0 1 auto; overflow: visible; }
+.order-stamp-info { color: #334155; min-width: 0; word-break: keep-all; }
+.order-stamp-eyebrow { color: #a63b32; font-size: .9rem; font-weight: 800; }
+.order-stamp-info h4 { margin: 8px 0; font-size: 1.2rem; }
+.order-stamp-info p { font-size: 1rem; line-height: 1.6; margin: 10px 0; }
+.order-stamp-info small { color: #64748b; font-size: .78rem; }
+.order-stamp-count { color: #ba252e; font-variant-numeric: tabular-nums; }
+.order-stamp-count b { font-size: 3rem; }
+.order-stamp-count span { font-size: 1.5rem; }
+.order-stamp-slot { fill: none; stroke: #fffdf5; stroke-width: 3; stroke-dasharray: 4 5; opacity: .8; }
+.order-stamp-new { opacity: 0; animation: orderStampMark .25s 1s ease-out forwards; transform-origin: center; }
+.order-stamp-press { opacity: 0; animation: orderStampPress 1s .5s both; }
+.order-stamp-ring { fill: none; stroke: #fff; stroke-width: 3; opacity: 0; animation: orderStampRing .45s 1s ease-out both; }
+.order-stamp-reward { color: #ba252e; animation: orderStampReward .4s 1.5s both; }
+@keyframes orderStampMark { from { opacity: 0; transform: scale(1.25); } to { opacity: 1; transform: scale(1); } }
+@keyframes orderStampPress {
+  0% { opacity: 0; transform: translateY(-90px) rotate(-10deg); }
+  15% { opacity: 1; }
+  48% { opacity: 1; transform: translateY(0); }
+  55% { opacity: 1; transform: translateY(3px) scale(1.08, .9); }
+  70% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-90px) rotate(6deg); }
+}
+@keyframes orderStampRing { from { opacity: .9; transform: scale(.7); } to { opacity: 0; transform: scale(2.1); } }
+@keyframes orderStampReward { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.admin-stamp-reward { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px; margin-bottom: 20px; background: #faf7f1; border-radius: 12px; }
+.admin-stamp-reward button { padding: 10px 14px; border: 0; border-radius: 8px; background: #0f766e; color: white; cursor: pointer; font-weight: 700; }
+.admin-stamp-reward button:disabled { opacity: .5; cursor: default; }
+.admin-stamp-badge { color: #ba252e; font-size: .85rem; margin-top: 6px; font-weight: 700; }
+@media (max-width: 480px) {
+  .order-stamp { gap: 10px; padding: 10px; }
+  .order-stamp-glove { width: 120px; }
+  .order-stamp-info h4 { font-size: 1rem; }
+  .order-stamp-info p { font-size: .85rem; }
+  .order-stamp-info small { font-size: .7rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .order-stamp-new, .order-stamp-reward { animation: none; opacity: 1; }
+  .order-stamp-press, .order-stamp-ring { display: none; }
+}
+
+@media (max-width: 767.98px) {
+  .modal-content.order-done-shell { display: flex; flex-direction: column; padding: 0; max-height: calc(100dvh - 32px); overflow: hidden; }
+  .order-done-shell .order-done-head { padding: 18px 16px; }
+  .order-done-shell .order-done-check { width: 48px; height: 48px; line-height: 48px; font-size: 1.8rem; margin-bottom: 10px; }
+  .order-done-shell .order-done-title { font-size: 1.4rem; }
+  .order-done-shell .order-done-body { padding: 8px 14px; }
+  .order-done-shell .order-done-foot { padding: 12px 14px; }
+  .order-done-shell .order-done-home { padding: 14px; }
+}
+
+/* 큰 장갑과 적립 안내를 한 화면 안에서 정돈한다. */
+.order-stamp-heading { grid-area: heading; text-align: center; }
+.order-stamp-art { grid-area: art; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.order-stamp-info { grid-area: info; }
+.order-stamp-heading h4 { margin: 12px 0; color: #1e293b; font-weight: 900; }
+.order-done-items { color: #475569; min-width: 0; }
+.order-done-items summary { cursor: pointer; padding: 14px 0; font-weight: 700; }
+.order-done-items > div { max-height: 160px; overflow-y: auto; }
+.order-done-shell-stamped .order-stamp {
+  display: grid;
+  grid-template-areas: "heading" "art" "info";
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  justify-content: stretch;
+  gap: 12px;
+  background: #faf7f1;
+  margin: 0;
+}
+.order-done-shell-stamped .order-stamp-eyebrow {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: #fff0e9;
+  color: #b94122;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.order-done-shell-stamped .order-stamp-heading h4 { font-size: clamp(1.5rem, 2.6vw, 2.4rem); }
+.order-done-shell-stamped .order-stamp-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 20px;
+  border: 1px solid #e9d6d3;
+  border-radius: 16px;
+  background: #fff;
+  line-height: 1.1;
+}
+.order-done-shell-stamped .order-stamp-count b { font-size: 2.8rem; }
+.order-done-shell-stamped .order-stamp-count span { font-size: 1.4rem; color: #8f7572; }
+.order-done-shell-stamped .order-stamp-info { text-align: center; }
+.order-done-shell-stamped .order-stamp-info p { margin: 0; font-size: 1.25rem; line-height: 1.6; }
+.order-done-shell-stamped .order-stamp-reward {
+  padding: 16px 24px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #eed2c8;
+}
+.order-done-shell-stamped .order-stamp-reward strong { font-size: 1.5rem; }
+@media (min-width: 768px) {
+  .checkout-view:has(.order-done-shell-stamped) { position: fixed; inset: 0; z-index: 1200; padding: 32px; background: #050d1d; }
+  .kiosk-container .checkout-card.order-done-shell-stamped {
+    width: 100%; max-width: 1440px; height: 100%; border: 1px solid #e2e8f0;
+    border-radius: 28px; background: #fff; box-shadow: 0 16px 48px #0003;
+  }
+  .order-done-shell-stamped .order-done-head {
+    display: grid; grid-template-columns: 52px minmax(0, 1fr); column-gap: 18px;
+    align-items: center; text-align: left; padding: 24px 32px; border-bottom: 1px solid #e9edf2;
+  }
+  .order-done-shell-stamped .order-done-check { grid-column: 1; grid-row: 1 / 3; width: 52px; height: 52px; line-height: 52px; margin: 0; font-size: 1.8rem; text-align: center; }
+  .order-done-shell-stamped .order-done-title { grid-column: 2; font-size: clamp(1.5rem, 2.2vw, 2rem); }
+  .order-done-shell-stamped .order-done-sub { grid-column: 2; margin-top: 6px; font-size: 1.1rem; }
+  .order-done-shell-stamped .order-done-body { display: flex; padding: 20px 24px; overflow: hidden; }
+  .order-done-shell-stamped .order-stamp { flex: 1; min-width: 0; min-height: 0; width: 100%; padding: 24px 32px; border-radius: 20px; }
+  .order-done-shell-stamped .order-stamp-glove { height: 100%; width: 100%; max-width: 100%; flex: none; }
+  .order-done-shell-stamped .order-done-foot { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 8px 24px; align-items: center; padding: 16px 32px 20px; border-top: 1px solid #e9edf2; }
+  .order-done-shell-stamped .order-done-home { grid-column: 2; grid-row: 1; padding: 18px; border-radius: 14px; }
+  .order-done-shell-stamped .order-done-auto { grid-column: 1 / -1; margin: 4px 0 0; font-size: .95rem; }
+}
+@media (min-width: 768px) and (orientation: landscape) {
+  .order-done-shell-stamped .order-stamp { grid-template-areas: "art heading" "art info"; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-rows: 1fr 1fr; column-gap: 40px; }
+  .order-done-shell-stamped .order-stamp-heading { align-self: end; padding-bottom: 16px; }
+  .order-done-shell-stamped .order-stamp-info { align-self: start; }
+}
+@media (max-width: 767.98px) {
+  .order-done-shell-stamped .order-stamp { grid-template-rows: auto auto auto; padding: 16px; gap: 8px; }
+  .order-done-shell-stamped .order-stamp-glove { width: min(65vw, 320px); height: auto; }
+  .order-done-shell-stamped .order-stamp-info p { font-size: 1rem; }
+  .order-done-shell-stamped .order-stamp-reward { padding: 12px; }
+  .order-done-shell-stamped .order-stamp-reward strong { font-size: 1.1rem; }
+  .order-done-shell-stamped .order-done-items > div { max-height: 120px; }
+}
+
+.kiosk-container:has(.order-done-shell-stamped) .cart-added-toast { display: none; }
