@@ -6,6 +6,8 @@ const FALLBACK_POLL_MS = 15000;
 const IDLE_POLL_MS = 60000;
 // 하트비트(15초)가 이 시간 안에 한 번도 안 오면 연결이 죽은 것으로 본다.
 const STALE_AFTER_MS = 45000;
+// SSE 가 끊겼거나 신호(ping)가 끊겼으면 이 주기로 점검해 다시 연결한다.
+const RECONNECT_CHECK_MS = 60000;
 
 /**
  * 관리자 화면 전체에서 새 주문을 감지한다.
@@ -122,6 +124,8 @@ const useOrderNotifications = ({ orders, setOrders }) => {
 
         const connect = () => {
             if (closed) return;
+            if (retryTimer) window.clearTimeout(retryTimer);
+            if (source) source.close();
             source = new EventSource('/api/orders/admin/stream');
 
             source.addEventListener('connected', () => {
@@ -159,9 +163,22 @@ const useOrderNotifications = ({ orders, setOrders }) => {
 
         connect();
 
+        // onerror 없이 조용히 죽은 연결(절전·프록시 등)은 재연결이 일어나지 않으므로,
+        // 1분마다 신호가 끊겼는지 보고 끊겼으면 새로 연결한다.
+        const watchdog = window.setInterval(() => {
+            const healthy = streamConnectedRef.current
+                && Date.now() - lastStreamSignalRef.current < STALE_AFTER_MS;
+            if (!healthy) {
+                streamConnectedRef.current = false;
+                setIsStreamConnected(false);
+                connect();
+            }
+        }, RECONNECT_CHECK_MS);
+
         return () => {
             closed = true;
             streamConnectedRef.current = false;
+            window.clearInterval(watchdog);
             if (retryTimer) window.clearTimeout(retryTimer);
             if (source) source.close();
         };
