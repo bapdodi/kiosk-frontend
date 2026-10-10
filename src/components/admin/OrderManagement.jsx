@@ -5,15 +5,26 @@ import { printStatement, exportStatementXlsx } from '../../utils/statement';
 import { matchesSearchText } from '../../utils/search';
 import AdminSearchClearButton from './AdminSearchClearButton';
 
+// 브라우저 현지 시각 기준 YYYY-MM-DD. toISOString() 은 UTC 라서 한국에서는
+// 오전 9시 전 주문이 전날로 잡혀 '오늘' 필터에서 빠진다.
+const toLocalDateKey = (value) => {
+    const d = new Date(value);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const OrderManagement = () => {
     // 주문 감시(SSE + 예비 폴링)와 알림음은 AdminLayout 에서 관리한다. 여기서는 상태만 읽는다.
     const { orders = [], setOrders, orderNotifications } = useOutletContext();
     const { isSoundEnabled = false, soundError = '', playOrderSound = () => {} } = orderNotifications || {};
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [activeOrderTab, setActiveOrderTab] = useState('all'); // all, pending, completed, cancelled
-    const today = new Date().toISOString().split('T')[0];
-    const [startDate, setStartDate] = useState(today);
-    const [endDate, setEndDate] = useState(today);
+    // null 이면 '오늘'을 따라간다. 화면을 켜 둔 채 자정이 지나도 새 날짜의 주문이 보이도록
+    // 오늘 날짜를 마운트 때 한 번이 아니라 렌더마다 다시 계산한다.
+    const [startDateInput, setStartDate] = useState(null);
+    const [endDateInput, setEndDate] = useState(null);
+    const today = toLocalDateKey(new Date());
+    const startDate = startDateInput ?? today;
+    const endDate = endDateInput ?? today;
     const [orderSearchQuery, setOrderSearchQuery] = useState('');
 
     const deleteOrder = async (orderId) => {
@@ -93,7 +104,7 @@ const OrderManagement = () => {
         let matchDate = true;
 
         if (order.timestamp) {
-            const orderDate = new Date(order.timestamp).toISOString().split('T')[0];
+            const orderDate = toLocalDateKey(order.timestamp);
             if (startDate && orderDate < startDate) matchDate = false;
             if (endDate && orderDate > endDate) matchDate = false;
         }

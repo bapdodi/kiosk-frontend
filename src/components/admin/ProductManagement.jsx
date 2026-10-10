@@ -536,7 +536,10 @@ const ProductManagement = () => {
                             color: !activeMainCat ? 'white' : '#64748b',
                             border: 'none',
                             fontWeight: 600,
-                            fontSize: '0.9rem'
+                            fontSize: '0.9rem',
+                            // 가로 스크롤 줄이라 줄어들지 않게 한다. 안 그러면 탭이 한 글자씩 세로로 접힌다.
+                            flexShrink: 0,
+                            whiteSpace: 'nowrap'
                         }}
                     >
                         전체 상품
@@ -556,7 +559,9 @@ const ProductManagement = () => {
                                 color: activeMainCat === cat.id ? 'white' : '#64748b',
                                 border: 'none',
                                 fontWeight: 600,
-                                fontSize: '0.9rem'
+                                fontSize: '0.9rem',
+                                flexShrink: 0,
+                                whiteSpace: 'nowrap'
                             }}
                         >
                             {cat.name}
@@ -773,8 +778,8 @@ const ProductManagement = () => {
                                 </td>
                                 <td data-label="관리" style={{ textAlign: 'right' }}>
                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                        <button className="action-btn" onClick={() => handleEditNavigate(p.id)}>수정</button>
-                                        <button className="action-btn" style={{ color: '#ef4444' }} onClick={() => deleteProduct(p)}>휴지통</button>
+                                        <button className="action-btn" style={{ whiteSpace: 'nowrap' }} onClick={() => handleEditNavigate(p.id)}>수정</button>
+                                        <button className="action-btn" style={{ color: '#ef4444', whiteSpace: 'nowrap' }} onClick={() => deleteProduct(p)}>휴지통</button>
                                     </div>
                                 </td>
                             </tr>
