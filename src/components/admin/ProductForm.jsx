@@ -237,6 +237,10 @@ const ProductForm = () => {
 
     const handleDragOver = (e) => {
         e.preventDefault();
+        if (dragState) {
+            e.dataTransfer.dropEffect = 'move';
+            return;
+        }
         e.dataTransfer.dropEffect = 'copy';
         setIsDragging(true);
     };
@@ -248,6 +252,10 @@ const ProductForm = () => {
     const handleDrop = (e) => {
         e.preventDefault();
         setIsDragging(false);
+        if (dragState) {
+            setDragState(null);
+            return;
+        }
         const files = e.dataTransfer.files;
         if (files && files.length > 0) {
             handleImageUpload(files);
@@ -386,10 +394,22 @@ const ProductForm = () => {
                                             <div key={idx} className="img-preview-thumb"
                                                 draggable="true"
                                                 onDragStart={() => handleReorderDragStart('images', idx)}
-                                                onDragOver={(e) => e.preventDefault()}
-                                                onDrop={() => handleReorderDrop('images', idx)}
+                                                onDragEnd={() => { setDragState(null); setIsDragging(false); }}
+                                                onDragOver={(e) => {
+                                                    if (!dragState) return;
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    e.dataTransfer.dropEffect = 'move';
+                                                }}
+                                                onDrop={(e) => {
+                                                    if (!dragState) return;
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleReorderDrop('images', idx);
+                                                    setIsDragging(false);
+                                                }}
                                                 style={{ cursor: 'grab' }}>
-                                                <img src={getImageUrl(url)} alt="product" />
+                                                <img src={getImageUrl(url)} alt="product" draggable={false} />
                                                 {idx === 0 && <span className="img-main-badge">대표</span>}
                                                 <button type="button" onClick={() => removeImage(idx)} className="img-del-mini">×</button>
                                                 <div className="img-move-bar">
