@@ -104,7 +104,19 @@ const CategoryNav = ({
 
     const scrollMainCats = (dir) => {
         const el = mainCatScrollRef.current;
-        if (el) el.scrollBy({ left: dir * el.clientWidth, behavior: 'smooth' });
+        if (!el) return;
+
+        const maxScroll = el.scrollWidth - el.clientWidth;
+        if (maxScroll <= 0) return;
+
+        // 양 끝에서도 반대편 페이지로 이어서 넘긴다. 소수점 오차는 2px까지 허용한다.
+        if (dir < 0 && el.scrollLeft <= 2) {
+            el.scrollTo({ left: maxScroll, behavior: 'smooth' });
+        } else if (dir > 0 && el.scrollLeft >= maxScroll - 2) {
+            el.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+            el.scrollBy({ left: dir * el.clientWidth, behavior: 'smooth' });
+        }
     };
 
     return (

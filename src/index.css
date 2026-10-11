@@ -4437,8 +4437,32 @@ body {
   }
 
   .kiosk-container .main-cat-arrow {
-    padding: 0 2px;
-    font-size: 1.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 76px;
+    padding: 0;
+    border: 2px solid var(--accent-color);
+    border-radius: 14px;
+    background: #fff;
+    font-size: 2.6rem;
+    line-height: 1;
+    box-shadow: 0 2px 8px #0003;
+  }
+
+  .kiosk-container .main-cat-arrow:hover {
+    background: #fff7ed;
+  }
+
+  .kiosk-container .main-cat-arrow:active {
+    background: #ffedd5;
+    transform: scale(.96);
+  }
+
+  .kiosk-container .main-cat-arrow:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 3px;
   }
 
   .kiosk-container .categories-scroll.main-categories {
