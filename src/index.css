@@ -4466,14 +4466,24 @@ body {
   }
 
   .kiosk-container .categories-scroll.main-categories {
+    position: relative;
     grid-template-rows: repeat(3, 1fr);
     grid-auto-columns: calc((100% - 16px) / 3);
-    scroll-snap-type: x mandatory;
     padding: 2px 0;
   }
 
+  /* 마지막 화면을 페이지 경계에 맞춰 세 칸 이동할 수 있도록 스크롤 여유를 확보한다. */
+  .kiosk-container .categories-scroll.main-categories::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 100%;
+    width: 100%;
+    height: 1px;
+    pointer-events: none;
+  }
+
   .kiosk-container .main-categories .category-tab {
-    scroll-snap-align: start;
     display: flex;
     align-items: center;
     justify-content: center;

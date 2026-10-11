@@ -106,17 +106,22 @@ const CategoryNav = ({
         const el = mainCatScrollRef.current;
         if (!el) return;
 
-        const maxScroll = el.scrollWidth - el.clientWidth;
-        if (maxScroll <= 0) return;
+        const pageWidth = el.clientWidth;
+        if (!pageWidth) return;
 
-        // 양 끝에서도 반대편 페이지로 이어서 넘긴다. 소수점 오차는 2px까지 허용한다.
-        if (dir < 0 && el.scrollLeft <= 2) {
-            el.scrollTo({ left: maxScroll, behavior: 'smooth' });
-        } else if (dir > 0 && el.scrollLeft >= maxScroll - 2) {
-            el.scrollTo({ left: 0, behavior: 'smooth' });
-        } else {
-            el.scrollBy({ left: dir * el.clientWidth, behavior: 'smooth' });
-        }
+        // 대분류는 3행 × 3열씩 표시한다. 마지막 열 수가 세 칸보다 적어도
+        // 실제 scrollWidth가 아니라 페이지 수를 기준으로 움직여 이전 열을 겹치지 않게 한다.
+        const rowCount = 3;
+        const columnsPerPage = 3;
+        const columnCount = Math.ceil(el.children.length / rowCount);
+        const pageCount = Math.ceil(columnCount / columnsPerPage);
+        const currentPage = Math.min(
+            pageCount - 1,
+            Math.max(0, Math.round(el.scrollLeft / pageWidth))
+        );
+        const nextPage = (currentPage + dir + pageCount) % pageCount;
+
+        el.scrollTo({ left: nextPage * pageWidth, behavior: 'smooth' });
     };
 
     return (
