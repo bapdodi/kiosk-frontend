@@ -279,6 +279,9 @@ function KioskView({
   // 장바구니는 비우지만 이 값은 남겨 두어야 "내가 넣은 게 맞나" 를 확인할 수 있다.
   const [completedOrder, setCompletedOrder] = useState(null);
   const [customers, setCustomers] = useState([]);
+  // 키오스크는 첫 화면에서 구매자(상호)부터 고른다. 고른 상호는 주문 전송 때까지 들고 있는다.
+  const [buyer, setBuyer] = useState(null);
+  const [isBuyerPick, setIsBuyerPick] = useState(false);
   const lastScrollTop = useRef(0);
 
   const isMobile = useIsMobile();
@@ -584,12 +587,15 @@ function KioskView({
 
   const handleReviewConfirm = () => {
     if (cart.length === 0) return;
+    // 구매자를 이미 골랐으면 장바구니 확인이 곧 주문 확인이다.
+    if (buyer) return submitOrder(buyer);
     setIsReviewOpen(false);
     setOrderModal({ isOpen: true, name: '' });
   };
 
-  const submitOrder = async (forcedName, forcedCode) => {
-    let customerName = (typeof forcedName === 'string' ? forcedName : orderModal.name).trim();
+  // 상호를 확인한다. 이름만 오면 고객 목록에서 찾고, 목록에 없는 상호는 직접 입력이라 막는다.
+  const resolveBuyer = (forcedName, forcedCode) => {
+    const customerName = (typeof forcedName === 'string' ? forcedName : orderModal.name).trim();
     if (!customerName) return alert('상호를 입력하거나 선택해주세요.');
 
     // 고객 목록에서 입력된 이름과 공백을 제외하고 정확히 일치하는 고객을 찾음
@@ -599,8 +605,10 @@ function KioskView({
         return alert('목록에 있는 정확한 상호명을 입력하거나 선택해 주세요.');
     }
 
-    let erpCustomerCode = forcedCode || (matchedCustomer ? String(matchedCustomer.CODE) : "1");
+    return { customerName, erpCustomerCode: forcedCode || (matchedCustomer ? String(matchedCustomer.CODE) : "1") };
+  };
 
+  const submitOrder = async ({ customerName, erpCustomerCode }) => {
     const orderData = {
       customerName,
       erpCustomerCode,
@@ -651,6 +659,7 @@ function KioskView({
   const checkoutStage = completedOrder ? 'done'
     : orderModal.isOpen ? 'customer'
     : isReviewOpen ? 'review'
+    : isBuyerPick ? 'buyer'
     : null;
 
   // 주문을 끝내고 "처음으로" 를 누르면 진짜 첫 화면이어야 한다.
@@ -678,7 +687,9 @@ function KioskView({
         />
       );
     }
-    if (checkoutStage === 'customer') {
+    if (checkoutStage === 'buyer' || checkoutStage === 'customer') {
+      // 첫 화면의 구매자 선택은 고르기만 하고, 주문은 장바구니 확인 뒤에 보낸다.
+      const pickFirst = checkoutStage === 'buyer';
       return (
         <CustomerSelect
           variant={variant}
@@ -689,8 +700,20 @@ function KioskView({
           selectedChosung={selectedChosung}
           onChosungChange={setSelectedChosung}
           getChosung={getChosung}
-          onSubmit={submitOrder}
-          onCancel={() => setOrderModal(prev => ({ ...prev, isOpen: false }))}
+          onSubmit={(name, code) => {
+            const info = resolveBuyer(name, code);
+            if (!info) return;
+            if (pickFirst) {
+              setBuyer(info);
+              setIsBuyerPick(false);
+              setOrderModal({ isOpen: false, name: '' });
+            } else {
+              submitOrder(info);
+            }
+          }}
+          onCancel={pickFirst
+            ? () => { setIsBuyerPick(false); setIsIdle(true); }
+            : () => setOrderModal(prev => ({ ...prev, isOpen: false }))}
         />
       );
     }
@@ -720,6 +743,8 @@ function KioskView({
     setIsCartOpen(false);
     setIsReviewOpen(false);
     setOrderModal({ isOpen: false, name: '' });
+    setBuyer(null);
+    setIsBuyerPick(false);
     setOptionQuantities({});
     pendingOrderRequestId.current = null;
     setIsIdleWarning(false);
@@ -887,7 +912,7 @@ function KioskView({
         />
       )}
 
-      {!isMobile && isIdle && <AttractScreen onStart={() => setIsIdle(false)} />}
+      {!isMobile && isIdle && <AttractScreen onStart={() => { setIsIdle(false); setIsBuyerPick(true); }} />}
 
       {cartToast && (
         <div
