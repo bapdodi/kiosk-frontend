@@ -219,7 +219,7 @@ const CustomerSelect = ({
                                 background: name === c.NAME ? '#eff6ff' : 'white',
                                 color: name === c.NAME ? 'var(--accent-color)' : '#334155',
                                 fontSize: '1.35rem',
-                                fontWeight: name === c.NAME ? 'bold' : 'normal',
+                                fontWeight: 'bold',
                                 cursor: 'pointer',
                                 textAlign: 'center',
                                 wordBreak: 'break-all'
