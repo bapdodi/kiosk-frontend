@@ -754,6 +754,20 @@ function KioskView({
   const resetRef = useRef(resetForNextCustomer);
   useEffect(() => { resetRef.current = resetForNextCustomer; });
 
+  const handleGoHome = () => {
+    if (cart.length > 0) {
+      if (!window.confirm('처음 화면으로 돌아가시겠습니까?\n장바구니에 담긴 상품이 모두 삭제됩니다.')) {
+        return;
+      }
+    }
+    if (isMobile) {
+      goHome();
+      setCart([]);
+    } else {
+      resetForNextCustomer();
+    }
+  };
+
   useEffect(() => {
     if (isMobile || isIdle || isIdleWarning) return;
     let timer;
@@ -795,6 +809,7 @@ function KioskView({
             onSubCatChange={handleSubCatChange}
             searchQuery={searchQuery}
             onSearchChange={handleSearchChange}
+            onGoHome={handleGoHome}
           />
         </div>
       )}

@@ -111,7 +111,7 @@ const CustomerSelect = ({
                             onChange={(e) => onNameChange(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && isValidName && onSubmit()}
                             style={{
-                                padding: '20px',
+                                padding: '20px 84px',
                                 fontSize: '1.5rem',
                                 textAlign: 'center',
                                 borderRadius: '12px',
@@ -121,14 +121,46 @@ const CustomerSelect = ({
                             }}
                         />
                         {name.trim() !== '' && (
-                            <div style={{
-                                position: 'absolute',
-                                right: '15px',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                fontSize: '1.6rem'
-                            }}>
-                                {isValidName ? '✅' : '❌'}
+                            <div
+                                className="customer-search-indicators"
+                                style={{
+                                    position: 'absolute',
+                                    right: '14px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}
+                            >
+                                <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>
+                                    {isValidName ? '✅' : '❌'}
+                                </span>
+                                <button
+                                    type="button"
+                                    className="customer-search-clear-btn"
+                                    onClick={() => onNameChange('')}
+                                    title="선택 지우기"
+                                    aria-label="선택 지우기"
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '32px',
+                                        height: '32px',
+                                        borderRadius: '50%',
+                                        background: '#fee2e2',
+                                        border: '1px solid #fca5a5',
+                                        color: '#dc2626',
+                                        fontSize: '1.2rem',
+                                        fontWeight: '900',
+                                        cursor: 'pointer',
+                                        padding: 0,
+                                        lineHeight: 1
+                                    }}
+                                >
+                                    ✕
+                                </button>
                             </div>
                         )}
                     </div>
@@ -193,7 +225,7 @@ const CustomerSelect = ({
                                 background: name === c.NAME ? '#eff6ff' : 'white',
                                 color: name === c.NAME ? 'var(--accent-color)' : '#334155',
                                 fontSize: '1.35rem',
-                                fontWeight: name === c.NAME ? 'bold' : 'normal',
+                                fontWeight: 'bold',
                                 cursor: 'pointer',
                                 textAlign: 'center',
                                 wordBreak: 'break-all'
