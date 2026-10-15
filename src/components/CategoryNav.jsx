@@ -9,7 +9,8 @@ const CategoryNav = ({
     onMainCatChange,
     onSubCatChange,
     searchQuery,
-    onSearchChange
+    onSearchChange,
+    onGoHome
 }) => {
     const recognitionRef = useRef(null);
     const mainCatScrollRef = useRef(null);
@@ -127,10 +128,16 @@ const CategoryNav = ({
     return (
         <nav className="top-nav">
             <div className="header-top">
-                <div className="logo">
-                    <span className="logo-name">동광배관자재</span>{' '}
-                    <span className="logo-phone">010-7612-6524</span>
-                </div>
+                <button
+                    type="button"
+                    className="header-home-btn"
+                    onClick={onGoHome}
+                    title="처음으로 돌아가기"
+                    aria-label="처음으로 돌아가기"
+                >
+                    <span className="home-icon" aria-hidden="true">🏠</span>
+                    <span className="home-text">처음으로 돌아가기</span>
+                </button>
                 <div className="search-container">
                     <span className="search-icon">🔍</span>
                     <input

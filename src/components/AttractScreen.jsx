@@ -6,6 +6,10 @@ import './AttractScreen.css';
  */
 const AttractScreen = ({ onStart }) => (
     <div className="attract-screen" onClick={onStart} role="button" aria-label="화면을 터치해 주문 시작">
+        <div className="attract-brand">
+            <h2 className="attract-brand-name">동광배관자재</h2>
+            <p className="attract-brand-phone">010-7612-6524</p>
+        </div>
         <div className="attract-main">
             <div className="attract-gauge" aria-hidden="true">
                 <svg viewBox="0 0 64 64" width="96" height="96">
