@@ -655,18 +655,12 @@ function KioskView({
 
 
   // 주문 마무리 단계(내역 확인 → 상호 선택 → 완료).
-  // 구매자 변경(isBuyerPick)은 장바구니 확인(isReviewOpen) 중에도 열릴 수 있으므로 우선순위를 높인다.
+  // 세 단계 모두 같은 내용을 쓰고, 키오스크·PC 는 화면으로 폰은 팝업으로만 껍데기가 갈린다.
   const checkoutStage = completedOrder ? 'done'
-    : isBuyerPick ? 'buyer'
     : orderModal.isOpen ? 'customer'
     : isReviewOpen ? 'review'
+    : isBuyerPick ? 'buyer'
     : null;
-
-  // 진입 후(키오스크/모바일) 상호(구매자)를 변경할 수 있도록 선택창을 연다.
-  const handleChangeBuyer = () => {
-    setOrderModal({ isOpen: false, name: '' });
-    setIsBuyerPick(true);
-  };
 
   // 주문을 끝내고 "처음으로" 를 누르면 진짜 첫 화면이어야 한다.
   // 완료 화면만 닫으면 주문 직전에 보던 상품 상세가 그대로 남아 있어서
@@ -685,8 +679,6 @@ function KioskView({
         <OrderReview
           variant={variant}
           items={cart}
-          buyer={buyer}
-          onChangeBuyer={handleChangeBuyer}
           onRemove={removeFromCart}
           onQuantityChange={updateCartQuantity}
           onClose={() => setIsReviewOpen(false)}
@@ -709,7 +701,6 @@ function KioskView({
           onChosungChange={setSelectedChosung}
           getChosung={getChosung}
           pickFirst={pickFirst}
-          currentBuyer={buyer}
           onSubmit={(name, code) => {
             const info = resolveBuyer(name, code);
             if (!info) return;
@@ -722,14 +713,8 @@ function KioskView({
             }
           }}
           onCancel={pickFirst
-            ? () => {
-                setIsBuyerPick(false);
-                setOrderModal(prev => ({ ...prev, name: '' }));
-                if (!buyer) {
-                  setIsIdle(true);
-                }
-              }
-            : () => setOrderModal(prev => ({ ...prev, isOpen: false, name: '' }))}
+            ? () => { setIsBuyerPick(false); setIsIdle(true); }
+            : () => setOrderModal(prev => ({ ...prev, isOpen: false }))}
         />
       );
     }
@@ -810,8 +795,6 @@ function KioskView({
             onSubCatChange={handleSubCatChange}
             searchQuery={searchQuery}
             onSearchChange={handleSearchChange}
-            buyer={buyer}
-            onChangeBuyer={handleChangeBuyer}
           />
         </div>
       )}
@@ -868,8 +851,6 @@ function KioskView({
       {/* 큰 화면(키오스크·PC)용 오른쪽 장바구니 레일 */}
       <CartBar
         items={cart}
-        buyer={buyer}
-        onChangeBuyer={handleChangeBuyer}
         onRemove={removeFromCart}
         onQuantityChange={updateCartQuantity}
         onCheckout={handleCheckout}
@@ -891,8 +872,6 @@ function KioskView({
           <div className="cart-modal-content" onClick={(e) => e.stopPropagation()}>
             <Cart
               items={cart}
-              buyer={buyer}
-              onChangeBuyer={handleChangeBuyer}
               onRemove={removeFromCart}
               onQuantityChange={updateCartQuantity}
               onCheckout={handleCheckout}

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { getBuyerDisplayName } from '../utils/buyer';
 
 const CategoryNav = ({
     mainCategories,
@@ -10,9 +9,7 @@ const CategoryNav = ({
     onMainCatChange,
     onSubCatChange,
     searchQuery,
-    onSearchChange,
-    buyer,
-    onChangeBuyer
+    onSearchChange
 }) => {
     const recognitionRef = useRef(null);
     const mainCatScrollRef = useRef(null);
@@ -21,7 +18,6 @@ const CategoryNav = ({
     const [voiceError, setVoiceError] = useState('');
     // 폰에서는 안내 문구가 입력칸을 넘쳐 글자가 잘리므로 짧은 문구로 바꿔 준다.
     const isNarrow = useIsMobile();
-    const buyerName = getBuyerDisplayName(buyer);
 
     const describeVoiceError = (code) => {
         switch (code) {
@@ -131,23 +127,9 @@ const CategoryNav = ({
     return (
         <nav className="top-nav">
             <div className="header-top">
-                <div className="logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                    <div>
-                        <span className="logo-name">동광배관자재</span>{' '}
-                        <span className="logo-phone">010-7612-6524</span>
-                    </div>
-                    {buyer && (
-                        <button
-                            type="button"
-                            className="header-buyer-pill"
-                            onClick={onChangeBuyer}
-                            title="주문 상호 변경"
-                        >
-                            <span className="header-buyer-label">주문 상호</span>
-                            <span className="header-buyer-name">{buyerName}</span>
-                            <span className="header-buyer-action">변경</span>
-                        </button>
-                    )}
+                <div className="logo">
+                    <span className="logo-name">동광배관자재</span>{' '}
+                    <span className="logo-phone">010-7612-6524</span>
                 </div>
                 <div className="search-container">
                     <span className="search-icon">🔍</span>

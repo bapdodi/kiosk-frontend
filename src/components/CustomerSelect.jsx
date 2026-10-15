@@ -1,6 +1,5 @@
 import CheckoutShell from './CheckoutShell';
 import { matchesSearchText } from '../utils/search';
-import { getBuyerDisplayName } from '../utils/buyer';
 
 /**
  * 주문 마무리 2단계: 상호 선택.
@@ -20,9 +19,7 @@ const CustomerSelect = ({
     onSubmit,
     onCancel,
     pickFirst = false,
-    currentBuyer = null,
 }) => {
-    const isChangingBuyer = Boolean(currentBuyer);
     const customerSearchQuery = name.trim();
     const filteredCustomers = customers.filter(c => {
         const customerName = c.NAME?.trim() || '';
@@ -46,29 +43,8 @@ const CustomerSelect = ({
     return (
         <CheckoutShell variant={variant} className="customer-select-shell">
             <div className="customer-select-head" style={{ padding: '20px', textAlign: 'center', borderBottom: '1px solid #f1f5f9', flex: '0 0 auto' }}>
-                <h3 className="customer-select-title" style={{ margin: 0, fontWeight: 900, fontSize: '2.2rem' }}>
-                    {isChangingBuyer ? '주문 상호 변경' : '주문 확인'}
-                </h3>
-                <p className="customer-select-sub" style={{ color: '#64748b', marginTop: '8px', fontSize: '1.35rem' }}>
-                    {isChangingBuyer ? '변경하실 상호를 선택하거나 검색해주세요.' : '주문하실 상호를 선택하거나 검색해주세요.'}
-                </p>
-                {isChangingBuyer && (
-                    <div style={{
-                        marginTop: '10px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '6px 16px',
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '20px',
-                        fontSize: '1.15rem',
-                        color: '#64748b'
-                    }}>
-                        <span>현재 상호:</span>
-                        <strong style={{ color: '#0f172a' }}>{getBuyerDisplayName(currentBuyer)}</strong>
-                    </div>
-                )}
+                <h3 className="customer-select-title" style={{ margin: 0, fontWeight: 900, fontSize: '2.2rem' }}>주문 확인</h3>
+                <p className="customer-select-sub" style={{ color: '#64748b', marginTop: '8px', fontSize: '1.35rem' }}>주문하실 상호를 선택하거나 검색해주세요.</p>
             </div>
 
             <div className="customer-select-body" style={{ padding: '20px' }}>
@@ -99,9 +75,7 @@ const CustomerSelect = ({
                         gap: '10px'
                     }}
                 >
-                    👤 {isChangingBuyer
-                        ? '비회원으로 변경하기'
-                        : (pickFirst ? '비회원으로 주문 시작하기' : '비회원으로 주문하기')}
+                    👤 {pickFirst ? '비회원으로 주문 시작하기' : '비회원으로 주문하기'}
                 </button>
 
                 {/* 두 갈래(비회원 / 상호 선택)를 시각적으로 분리 */}
@@ -243,7 +217,7 @@ const CustomerSelect = ({
                         disabled={!isValidName}
                     >
                         {isValidName
-                            ? (isChangingBuyer ? '변경하기' : (pickFirst ? '주문 시작하기' : '주문 완료하기'))
+                            ? (pickFirst ? '주문 시작하기' : '주문 완료하기')
                             : '상호를 먼저 선택해주세요'}
                     </button>
                     <button className="checkout-cancel-btn" onClick={onCancel}>

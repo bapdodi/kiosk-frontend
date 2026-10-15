@@ -1,26 +1,14 @@
 import { getImageUrl } from '../utils/imageUtils';
 import { cartTotal, formatWon } from '../utils/price';
-import { getBuyerDisplayName } from '../utils/buyer';
 
 // 주문 마무리 1단계: 주문 넣기를 누른 직후, 상호 선택으로 넘어가기 전에 한 번 더 확인시킨다.
 // 장바구니(CartBar)와 달리 상품 사진을 크게 보여주기 때문에 담은 물건이 맞는지 눈으로 바로 확인할 수 있다.
 // 여기서 수량 변경/삭제까지 가능하게 해서 "다시 장바구니로 돌아가는" 왕복을 없앴다.
 //
 // 키오스크·PC 는 화면(screen), 폰은 기존처럼 팝업(modal)으로 띄운다.
-const OrderReview = ({
-    variant,
-    items,
-    buyer,
-    onChangeBuyer,
-    onRemove,
-    onQuantityChange,
-    onClose,
-    onConfirm,
-    onSelectProduct
-}) => {
+const OrderReview = ({ variant, items, onRemove, onQuantityChange, onClose, onConfirm, onSelectProduct }) => {
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
     const total = cartTotal(items);
-    const buyerName = getBuyerDisplayName(buyer);
 
     // 같은 상품(id)끼리 묶어서 사진 한 장 아래 옵션별 줄로 표시 (장바구니와 동일한 규칙)
     const groups = [];
@@ -41,24 +29,6 @@ const OrderReview = ({
                     <p className="review-sub">담으신 상품이 맞는지 확인해주세요. 총 <b>{totalCount}개</b></p>
                     <button className="review-close" onClick={onClose} aria-label="닫기">×</button>
                 </div>
-
-                {buyer && (
-                    <div className="review-buyer-banner">
-                        <div className="review-buyer-info">
-                            <span className="review-buyer-label">주문 상호</span>
-                            <strong className="review-buyer-name">{buyerName}</strong>
-                        </div>
-                        {onChangeBuyer && (
-                            <button
-                                type="button"
-                                className="review-buyer-change-btn"
-                                onClick={onChangeBuyer}
-                            >
-                                변경
-                            </button>
-                        )}
-                    </div>
-                )}
 
                 <div className="review-body">
                     {groups.length === 0 ? (

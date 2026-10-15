@@ -1,10 +1,8 @@
 import { cartTotal, formatWon } from '../utils/price';
-import { getBuyerDisplayName } from '../utils/buyer';
 
-const Cart = ({ items, buyer, onChangeBuyer, onRemove, onQuantityChange, onCheckout, onClear, onSelectProduct }) => {
+const Cart = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onSelectProduct }) => {
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
     const total = cartTotal(items);
-    const buyerName = getBuyerDisplayName(buyer);
 
     // 같은 상품(id)끼리 묶어서 하나의 헤더 아래 옵션별 서브항목으로 표시
     const groups = [];
@@ -44,23 +42,6 @@ const Cart = ({ items, buyer, onChangeBuyer, onRemove, onQuantityChange, onCheck
                     전체 비우기
                 </button>
             </div>
-            {buyer && (
-                <div className="cart-buyer-strip">
-                    <div className="cart-buyer-info">
-                        <span className="cart-buyer-tag">주문 상호</span>
-                        <strong className="cart-buyer-name">{buyerName}</strong>
-                    </div>
-                    {onChangeBuyer && (
-                        <button
-                            type="button"
-                            className="cart-buyer-change-btn"
-                            onClick={onChangeBuyer}
-                        >
-                            변경
-                        </button>
-                    )}
-                </div>
-            )}
             <div className="cart-items">
                 {items.length === 0 ? (
                     <div className="empty-cart-message">상품을 선택해주세요.</div>
