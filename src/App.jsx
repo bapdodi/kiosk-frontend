@@ -700,6 +700,7 @@ function KioskView({
           selectedChosung={selectedChosung}
           onChosungChange={setSelectedChosung}
           getChosung={getChosung}
+          pickFirst={pickFirst}
           onSubmit={(name, code) => {
             const info = resolveBuyer(name, code);
             if (!info) return;

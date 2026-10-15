@@ -18,6 +18,7 @@ const CustomerSelect = ({
     getChosung,
     onSubmit,
     onCancel,
+    pickFirst = false,
 }) => {
     const customerSearchQuery = name.trim();
     const filteredCustomers = customers.filter(c => {
@@ -74,7 +75,7 @@ const CustomerSelect = ({
                         gap: '10px'
                     }}
                 >
-                    👤 비회원으로 주문하기
+                    👤 {pickFirst ? '비회원으로 주문 시작하기' : '비회원으로 주문하기'}
                 </button>
 
                 {/* 두 갈래(비회원 / 상호 선택)를 시각적으로 분리 */}
@@ -215,7 +216,9 @@ const CustomerSelect = ({
                         onClick={() => onSubmit()}
                         disabled={!isValidName}
                     >
-                        {isValidName ? '주문 완료하기' : '상호를 먼저 선택해주세요'}
+                        {isValidName
+                            ? (pickFirst ? '주문 시작하기' : '주문 완료하기')
+                            : '상호를 먼저 선택해주세요'}
                     </button>
                     <button className="checkout-cancel-btn" onClick={onCancel}>
                         취소
