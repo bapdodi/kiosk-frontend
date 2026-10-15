@@ -219,11 +219,17 @@
 
   .kiosk-container .customer-search-input {
     height: 48px;
-    padding: 8px 42px 8px 12px !important;
+    padding: 8px 74px 8px 12px !important;
     border-width: 1px !important;
     border-radius: 10px !important;
     font-size: 1rem !important;
     text-align: left !important;
+  }
+
+  .kiosk-container .customer-search-clear-btn {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 1rem !important;
   }
 
   .kiosk-container .customer-chosung-tabs {
@@ -3465,6 +3471,20 @@ body {
   flex: 1 1 auto;
   min-height: 120px;
   max-height: none;
+}
+
+.customer-search-clear-btn {
+  transition: all 0.15s ease;
+}
+
+.customer-search-clear-btn:hover {
+  background: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.customer-search-clear-btn:active {
+  background: #94a3b8 !important;
+  transform: scale(0.92);
 }
 
 .checkout-card {
