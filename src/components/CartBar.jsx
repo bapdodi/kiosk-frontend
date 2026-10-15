@@ -1,12 +1,24 @@
 import { cartTotal, formatWon } from '../utils/price';
+import { getBuyerDisplayName } from '../utils/buyer';
 
 // 큰 화면(키오스크·PC)용 오른쪽 세로 장바구니 사이드바.
 // 동일 상품(id)은 하나로 묶고 규격(옵션)별로 하위 줄에 표시한다. (기존 장바구니 모달과 동일)
 // 상품은 한 줄씩 세로로 쌓이고, 넘치면 세로 스크롤한다.
 // 작은 화면(폰)에서는 CSS(min-width:601px)로 숨겨지고, 기존 floating 버튼 + 모달을 사용한다.
-const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onResizeStart, onSelectProduct }) => {
+const CartBar = ({
+    items,
+    buyer,
+    onChangeBuyer,
+    onRemove,
+    onQuantityChange,
+    onCheckout,
+    onClear,
+    onResizeStart,
+    onSelectProduct
+}) => {
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
     const total = cartTotal(items);
+    const buyerName = getBuyerDisplayName(buyer);
 
     // 같은 상품(id)끼리 묶어서 하나의 헤더 아래 옵션별 서브항목으로 표시
     const groups = [];
@@ -27,6 +39,26 @@ const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onRes
                 onMouseDown={onResizeStart}
                 onTouchStart={onResizeStart}
             />
+            {buyer && (
+                <div className="cart-bar-buyer-strip">
+                    <div className="cart-bar-buyer-info">
+                        <span className="cart-bar-buyer-tag">주문 상호</span>
+                        <strong className="cart-bar-buyer-name" title={buyerName}>
+                            {buyerName}
+                        </strong>
+                    </div>
+                    {onChangeBuyer && (
+                        <button
+                            type="button"
+                            className="cart-bar-buyer-change-btn"
+                            onClick={onChangeBuyer}
+                            aria-label="주문 상호 변경"
+                        >
+                            변경
+                        </button>
+                    )}
+                </div>
+            )}
             <div className="cart-bar-head">
                 <span>장바구니 ({totalCount})</span>
                 <button
