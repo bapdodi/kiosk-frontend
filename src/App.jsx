@@ -810,6 +810,8 @@ function KioskView({
             searchQuery={searchQuery}
             onSearchChange={handleSearchChange}
             onGoHome={handleGoHome}
+            cartCount={cartItemCount}
+            onOpenCart={() => setIsCartOpen(true)}
           />
         </div>
       )}

@@ -75,7 +75,9 @@ const OrderReview = ({ variant, items, onRemove, onQuantityChange, onClose, onCo
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <span className="review-opt">
-                                                        {item.selectedOption}
+                                                        {item.selectedOption && (
+                                                            <span className="review-opt-val">{item.selectedOption}</span>
+                                                        )}
                                                         {item.price > 0 && (
                                                             <span className="review-line-price">
                                                                 {formatWon(item.price)} × {quantity} = {formatWon(item.price * quantity)}

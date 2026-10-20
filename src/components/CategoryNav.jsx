@@ -10,13 +10,16 @@ const CategoryNav = ({
     onSubCatChange,
     searchQuery,
     onSearchChange,
-    onGoHome
+    onGoHome,
+    cartCount = 0,
+    onOpenCart
 }) => {
     const recognitionRef = useRef(null);
     const mainCatScrollRef = useRef(null);
     const [isListening, setIsListening] = useState(false);
     const [voiceSupported, setVoiceSupported] = useState(false);
     const [voiceError, setVoiceError] = useState('');
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
     // 폰에서는 안내 문구가 입력칸을 넘쳐 글자가 잘리므로 짧은 문구로 바꿔 준다.
     const isNarrow = useIsMobile();
 
@@ -124,6 +127,183 @@ const CategoryNav = ({
 
         el.scrollTo({ left: nextPage * pageWidth, behavior: 'smooth' });
     };
+
+    if (isNarrow) {
+        const showSearch = isSearchOpen || Boolean(searchQuery);
+
+        return (
+            <nav className="mobile-nav" aria-label="모바일 상단 내비게이션">
+                <div className="mobile-header">
+                    {!showSearch ? (
+                        <>
+                            <div className="mobile-header-left">
+                                <div
+                                    className="mobile-header-brand"
+                                    onClick={() => {
+                                        onMainCatChange(null);
+                                        onSubCatChange(null);
+                                        onSearchChange('');
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label="동광배관자재 홈으로 이동"
+                                >
+                                    <span className="mobile-logo-name">동광배관자재</span>
+                                </div>
+                            </div>
+                            <div className="mobile-header-right">
+                                <button
+                                    type="button"
+                                    className="mobile-header-icon-btn"
+                                    onClick={() => setIsSearchOpen(true)}
+                                    aria-label="검색창 열기"
+                                >
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="11" cy="11" r="7" />
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                    </svg>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="mobile-header-icon-btn mobile-header-cart-btn"
+                                    onClick={onOpenCart}
+                                    aria-label={`장바구니 열기, 총 ${cartCount}개`}
+                                >
+                                    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M4 9h16l-1.5 11a1.5 1.5 0 0 1-1.5 1.3H7a1.5 1.5 0 0 1-1.5-1.3L4 9z" />
+                                        <path d="M9 9V6.5a3 3 0 0 1 6 0V9" />
+                                    </svg>
+                                    {cartCount > 0 && (
+                                        <span className="mobile-cart-badge">{cartCount > 99 ? '99+' : cartCount}</span>
+                                    )}
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="mobile-search-bar-row">
+                            <button
+                                type="button"
+                                className="mobile-header-icon-btn"
+                                onClick={() => {
+                                    setIsSearchOpen(false);
+                                    if (searchQuery) onSearchChange('');
+                                }}
+                                aria-label="검색 닫기"
+                            >
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="19" y1="12" x2="5" y2="12" />
+                                    <polyline points="12 19 5 12 12 5" />
+                                </svg>
+                            </button>
+                            <div className="mobile-search-input-box">
+                                <span className="mobile-search-input-icon" aria-hidden="true">🔍</span>
+                                <input
+                                    type="text"
+                                    className="mobile-search-text-input"
+                                    placeholder="상품명·초성 검색"
+                                    value={searchQuery}
+                                    onChange={(e) => onSearchChange(e.target.value)}
+                                    autoFocus
+                                />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        className="mobile-search-clear-btn"
+                                        onClick={() => onSearchChange('')}
+                                        aria-label="검색어 지우기"
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                                {voiceSupported && (
+                                    <button
+                                        type="button"
+                                        className={`mobile-search-voice-btn ${isListening ? 'listening' : ''}`}
+                                        onClick={toggleVoiceSearch}
+                                        aria-label="음성으로 검색"
+                                    >
+                                        🎤
+                                    </button>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                className="mobile-search-cancel-btn"
+                                onClick={() => {
+                                    setIsSearchOpen(false);
+                                    if (searchQuery) onSearchChange('');
+                                }}
+                            >
+                                취소
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {voiceError && (
+                    <div className="voice-error-toast" role="alert">
+                        {voiceError}
+                    </div>
+                )}
+
+                <div className="mobile-cat-tabs-row" role="tablist">
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={!activeMainCat}
+                        className={`mobile-cat-tab-btn ${!activeMainCat ? 'active' : ''}`}
+                        onClick={() => {
+                            onMainCatChange(null);
+                            onSubCatChange(null);
+                        }}
+                    >
+                        홈
+                    </button>
+                    {mainCategories.map((cat) => (
+                        <button
+                            key={cat.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={activeMainCat === cat.id}
+                            className={`mobile-cat-tab-btn ${activeMainCat === cat.id ? 'active' : ''}`}
+                            onClick={() => {
+                                onMainCatChange(cat.id);
+                                onSubCatChange(null);
+                            }}
+                        >
+                            {cat.name.trim()}
+                        </button>
+                    ))}
+                </div>
+
+                {activeMainCat && subCategories[activeMainCat] && subCategories[activeMainCat].length > 0 && (
+                    <div className="mobile-subcat-row" role="tablist">
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={!activeSubCat}
+                            className={`mobile-subcat-chip ${!activeSubCat ? 'active' : ''}`}
+                            onClick={() => onSubCatChange(null)}
+                        >
+                            전체
+                        </button>
+                        {subCategories[activeMainCat].map((sub) => (
+                            <button
+                                key={sub.id}
+                                type="button"
+                                role="tab"
+                                aria-selected={activeSubCat === sub.id}
+                                className={`mobile-subcat-chip ${activeSubCat === sub.id ? 'active' : ''}`}
+                                onClick={() => onSubCatChange(sub.id)}
+                            >
+                                {sub.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </nav>
+        );
+    }
 
     return (
         <nav className="top-nav">
