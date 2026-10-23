@@ -1,5 +1,5 @@
 import CheckoutShell from './CheckoutShell';
-import { matchesSearchText } from '../utils/search';
+import { matchesCustomerSearch } from '../utils/search';
 
 /**
  * 주문 마무리 2단계: 상호 선택.
@@ -24,7 +24,7 @@ const CustomerSelect = ({
     const filteredCustomers = customers.filter(c => {
         const customerName = c.NAME?.trim() || '';
         if (customerSearchQuery) {
-            return matchesSearchText(customerName, customerSearchQuery);
+            return matchesCustomerSearch(customerName, customerSearchQuery);
         }
 
         if (selectedChosung === 'A-Z') {
@@ -183,7 +183,10 @@ const CustomerSelect = ({
                         <button
                             key={tab}
                             className="customer-chosung-btn"
-                            onClick={() => onChosungChange(tab)}
+                            onClick={() => {
+                                if (name) onNameChange('');
+                                onChosungChange(tab);
+                            }}
                             style={{
                                 padding: '11px 20px',
                                 fontSize: '1.15rem',

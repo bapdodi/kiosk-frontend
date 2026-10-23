@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { describeError, describeResponseError } from '../../utils/apiError';
-import { matchesSearchText } from '../../utils/search';
+import { matchesCustomerSearch, matchesSearchText } from '../../utils/search';
 import AdminSearchClearButton from './AdminSearchClearButton';
 
 // TODO(거래명세서 자동 입력, 이어서 할 작업): 상단에 [명세서 PDF 올리기]를 두고,
@@ -493,7 +493,7 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
     const vendorMatches = useMemo(() => {
         const q = vendorText.trim();
         if (!q) return vendors.slice(0, 20);
-        return vendors.filter(v => matchesSearchText(String(v.NAME || ''), q)
+        return vendors.filter(v => matchesCustomerSearch(String(v.NAME || ''), q)
             || String(v.CODE).includes(q)).slice(0, 20);
     }, [vendors, vendorText]);
 

@@ -1,6 +1,7 @@
-import { toHangul } from './hangulKeyboard.js';
+import { toHangul, looksLikeMistypedHangul } from './hangulKeyboard.js';
 
 const CHOSUNG_LIST = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+const CHOSUNG_SET = new Set(CHOSUNG_LIST);
 
 const EN_TO_KO_JAMO = {
   r: 'ㄱ', R: 'ㄲ', s: 'ㄴ', e: 'ㄷ', E: 'ㄸ', f: 'ㄹ', a: 'ㅁ', q: 'ㅂ', Q: 'ㅃ',
@@ -37,6 +38,7 @@ export const getChosungChar = (char) => {
   if (unicode >= 0xAC00 && unicode <= 0xD7A3) {
     return CHOSUNG_LIST[Math.floor((unicode - 0xAC00) / 588)];
   }
+  if (CHOSUNG_SET.has(char)) return char;
   if (/[a-z]/i.test(char)) return char.toUpperCase();
   return '기타';
 };
@@ -205,6 +207,74 @@ export const getSearchMatchScore = (name, query) => {
 };
 
 export const matchesSearchText = (name, query) => Number.isFinite(getSearchMatchScore(name, query));
+
+export const stripCorporatePrefix = (name) => (name || '')
+  .replace(/^\s*\((주|유|합|사|재)\)\s*/, '')
+  .replace(/^\s*주식회사\s*/, '')
+  .trim();
+
+export const matchesChosungPrefix = (target, query) => {
+  if (!target || !query) return false;
+  const targetChars = target.replace(/[\s()[\]_.,\-~/]/g, '').split('');
+  if (targetChars.length < query.length) return false;
+  for (let i = 0; i < query.length; i += 1) {
+    const qChar = query[i];
+    const tChar = targetChars[i];
+    if (CHOSUNG_SET.has(qChar)) {
+      if (getChosungChar(tChar) !== qChar) return false;
+    } else if (tChar.toLowerCase() !== qChar.toLowerCase()) {
+      return false;
+    }
+  }
+  return true;
+};
+
+/**
+ * 상호명(거래처) 검색:
+ * 초성 검색(예: "ㅅㅇ", "ㅅ ㅇ", "ㅅ", "td")인 경우 사용자의 요구에 맞춰
+ * 반드시 상호의 앞에서부터 일치하는 것만 필터링한다. (예: "ㅅㅇ" -> 앞 두 글자 초성이 'ㅅ', 'ㅇ'인 상호)
+ * 비초성 검색어(예: "에너지", "고산")는 접두사 일치 또는 기존 전체 검색(matchesSearchText)을 유지한다.
+ */
+export const matchesCustomerSearch = (customerName, query) => {
+  const q = (query || '').trim();
+  if (!q) return true;
+
+  const cleanQ = q.replace(/\s+/g, '');
+  if (!cleanQ) return true;
+
+  const isDirectChosung = cleanQ.split('').every((ch) => CHOSUNG_SET.has(ch));
+  const convertedEng = convertEnglishKeyboardToKorean(cleanQ);
+  const isEngChosung = convertedEng.length > 0 && convertedEng.split('').every((ch) => CHOSUNG_SET.has(ch));
+
+  const candidates = [customerName, stripCorporatePrefix(customerName)].filter(Boolean);
+
+  // 1. 순수 초성 검색 (예: "ㅅㅇ", "ㅅ ㅇ", "ㅅ", "ㅅㅇㅅ")
+  if (isDirectChosung) {
+    return candidates.some((c) => matchesChosungPrefix(c, cleanQ));
+  }
+
+  // 2. 영문 자판으로 친 초성 (예: "td", "t d")
+  if (isEngChosung && !/[가-힣]/.test(cleanQ)) {
+    return candidates.some((c) => matchesChosungPrefix(c, convertedEng));
+  }
+
+  // 3. 초성이 섞인 검색 (예: "서ㅇ")
+  if (cleanQ.split('').some((ch) => CHOSUNG_SET.has(ch))) {
+    return candidates.some((c) => matchesChosungPrefix(c, cleanQ));
+  }
+
+  // 4. 일반 글자 접두사 일치 우선 확인 (예: "서윤", "고산", "119")
+  if (candidates.some((c) => matchesChosungPrefix(c, cleanQ))) return true;
+
+  // 영문 자판으로 친 한글 단어 접두사 일치 확인 (예: "xodms" -> "태은")
+  if (looksLikeMistypedHangul(q)) {
+    const converted = toHangul(q).replace(/\s+/g, '');
+    if (candidates.some((c) => matchesChosungPrefix(c, converted))) return true;
+  }
+
+  // 5. 초성이 없는 일반 검색어는 기존 전체 검색(부분 일치 등) 적용 (예: "에너지", "플라자")
+  return matchesSearchText(customerName, q);
+};
 
 // 일반 검색이 실패했을 때만 사용한다. 한글 자모도 비교해 짧은 오타를 찾는다.
 export const getSimilarProducts = (products, query, limit = 6) => {

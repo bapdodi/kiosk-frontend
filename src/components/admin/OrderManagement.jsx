@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
 import { printStatement, exportStatementXlsx } from '../../utils/statement';
-import { matchesSearchText } from '../../utils/search';
+import { matchesCustomerSearch } from '../../utils/search';
 import AdminSearchClearButton from './AdminSearchClearButton';
 
 // 브라우저 현지 시각 기준 YYYY-MM-DD. toISOString() 은 UTC 라서 한국에서는
@@ -100,7 +100,7 @@ const OrderManagement = () => {
     )?.id;
 
     const dateAndSearchFilteredOrders = uniqueOrders.filter(order => {
-        const matchName = matchesSearchText(order.customerName || '', orderSearchQuery);
+        const matchName = matchesCustomerSearch(order.customerName || '', orderSearchQuery);
         let matchDate = true;
 
         if (order.timestamp) {
