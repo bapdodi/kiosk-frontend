@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Navigate, Route, Routes, useOutletContext } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
+import CashLedgerPage from './CashLedgerPage';
 import CategoryManagement from './CategoryManagement';
 import ErpBakImportPage from './ErpBakImportPage';
 import ErpReceivingPage from './ErpReceivingPage';
@@ -29,6 +30,7 @@ export default function AdminRoutes(layoutProps) {
         <Route path="erp-bak" element={<ErpBakImportPage />} />
         <Route path="erp-receiving" element={<ErpReceivingPage />} />
         <Route path="erp-order" element={<ErpReceivingPage mode="order" />} />
+        <Route path="cash-ledger" element={<CashLedgerPage />} />
       </Route>
     </Routes>
   );

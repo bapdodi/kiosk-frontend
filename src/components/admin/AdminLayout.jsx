@@ -160,6 +160,14 @@ const AdminLayout = ({
                         <span style={{ fontSize: '1.2rem' }}>📝</span>
                         <span style={{ fontWeight: 600 }}>발주 관리</span>
                     </NavLink>
+                    <NavLink
+                        to="/admin/cash-ledger"
+                        className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
+                        style={{ textDecoration: 'none' }}
+                    >
+                        <span style={{ fontSize: '1.2rem' }}>💰</span>
+                        <span style={{ fontWeight: 600 }}>금전 출납부</span>
+                    </NavLink>
                     {naverEnabled && (
                         <div className="admin-nav-group">
                             <NavLink
