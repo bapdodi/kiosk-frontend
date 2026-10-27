@@ -571,12 +571,46 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
             || String(v.CODE).includes(q)).slice(0, 20);
     }, [vendors, vendorText]);
 
+    /**
+     * 명세서에서 거래처를 못 찾아 후보가 없던 줄들을, 사람이 거래처를 고른 뒤 그 거래처로 다시 맞춘다.
+     * 후보가 없는 상태로 두면 거래처를 골라도 줄마다 품목을 처음부터 검색해야 한다.
+     */
+    const rematchRows = async (code) => {
+        const targets = rows.map((r, i) => ({ r, i })).filter(({ r }) => r.ocr && !r.itemCode && !r.ocr.candidates?.length);
+        if (!targets.length) return;
+        try {
+            const result = await post('/api/erp-receiving/admin/statement/rematch', {
+                vendorCode: code,
+                lines: targets.map(({ r }) => ({
+                    name: r.ocr.name, ea: Number(r.ocr.ea), price: Number(r.ocr.price), amount: Number(r.ocr.ea) * Number(r.ocr.price),
+                })),
+            });
+            // 품목을 못 정한 줄 수가 달라졌으니 처음의 개수 안내는 지운다(노란 줄은 그대로 보인다).
+            setStatement(st => (st ? { ...st, notice: st.notice.filter(n => !n.startsWith('품목을 못 정한 줄')) } : st));
+            const byIndex = new Map(targets.map(({ i }, k) => [i, result[k]]));
+            setRows(prev => prev.map((row, i) => {
+                const m = byIndex.get(i);
+                if (!m) return row;
+                const picked = m.itemCode != null ? m.candidates.find(c => c.code === m.itemCode) : null;
+                const ocr = { ...row.ocr, candidates: m.candidates };
+                if (!picked) return { ...row, ocr };
+                return { ...row, ocr, itemCode: picked.code, itemName: picked.name, gyu: picked.gyu ?? '', danwi: picked.danwi ?? '',
+                    jego: picked.jego ?? null, ea: m.ea, price: m.price };
+            }));
+        } catch (e) {
+            console.warn('거래처로 다시 맞추기 실패', e);
+        }
+    };
+
     const chooseVendor = (v) => {
         setVendorCode(Number(v.CODE));
         setVendorText(v.NAME);
         setVendorOpen(false);
         setPreview(null);
-        setTimeout(() => focusCell(0, 'itemName'), 0);
+        rematchRows(Number(v.CODE));
+        setStatement(st => (st ? { ...st, notice: st.notice.filter(n => !n.startsWith('거래처를 찾지 못했습니다')) } : st));
+        // 명세서로 채운 격자는 첫 줄로 포커스를 옮기지 않는다(옮기면 품목 검색창이 열려 채워진 줄을 가린다).
+        if (!rows.some(r => r.ocr)) setTimeout(() => focusCell(0, 'itemName'), 0);
     };
 
     const onVendorKeyDown = (e) => {
@@ -938,7 +972,8 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                                             <td style={{ ...gridCell, position: 'relative' }}>
                                                 <input
                                                     ref={el => { cellRefs.current[`${idx}-itemName`] = el; }}
-                                                    style={{ ...cellInput, fontWeight: r.itemCode ? 600 : 400 }}
+                                                    style={{ ...cellInput, fontWeight: r.itemCode ? 600 : 400,
+                                                        ...(!r.itemCode && r.itemName.trim() && !showList && !r.ocr?.candidates?.length ? { paddingRight: '88px' } : {}) }}
                                                     value={r.itemName}
                                                     placeholder={idx === 0 ? '품명을 입력하세요' : ''}
                                                     onChange={e => {
@@ -1059,14 +1094,15 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                                             <td style={gridCell}>
                                                 <input
                                                     ref={el => { cellRefs.current[`${idx}-price`] = el; }}
-                                                    type="number" min="0"
+                                                    // 쉼표를 보여 주려고 숫자 입력창이 아니라 글자 입력창을 쓴다. 저장하는 값은 숫자만 남긴 문자열이다.
+                                                    type="text" inputMode="numeric"
                                                     disabled={!r.itemCode}
                                                     style={{
                                                         ...cellInput, textAlign: 'right',
                                                         color: r.itemCode && r.price === '' ? '#dc2626' : undefined,
                                                     }}
-                                                    value={r.price}
-                                                    onChange={e => patchRow(idx, { price: e.target.value })}
+                                                    value={r.price === '' || r.price == null ? '' : won(r.price)}
+                                                    onChange={e => patchRow(idx, { price: e.target.value.replace(/\D/g, '') })}
                                                     onKeyDown={e => onCellKeyDown(e, idx, 'price')}
                                                 />
                                             </td>
