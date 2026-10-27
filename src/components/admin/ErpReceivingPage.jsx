@@ -3,10 +3,9 @@ import { describeError, describeResponseError } from '../../utils/apiError';
 import { matchesCustomerSearch, matchesSearchText } from '../../utils/search';
 import AdminSearchClearButton from './AdminSearchClearButton';
 
-// TODO(거래명세서 자동 입력, 이어서 할 작업): 상단에 [명세서 PDF 올리기]를 두고,
-// 서버가 읽어 온 거래처·품목 줄로 이 격자를 채운다. 원본 PDF 를 옆에 띄우고,
-// 매칭이 불확실한 줄은 노란색, 명세서 합계와 다르면 빨간색으로 보여 준 뒤
-// 기존 미리보기 → 저장 흐름을 그대로 탄다. 자세한 설계는 backend ErpReceivingService 주석.
+// 거래명세서 올리기: 서버(ErpStatementService)가 읽은 거래처·품목 줄로 격자를 채운다.
+// 품목이 미정인 줄은 노란색이고, 사람이 고른 뒤 기존 미리보기 → 저장 흐름을 그대로 탄다.
+// TODO: 원본 PDF 를 옆에 띄워 대조하게 하고, 명세서 합계와 다르면 빨간색으로 보여 준다.
 const KIND_LABELS = { 3: '매출', 4: '매입', 13: '발주' };
 
 const won = (n) => Number(n || 0).toLocaleString('ko-KR');
@@ -223,9 +222,11 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
     const [busy, setBusy] = useState('');            // '' | 'searching' | 'previewing' | 'saving' | 'cancelling'
     const [error, setError] = useState('');
     const [saved, setSaved] = useState(null);
+    const [statement, setStatement] = useState(null);  // { drafts, index, notice } 명세서에서 읽은 초안
 
     // 폼 1회당 하나. 더블클릭이나 네트워크 재시도가 전표를 두 번 만들지 못하게 하는 멱등키다.
     const requestIdRef = useRef(newRequestId());
+    const statementInputRef = useRef(null);
     const searchSeqRef = useRef(0);
     const cellRefs = useRef({});
     const resultRefs = useRef({});
@@ -397,6 +398,8 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
     };
 
     const chooseItem = (idx, item) => {
+        // 명세서에서 읽은 줄이면 직전 단가가 아니라 명세서의 수량/단가를 쓴다.
+        const ocr = rows[idx]?.ocr;
         const price = item.lastPrice != null ? Math.round(Number(item.lastPrice))
             : (item.INPR ? Math.round(Number(item.INPR)) : '');
         patchRow(idx, {
@@ -405,8 +408,9 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
             gyu: String(item.GYU || '').trim(),
             danwi: String(item.DANWI || '').trim(),
             jego: Number(item.JEGO || 0),
-            price,
-            ea: '',
+            // 후보 버튼에 환산값(ocrEa/ocrPrice)이 있으면 그것을, 없으면 명세서에서 읽은 값을 쓴다.
+            price: ocr ? (item.ocrPrice ?? ocr.price) : price,
+            ea: ocr ? (item.ocrEa ?? ocr.ea) : '',
             lastVendorCode: item.lastVendorCode ?? null,
             lastVendorName: item.lastVendorName || '',
             lastDate: item.lastDate || '',
@@ -424,6 +428,76 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
     const removeRow = (idx) => {
         setPreview(null);
         setRows(prev => (prev.length <= 1 ? [emptyRow()] : prev.filter((_, i) => i !== idx)));
+    };
+
+    // ── 거래명세서 올리기 ───────────────────────────────────────────────────
+
+    /** 읽은 초안을 격자에 채운다. 품목이 미정인 줄은 노랗게 남고, 사람이 고르면 명세서의 수량/단가가 들어간다. */
+    const applyDraft = (draft) => {
+        setPreview(null); setSaved(null); setError('');
+        const notes = [];
+        if (draft.date) {
+            const gap = Math.abs(new Date(draft.date) - new Date(todayInput())) / 86400000;
+            if (status && gap > status.dateWindowDays) {
+                notes.push(`명세서 일자(${draft.date})가 ${noun} 가능 기간(오늘 ±${status.dateWindowDays}일) 밖이라 일자는 그대로 두었습니다.`);
+            } else {
+                setDate(draft.date);
+            }
+        } else {
+            notes.push('명세서 일자를 읽지 못했습니다. 일자를 확인하세요.');
+        }
+        setVendorCode(draft.vendorCode ?? null);
+        setVendorText(draft.vendorName || '');
+        if (draft.vendorCode == null) notes.push('거래처를 찾지 못했습니다. 상호를 직접 고르세요.');
+        if (!draft.totalMatched) notes.push('읽은 줄의 합이 명세서에 찍힌 합계와 달라 빠진 줄이 있을 수 있습니다. 원본과 대조하세요.');
+        const lines = draft.lines.map(l => {
+            const picked = l.itemCode != null ? l.candidates.find(c => c.code === l.itemCode) : null;
+            return {
+                ...emptyRow(),
+                itemCode: picked?.code ?? null,
+                itemName: picked ? picked.name : l.name,
+                gyu: picked?.gyu ?? '',
+                danwi: picked?.danwi ?? '',
+                jego: picked?.jego ?? null,
+                ea: l.ea,
+                price: l.price,
+                // name/suggested 는 저장할 때 학습에 쓴다: 명세서에 적힌 원래 품명과 화면이 처음 제안한 품목.
+                ocr: { name: l.name, suggested: l.itemCode ?? null, ea: l.ea, price: l.price, candidates: l.candidates },
+            };
+        });
+        const converted = draft.lines.filter(l => l.converted).length;
+        if (converted) notes.push(`${converted}줄은 지난 거래 단가에 맞춰 수량·단가를 환산했습니다(명세서의 숫자와 다를 수 있으니 확인하세요).`);
+        const unmatched = lines.filter(r => !r.itemCode).length;
+        if (unmatched) notes.push(`품목을 못 정한 줄 ${unmatched}건(노란색)은 품목을 골라야 저장됩니다.`);
+        setRows([...lines, emptyRow()]);
+        requestIdRef.current = newRequestId();
+        return notes;
+    };
+
+    const uploadStatement = async (file) => {
+        if (!file) return;
+        setBusy('reading'); setError(''); setStatement(null);
+        try {
+            const form = new FormData();
+            form.append('file', file);
+            const res = await fetch('/api/erp-receiving/admin/statement', { method: 'POST', body: form });
+            if (!res.ok) throw new Error(await readError(res));
+            const data = await res.json();
+            if (!data.drafts?.length || !data.drafts.some(d => d.lines.length)) {
+                throw new Error('명세서에서 품목 줄을 찾지 못했습니다. 사진이 흐리거나 표가 잘렸는지 확인하세요.');
+            }
+            const drafts = data.drafts.filter(d => d.lines.length);
+            setStatement({ drafts, index: 0, notice: applyDraft(drafts[0]) });
+        } catch (e) {
+            setError(describeError(e, '명세서를 읽지 못했습니다.'));
+        } finally {
+            setBusy('');
+            if (statementInputRef.current) statementInputRef.current.value = '';
+        }
+    };
+
+    const pickDraft = (index) => {
+        setStatement(s => ({ ...s, index, notice: applyDraft(s.drafts[index]) }));
     };
 
     /** 격자 키보드 이동. Enter/→ 는 다음 칸, ↑↓ 는 위아래 줄, 마지막 칸 Enter 면 다음 줄 품명. */
@@ -585,7 +659,15 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
             const snapshot = { vendorName: vendorText, memo, lines: filled.map(r => ({ ...r })) };
             const result = await post(isOrder ? '/api/erp-receiving/admin/orders' : '/api/erp-receiving/admin/vouchers', body());
             setSaved({ ...result, print: snapshot });
-            setRows([emptyRow()]); setPreview(null); setMemo('');
+            // 사람이 확인해 저장한 거래처/품명 짝을 배우게 한다. 저장이 끝난 뒤라 학습이 실패해도 전표에는 영향이 없다.
+            const draft = statement?.drafts[statement.index];
+            const pairs = filled.filter(r => r.ocr?.name)
+                .map(r => ({ name: r.ocr.name, itemCode: r.itemCode, suggested: r.ocr.suggested }));
+            if (!isOrder && !result.duplicate && pairs.length) {
+                post('/api/erp-receiving/admin/statement/learn', { vendorCode, bizNo: draft?.bizNo || '', pairs })
+                    .catch(e => console.warn('명세서 학습 실패', e));
+            }
+            setRows([emptyRow()]); setPreview(null); setMemo(''); setStatement(null);
             requestIdRef.current = newRequestId(); // 다음 전표는 새 멱등키로
             loadHistory();
         } catch (e) {
@@ -723,6 +805,36 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
 
             {tab === 'entry' && (
                 <>
+                    {/* ── 거래명세서 올리기: 읽은 내용으로 아래 격자를 채운다. 저장은 사람이 확인한 뒤 기존 흐름 ── */}
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
+                        <input ref={statementInputRef} type="file" accept=".pdf,image/*" style={{ display: 'none' }}
+                            onChange={e => uploadStatement(e.target.files?.[0])} />
+                        <button className="action-btn" disabled={!!busy}
+                            onClick={() => statementInputRef.current?.click()}>
+                            {busy === 'reading' ? '명세서 읽는 중…(쪽당 수십 초)' : '거래명세서 올리기'}
+                        </button>
+                        {statement && statement.drafts.length > 1 && (
+                            <select className="admin-input-small" style={{ width: 'auto' }} value={statement.index}
+                                onChange={e => pickDraft(Number(e.target.value))}>
+                                {statement.drafts.map((d, i) => (
+                                    <option key={i} value={i}>
+                                        {i + 1}/{statement.drafts.length} {d.vendorName || '거래처 미확인'} {d.date || ''} · {d.lines.length}줄
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                        {statement && (
+                            <span style={{ fontSize: '0.88rem', color: '#475569' }}>
+                                읽은 합계 {won(statement.drafts[statement.index].sumAmount)}원 (부가세 별도)
+                            </span>
+                        )}
+                    </div>
+                    {statement?.notice?.length > 0 && (
+                        <ul style={{ margin: '0 0 12px', padding: '8px 14px 8px 28px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '8px', fontSize: '0.9rem', color: '#92400e' }}>
+                            {statement.notice.map(n => <li key={n}>{n}</li>)}
+                        </ul>
+                    )}
+
                     {/* ── 전표 머리 ── */}
                     <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '14px' }}>
                         <div>
@@ -817,7 +929,7 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                                     const amount = (Number(r.price) || 0) * (Number(r.ea) || 0);
                                     const showList = searchRow === idx && resultsReady;
                                     return (
-                                        <tr key={r.key} style={{ background: idx % 2 ? '#f8fafc' : '#fff' }}>
+                                        <tr key={r.key} style={{ background: r.ocr && !r.itemCode ? '#fef9c3' : (idx % 2 ? '#f8fafc' : '#fff') }}>
                                             <td style={{ ...gridCell, textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
                                                 {idx + 1}
                                             </td>
@@ -844,7 +956,7 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                                                     onBlur={() => setTimeout(() => setSearchRow(s => (s === idx ? null : s)), 150)}
                                                     onKeyDown={e => onCellKeyDown(e, idx, 'itemName')}
                                                 />
-                                                {!r.itemCode && r.itemName.trim() && !showList && (
+                                                {!r.itemCode && r.itemName.trim() && !showList && !r.ocr?.candidates?.length && (
                                                     <span style={{
                                                         position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
                                                         fontSize: '0.75rem', color: busy === 'searching' ? '#64748b' : '#dc2626',
@@ -852,6 +964,23 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                                                     }}>
                                                         {busy === 'searching' ? '검색 중…' : '품목 미선택'}
                                                     </span>
+                                                )}
+                                                {r.ocr && !r.itemCode && !showList && r.ocr.candidates.length > 0 && (
+                                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', padding: '0 6px 6px' }}>
+                                                        {r.ocr.candidates.slice(0, 3).map(c => (
+                                                            <button key={c.code} type="button"
+                                                                onMouseDown={e => e.preventDefault()}
+                                                                onClick={() => chooseItem(idx, { CODE: c.code, ITEM: c.name, GYU: c.gyu, DANWI: c.danwi, JEGO: c.jego, ocrEa: c.ea, ocrPrice: c.price })}
+                                                                title={c.converted ? '이 품목으로 선택 (지난 거래 단가에 맞춰 수량·단가를 환산해 넣습니다)' : '이 품목으로 선택'}
+                                                                style={{
+                                                                    border: c.likely ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                                                                    background: c.likely ? '#eff6ff' : '#fff', fontWeight: c.likely ? 700 : 400,
+                                                                    borderRadius: '6px', padding: '2px 8px', fontSize: '0.8rem', cursor: 'pointer', color: '#334155',
+                                                                }}>
+                                                                {c.likely && '추천 '}{c.name} {c.gyu}
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 )}
                                                 {showList && (
                                                     <div ref={resultListRef} style={{
