@@ -1094,14 +1094,15 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                                             <td style={gridCell}>
                                                 <input
                                                     ref={el => { cellRefs.current[`${idx}-price`] = el; }}
-                                                    type="number" min="0"
+                                                    // 쉼표를 보여 주려고 숫자 입력창이 아니라 글자 입력창을 쓴다. 저장하는 값은 숫자만 남긴 문자열이다.
+                                                    type="text" inputMode="numeric"
                                                     disabled={!r.itemCode}
                                                     style={{
                                                         ...cellInput, textAlign: 'right',
                                                         color: r.itemCode && r.price === '' ? '#dc2626' : undefined,
                                                     }}
-                                                    value={r.price}
-                                                    onChange={e => patchRow(idx, { price: e.target.value })}
+                                                    value={r.price === '' || r.price == null ? '' : won(r.price)}
+                                                    onChange={e => patchRow(idx, { price: e.target.value.replace(/\D/g, '') })}
                                                     onKeyDown={e => onCellKeyDown(e, idx, 'price')}
                                                 />
                                             </td>
