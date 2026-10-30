@@ -65,3 +65,8 @@
   .order-focused-detail .option-action-row { grid-template-columns: 1fr 1fr; }
   .order-focused-detail .option-total-price { grid-column: 1 / -1; }
 }
+/* 키오스크: 가로 스크롤 대신 4열로 아래로 늘어놓는다(모바일은 기존 가로 스크롤 유지). */
+@media (min-width: 768px) {
+  .order-focused-detail .option-reco-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow-x: visible; }
+  .order-focused-detail .option-reco-card { min-width: 0; }
+}

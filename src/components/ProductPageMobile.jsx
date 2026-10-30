@@ -220,7 +220,7 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
                     <section className="mp-block mp-reco">
                         <h2 className="mp-block-title">연관 있는 상품</h2>
                         <div className="mp-reco-list">
-                            {recommendedProducts.map(item => (
+                            {recommendedProducts.slice(0, 6).map(item => (
                                 <button
                                     key={item.id}
                                     type="button"

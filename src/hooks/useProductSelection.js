@@ -10,7 +10,7 @@ import { getPriceRange } from '../utils/price';
 // 복합옵션 상품은 규격이 수십 개일 수 있어, 추천 기준으로 보낼 ERP 코드 수를 제한한다.
 const MAX_RECOMMENDATION_SOURCE_CODES = 30;
 // 한 줄로 훑을 수 있는 개수. 더 늘리면 스크롤해야 보여서 눌리지 않는다.
-const VISIBLE_RECOMMENDATIONS = 6;
+const VISIBLE_RECOMMENDATIONS = 20;
 
 // 그룹마다 한 값만 선택한다. 공통 가격·장바구니 로직에 맞춰 값은 배열로 보관한다.
 // 값이 하나뿐인 그룹은 선택의 여지가 없으므로 처음부터 체크해 둔다.
@@ -150,7 +150,7 @@ export function useProductSelection(product, { cartItems = [], products = [], on
 
         let cancelled = false;
         const productId = product.id;
-        fetch(`/api/recommendations?codes=${encodeURIComponent(codes.join(','))}&limit=8`)
+        fetch(`/api/recommendations?codes=${encodeURIComponent(codes.join(','))}&limit=${VISIBLE_RECOMMENDATIONS}`)
             .then(res => (res.ok ? res.json() : []))
             .then(data => {
                 if (!cancelled) {
