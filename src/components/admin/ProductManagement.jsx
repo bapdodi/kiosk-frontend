@@ -154,6 +154,7 @@ const ProductManagement = () => {
             const res = await fetch('/api/sync/admin/erp/preview');
             if (res.ok) {
                 const preview = await res.json();
+                if (preview.length === 0) return alert('ERP 와 다른 상품이 없습니다. 동기화할 내용이 없습니다.');
                 setErpPreviews(preview);
                 setSelectedErpKeys(preview.map(product => product.syncKey));
             } else {
@@ -875,7 +876,7 @@ const ProductManagement = () => {
                         <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0' }}>
                             <h3 style={{ margin: 0, fontSize: '1.2rem' }}>ERP 동기화 상품 선택</h3>
                             <p style={{ margin: '7px 0 0', color: '#64748b', fontSize: '0.9rem' }}>
-                                반영할 상품만 체크하세요. 기존 상품은 가격·재고·규격 등을 ERP 정보로 갱신하고, 신규 상품은 등록합니다.
+                                ERP 와 달라 동기화하면 바뀌는 상품만 보여줍니다. 반영할 상품만 체크하세요.
                             </p>
                         </div>
                         <div style={{ padding: '12px 20px', borderBottom: '1px solid #e2e8f0' }}>
@@ -887,10 +888,17 @@ const ProductManagement = () => {
                         </div>
                         <div style={{ overflowY: 'auto', padding: '8px 20px', flex: 1 }}>
                             {erpPreviews.map(product => (
-                                <label key={product.syncKey} style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '11px 4px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}>
-                                    <input type="checkbox" checked={selectedErpKeys.includes(product.syncKey)} onChange={() => toggleErpProduct(product.syncKey)} />
-                                    <span style={{ fontWeight: 700, flex: 1 }}>{product.name}</span>
-                                    <span style={{ color: product.existing ? '#2563eb' : '#16a34a', fontSize: '0.8rem' }}>
+                                <label key={product.syncKey} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '11px 4px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}>
+                                    <input type="checkbox" style={{ marginTop: '4px' }} checked={selectedErpKeys.includes(product.syncKey)} onChange={() => toggleErpProduct(product.syncKey)} />
+                                    <span style={{ flex: 1, minWidth: 0 }}>
+                                        <span style={{ fontWeight: 700 }}>{product.name}</span>
+                                        {product.existing && (
+                                            <ul style={{ margin: '4px 0 0', paddingLeft: '18px', color: '#475569', fontSize: '0.85rem' }}>
+                                                {product.changes?.map(change => <li key={change}>{change}</li>)}
+                                            </ul>
+                                        )}
+                                    </span>
+                                    <span style={{ color: product.existing ? '#2563eb' : '#16a34a', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                                         {product.existing ? '기존 상품 갱신' : '신규 상품 등록'}
                                     </span>
                                 </label>
