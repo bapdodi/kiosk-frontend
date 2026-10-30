@@ -38,7 +38,8 @@ const CustomerSelect = ({
     });
 
     const isValidName = customers.some(c => c.NAME?.trim() === name.trim());
-    const defaultCustomer = customers.find(c => c.NAME?.trim() === '1');
+    // 비회원 주문은 ERP 거래처 '3 번'(코드 1196)으로 넣는다. 이름은 띄어쓰기가 바뀔 수 있어 코드로 찾는다.
+    const defaultCustomer = customers.find(c => String(c.CODE).trim() === '1196');
 
     return (
         <CheckoutShell variant={variant} className="customer-select-shell">
@@ -48,12 +49,12 @@ const CustomerSelect = ({
             </div>
 
             <div className="customer-select-body" style={{ padding: '20px' }}>
-                {/* 1번 고객 버튼 */}
+                {/* 비회원(3번 고객) 버튼 */}
                 <button
                     className="customer-guest-btn"
                     onClick={() => {
                         if (!defaultCustomer) {
-                            alert('1번 고객 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+                            alert('3번 고객 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
                             return;
                         }
                         onSubmit(defaultCustomer.NAME, String(defaultCustomer.CODE));
