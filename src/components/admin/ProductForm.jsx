@@ -34,6 +34,11 @@ const ProductForm = () => {
     // 어떤 옵션 행에서 "대표 이미지에서 선택" 패널이 열려 있는지: `${groupName}::${value}` 또는 null
     const [imgPickerKey, setImgPickerKey] = useState(null);
 
+    // 목록에서 내려온 스크롤이 같은 .admin-content 에 남아 폼이 아래에서 열리므로 맨 위로 올린다
+    useEffect(() => {
+        document.querySelector('.admin-content')?.scrollTo(0, 0);
+    }, [id]);
+
     useEffect(() => {
         if (!product) return;
         setProductData({

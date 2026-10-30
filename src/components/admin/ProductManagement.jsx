@@ -7,6 +7,9 @@ import CategoryEditor from './CategoryEditor';
 import { matchesSearchText } from '../../utils/search';
 import { buildProductUpdate } from '../../utils/productUpdate';
 
+// 목록은 window 가 아니라 AdminLayout 의 .admin-content 안에서 스크롤된다
+const getScroller = () => document.querySelector('.admin-content') || window;
+
 const ProductManagement = () => {
     const navigate = useNavigate();
     const {
@@ -68,7 +71,7 @@ const ProductManagement = () => {
         if (savedScroll && products.length > 0) {
             // Use a small timeout to ensure the list is rendered
             const timer = setTimeout(() => {
-                window.scrollTo(0, parseInt(savedScroll));
+                getScroller().scrollTo(0, parseInt(savedScroll));
                 sessionStorage.removeItem('adminScrollPos');
                 sessionStorage.removeItem('adminVisibleCount');
             }, 100);
@@ -77,7 +80,7 @@ const ProductManagement = () => {
     }, [products.length]);
 
     const handleEditNavigate = (productId) => {
-        sessionStorage.setItem('adminScrollPos', window.scrollY.toString());
+        sessionStorage.setItem('adminScrollPos', (getScroller().scrollTop ?? window.scrollY).toString());
         sessionStorage.setItem('adminVisibleCount', visibleCount.toString());
         navigate(`/admin/products/edit/${productId}`);
     };
