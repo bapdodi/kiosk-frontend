@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import useOrderNotifications from '../../hooks/useOrderNotifications';
+import AdminChatWidget from './AdminChatWidget';
 
 // NaverSyncPage 의 TABS 와 key 동일하게 유지
 const NAVER_TABS = [
@@ -236,6 +237,7 @@ const AdminLayout = ({
                     }} />
                 </div>
             </main>
+            <AdminChatWidget />
         </div>
     );
 };

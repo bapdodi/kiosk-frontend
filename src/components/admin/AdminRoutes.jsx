@@ -31,6 +31,7 @@ export default function AdminRoutes(layoutProps) {
         <Route path="erp-receiving" element={<ErpReceivingPage />} />
         <Route path="erp-order" element={<ErpReceivingPage mode="order" />} />
         <Route path="cash-ledger" element={<CashLedgerPage />} />
+        <Route path="assistant" element={<Navigate to="/admin/orders" replace />} />
       </Route>
     </Routes>
   );

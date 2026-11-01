@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { describeError, describeResponseError } from '../../utils/apiError';
 import { matchesCustomerSearch, matchesSearchText } from '../../utils/search';
 import AdminSearchClearButton from './AdminSearchClearButton';
@@ -180,6 +181,7 @@ const ORDER_COLUMNS = ['itemName', 'danwi', 'ea', 'price', 'remark'];
  *   품명 입력 → ↑↓ 로 품목 고르고 Enter → 수량 → 단가 → 적요 → Enter 면 다음 줄
  */
 const ErpReceivingPage = ({ mode = 'receive' }) => {
+    const location = useLocation();
     // 같은 화면을 입고(KIND=4)와 발주(KIND=13)가 나눠 쓴다. 메뉴가 따로라 상태도 따로다.
     const isOrder = mode === 'order';
     const kind = isOrder ? 13 : 4;
@@ -187,6 +189,7 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
     const columns = isOrder ? ORDER_COLUMNS : COLUMNS;
 
     const [tab, setTab] = useState('entry');         // 'entry' | 'history' | 'stock'
+    const [aiNotice, setAiNotice] = useState(null);  // AI 도우미가 전달한 초안 알림
     const [stockQuery, setStockQuery] = useState('');
     const [stockAll, setStockAll] = useState(null);      // null = 아직 불러오는 중
     const [stockBusy, setStockBusy] = useState(false);
@@ -279,6 +282,62 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
         });
         setTab('entry');
     };
+
+    /** AI 도우미가 전달한 입고/발주 초안을 격자에 자동 입력한다. */
+    const applyAiDraftData = useCallback((draft) => {
+        if (!draft) return;
+        setPreview(null);
+        setSaved(null);
+        setError('');
+
+        if (draft.date) {
+            setDate(draft.date);
+        }
+        if (draft.vendorCode) {
+            setVendorCode(Number(draft.vendorCode));
+            setVendorText(draft.vendorName || String(draft.vendorCode));
+        }
+        if (draft.memo) {
+            setMemo(draft.memo);
+        }
+
+        const lines = (draft.lines || []).map(l => ({
+            ...emptyRow(),
+            itemCode: l.itemCode ?? l.code ?? null,
+            itemName: String(l.itemName || l.name || '').trim(),
+            gyu: String(l.gyu || '').trim(),
+            danwi: String(l.danwi || '').trim(),
+            jego: l.jego != null ? Number(l.jego) : null,
+            ea: String(l.ea ?? ''),
+            price: l.price != null ? Math.round(Number(l.price)) : '',
+            remark: l.remark || '',
+        }));
+
+        setRows(lines.length > 0 ? [...lines, emptyRow()] : [emptyRow()]);
+        requestIdRef.current = newRequestId();
+        setTab('entry');
+        setAiNotice({
+            vendorName: draft.vendorName || (draft.vendorCode ? `거래처 #${draft.vendorCode}` : ''),
+            count: lines.length,
+        });
+    }, []);
+
+    useEffect(() => {
+        if (location.state?.aiDraft) {
+            applyAiDraftData(location.state.aiDraft);
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state, applyAiDraftData]);
+
+    useEffect(() => {
+        const handler = (e) => {
+            if (e.detail) {
+                applyAiDraftData(e.detail);
+            }
+        };
+        window.addEventListener('applyAiDraft', handler);
+        return () => window.removeEventListener('applyAiDraft', handler);
+    }, [applyAiDraftData]);
 
     /** 재고 조회 탭: ERP ITEM 전체를 한 번에 읽어 오고, 검색은 화면에서 거른다. */
     const loadStock = async () => {
@@ -839,6 +898,50 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
 
             {tab === 'entry' && (
                 <>
+                    {/* ── AI 도우미가 전달한 초안 알림 배너 ── */}
+                    {aiNotice && (
+                        <div style={{
+                            background: '#eff6ff',
+                            color: '#1e40af',
+                            border: '1px solid #bfdbfe',
+                            padding: '12px 16px',
+                            borderRadius: '8px',
+                            marginBottom: '14px',
+                            fontSize: '0.88rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '12px',
+                            boxShadow: '0 1px 3px rgba(37, 99, 235, 0.08)',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '1.4rem' }}>🤖</span>
+                                <div>
+                                    <strong style={{ fontSize: '0.92rem' }}>AI 도우미 초안 자동 입력:</strong>{' '}
+                                    {aiNotice.vendorName ? `[${aiNotice.vendorName}] ` : ''}
+                                    <strong>{aiNotice.count}개</strong> 품목이 아래 격자에 자동으로 채워졌습니다.
+                                    <div style={{ fontSize: '0.78rem', color: '#2563eb', marginTop: '2px' }}>
+                                        수량이나 단가를 필요에 따라 수정한 뒤, 아래 <strong>[미리보기 및 저장]</strong> 버튼을 눌러 ERP 전표로 확정하세요.
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setAiNotice(null)}
+                                title="알림 닫기"
+                                style={{
+                                    border: 'none',
+                                    background: 'none',
+                                    color: '#64748b',
+                                    cursor: 'pointer',
+                                    fontSize: '1.2rem',
+                                    padding: '2px 6px',
+                                }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
                     {/* ── 거래명세서 올리기: 읽은 내용으로 아래 격자를 채운다. 저장은 사람이 확인한 뒤 기존 흐름 ── */}
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
                         <input ref={statementInputRef} type="file" accept=".pdf,image/*" style={{ display: 'none' }}

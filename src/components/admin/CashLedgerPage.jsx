@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { describeError, describeResponseError } from '../../utils/apiError';
 
 const API = '/api/cash-ledger/admin';
@@ -57,12 +58,14 @@ const MoneyInput = ({ value, onChange, ...rest }) => {
  * 잔고 = 현금 수입 + 카드 수입 − 지출.
  */
 const CashLedgerPage = () => {
+    const location = useLocation();
     const [rows, setRowsState] = useState([]);
     const rowsRef = useRef([]);
     const cellRefs = useRef({});
     const [month, setMonth] = useState(todayInput().slice(0, 7));   // '' = 전체
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
+    const [aiNotice, setAiNotice] = useState(null);
 
     // 저장 응답이 오는 동안에도 최신 줄을 읽을 수 있게 ref 를 먼저 갱신한다.
     const update = (fn) => { rowsRef.current = fn(rowsRef.current); setRowsState(rowsRef.current); };
@@ -72,6 +75,59 @@ const CashLedgerPage = () => {
         return isBlank(last) && last.id == null ? next : [...next, blankRow(last.entryDate)];
     });
 
+    /** AI 도우미가 전달한 금전출납부 줄을 표에 자동 입력한다. */
+    const applyAiDraftData = useCallback((draft) => {
+        if (!draft) return;
+        const memo = draft.memo || draft.details?.항목 || '';
+        const entryDate = draft.entryDate || draft.date || todayInput();
+        const cashIn = draft.cashIn != null ? num(draft.cashIn) : (draft.details?.현금수입 != null ? num(draft.details.현금수입) : 0);
+        const cardIn = draft.cardIn != null ? num(draft.cardIn) : (draft.details?.카드수입 != null ? num(draft.details.카드수입) : 0);
+        const expense = draft.expense != null ? num(draft.expense) : (draft.details?.지출 != null ? num(draft.details.지출) : 0);
+        const etc = draft.etc || draft.details?.비고 || '';
+
+        if (!memo && !cashIn && !cardIn && !expense) return;
+
+        const targetMonth = entryDate.slice(0, 7);
+        if (targetMonth) {
+            setMonth(targetMonth);
+        }
+
+        const newRow = {
+            key: newKey(),
+            id: null,
+            entryDate,
+            memo,
+            cashIn: toInput(cashIn),
+            cardIn: toInput(cardIn),
+            expense: toInput(expense),
+            etc,
+            orig: '', // 미저장(노란색 표시)
+        };
+
+        update(rs => {
+            const withoutEmpty = rs.filter(r => r.id != null || !isBlank(r));
+            return [...withoutEmpty, newRow, blankRow(entryDate)];
+        });
+
+        const amountText = expense > 0 ? `지출 ${won(expense)}원` : `수입 ${won(cashIn + cardIn)}원`;
+        setAiNotice({
+            key: newRow.key,
+            entryDate,
+            memo,
+            amountText,
+        });
+    }, []);
+
+    useEffect(() => {
+        const handler = (e) => {
+            if (e.detail) {
+                applyAiDraftData(e.detail);
+            }
+        };
+        window.addEventListener('applyAiDraft', handler);
+        return () => window.removeEventListener('applyAiDraft', handler);
+    }, [applyAiDraftData]);
+
     useEffect(() => {
         let alive = true;
         (async () => {
@@ -79,7 +135,13 @@ const CashLedgerPage = () => {
                 const res = await fetch(API);
                 if (!res.ok) throw new Error(await describeResponseError(res, '출납부를 불러오지 못했습니다.'));
                 const list = (await res.json()).map(fromServer);
-                if (alive) update(() => [...sortRows(list), blankRow(list.at(-1)?.entryDate || todayInput())]);
+                if (alive) {
+                    update(() => [...sortRows(list), blankRow(list.at(-1)?.entryDate || todayInput())]);
+                    if (location.state?.aiDraft) {
+                        applyAiDraftData(location.state.aiDraft);
+                        window.history.replaceState({}, document.title);
+                    }
+                }
             } catch (e) {
                 if (alive) setError(describeError(e, '출납부를 불러오지 못했습니다.'));
             } finally {
@@ -87,7 +149,7 @@ const CashLedgerPage = () => {
             }
         })();
         return () => { alive = false; };
-    }, []);
+    }, [location.state, applyAiDraftData]);
 
     const commit = async (key) => {
         const r = rowsRef.current.find(x => x.key === key);
@@ -201,6 +263,67 @@ const CashLedgerPage = () => {
             {error && (
                 <div role="alert" style={{ background: '#fee2e2', color: '#b91c1c', padding: '12px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.9rem' }}>
                     {error}
+                </div>
+            )}
+
+            {aiNotice && (
+                <div style={{
+                    background: '#eff6ff',
+                    color: '#1e40af',
+                    border: '1px solid #bfdbfe',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    marginBottom: '14px',
+                    fontSize: '0.88rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    boxShadow: '0 1px 3px rgba(37, 99, 235, 0.08)',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '1.4rem' }}>🤖</span>
+                        <div>
+                            <strong style={{ fontSize: '0.92rem' }}>AI 도우미 초안 자동 입력:</strong>{' '}
+                            [{aiNotice.entryDate}] <strong>{aiNotice.memo}</strong> ({aiNotice.amountText}) 항목이 아래 노란색 행으로 채워졌습니다.
+                            <div style={{ fontSize: '0.78rem', color: '#2563eb', marginTop: '2px' }}>
+                                내용을 확인하시고 다른 칸을 클릭하거나 오른쪽 <strong>[저장하기]</strong>를 누르면 장부에 확정 등록됩니다.
+                            </div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                            type="button"
+                            onClick={() => { commit(aiNotice.key); setAiNotice(null); }}
+                            style={{
+                                padding: '6px 14px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                background: '#2563eb',
+                                color: '#fff',
+                                fontWeight: 700,
+                                fontSize: '0.82rem',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            저장하기
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setAiNotice(null)}
+                            title="알림 닫기"
+                            style={{
+                                border: 'none',
+                                background: 'none',
+                                color: '#64748b',
+                                cursor: 'pointer',
+                                fontSize: '1.2rem',
+                                padding: '2px 6px',
+                            }}
+                        >
+                            ✕
+                        </button>
+                    </div>
                 </div>
             )}
 
