@@ -324,15 +324,100 @@ export default function AdminChatWidget() {
         return { width: 480, height: 660 };
     });
 
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useState(() => {
+        try {
+            const saved = localStorage.getItem('admin_ai_chat_messages');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) return parsed;
+            }
+        } catch {}
+        return [];
+    });
     const [input, setInput] = useState('');
     const [attachedImage, setAttachedImage] = useState(null);
     const [viewingImage, setViewingImage] = useState(null);
     const [sending, setSending] = useState(false);
     const [error, setError] = useState('');
 
+    // 과거 세션 대화 기록 (DB assistant_log)
+    const [showHistory, setShowHistory] = useState(false);
+    const [historyList, setHistoryList] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+    const [historyError, setHistoryError] = useState('');
+
     const fileInputRef = useRef(null);
     const bottomRef = useRef(null);
+
+    // 활성 대화 내용 localStorage 자동 동기화 (새로고침 / 페이지 이동 시 복원)
+    useEffect(() => {
+        try {
+            if (!messages || messages.length === 0) {
+                localStorage.removeItem('admin_ai_chat_messages');
+            } else {
+                const sanitized = messages.map(m => {
+                    if (!m.images || m.images.length === 0) return m;
+                    return {
+                        ...m,
+                        images: m.images.map(img => ({
+                            mimeType: img.mimeType,
+                            previewUrl: (img.previewUrl && img.previewUrl.length < 50000) ? img.previewUrl : null,
+                            data: (img.data && img.data.length < 50000) ? img.data : '',
+                        })),
+                    };
+                });
+                localStorage.setItem('admin_ai_chat_messages', JSON.stringify(sanitized));
+            }
+        } catch (e) {
+            console.warn('대화 기록 로컬 저장 실패:', e);
+        }
+    }, [messages]);
+
+    const loadHistory = async () => {
+        setLoadingHistory(true);
+        setHistoryError('');
+        try {
+            const res = await fetch('/api/assistant/admin/history?limit=30');
+            if (!res.ok) throw new Error(await describeResponseError(res, '기록을 불러오지 못했습니다.'));
+            const data = await res.json();
+            setHistoryList(Array.isArray(data) ? data : []);
+        } catch (e) {
+            setHistoryError(describeError(e, '기록 조회 중 오류가 발생했습니다.'));
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
+
+    const handleOpenHistory = () => {
+        setShowHistory(true);
+        loadHistory();
+    };
+
+    const handleRestoreLog = (item) => {
+        const userMsg = { role: 'user', text: item.question, images: [] };
+        const modelMsg = {
+            role: 'model',
+            text: item.answer || '(답변 없음)',
+            tools: item.tools ? [{ name: item.tools, label: item.tools, args: {}, result: null }] : [],
+            actions: [],
+        };
+        setMessages(prev => [...prev, userMsg, modelMsg]);
+        setShowHistory(false);
+    };
+
+    const handleReaskLog = (question) => {
+        setShowHistory(false);
+        setInput(question);
+    };
+
+    const handleResetChat = () => {
+        setMessages([]);
+        setError('');
+        setAttachedImage(null);
+        try {
+            localStorage.removeItem('admin_ai_chat_messages');
+        } catch {}
+    };
 
     useEffect(() => {
         try {
@@ -715,10 +800,33 @@ export default function AdminChatWidget() {
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                {messages.length > 0 && (
+                                <button
+                                    type="button"
+                                    title={showHistory ? '대화창으로 돌아가기' : '이전 세션 대화 기록 열기'}
+                                    onClick={() => {
+                                        if (showHistory) {
+                                            setShowHistory(false);
+                                        } else {
+                                            handleOpenHistory();
+                                        }
+                                    }}
+                                    style={{
+                                        border: 'none',
+                                        background: showHistory ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.2)',
+                                        color: '#fff',
+                                        borderRadius: '6px',
+                                        padding: '4px 8px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    📜 {showHistory ? '대화창' : '이전 기록'}
+                                </button>
+                                {messages.length > 0 && !showHistory && (
                                     <button
                                         type="button"
-                                        onClick={() => { setMessages([]); setError(''); setAttachedImage(null); }}
+                                        onClick={handleResetChat}
                                         disabled={sending}
                                         style={{
                                             border: 'none',
@@ -773,7 +881,175 @@ export default function AdminChatWidget() {
                             </div>
                         </div>
 
-                    {/* 대화 본문 스크롤 영역 */}
+                    {/* 이전 기록 보기 패널 */}
+                    {showHistory ? (
+                        <div
+                            style={{
+                                flex: 1,
+                                overflowY: 'auto',
+                                padding: '16px',
+                                background: '#f8fafc',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '12px',
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+                                <div>
+                                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b' }}>
+                                        📜 이전 세션 대화 기록
+                                    </span>
+                                    <span style={{ fontSize: '0.74rem', color: '#64748b', marginLeft: '6px' }}>
+                                        (DB 저장 최신 {historyList.length}건)
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={loadHistory}
+                                        disabled={loadingHistory}
+                                        style={{
+                                            background: '#e2e8f0',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            padding: '4px 8px',
+                                            fontSize: '0.74rem',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        {loadingHistory ? '조회 중…' : '🔄 새로고침'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowHistory(false)}
+                                        style={{
+                                            background: '#2563eb',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            padding: '4px 10px',
+                                            fontSize: '0.74rem',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        대화로 복귀
+                                    </button>
+                                </div>
+                            </div>
+
+                            {loadingHistory && historyList.length === 0 && (
+                                <div style={{ textAlign: 'center', padding: '36px 0', color: '#64748b', fontSize: '0.85rem' }}>
+                                    이전 대화 기록을 불러오는 중입니다…
+                                </div>
+                            )}
+
+                            {historyError && (
+                                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '10px 12px', borderRadius: '8px', fontSize: '0.82rem' }}>
+                                    {historyError}
+                                </div>
+                            )}
+
+                            {!loadingHistory && historyList.length === 0 && !historyError && (
+                                <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8', fontSize: '0.85rem' }}>
+                                    저장된 이전 대화 기록이 없습니다.
+                                </div>
+                            )}
+
+                            {historyList.map((item) => {
+                                const timeStr = item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR', {
+                                    month: 'numeric',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                }) : '';
+                                return (
+                                    <div
+                                        key={item.id}
+                                        style={{
+                                            background: '#ffffff',
+                                            border: '1px solid #e2e8f0',
+                                            borderRadius: '10px',
+                                            padding: '12px',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '8px',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.74rem', color: '#64748b' }}>
+                                            <span style={{ fontWeight: 600 }}>🕒 {timeStr}</span>
+                                            {item.tools && (
+                                                <span style={{ background: '#f1f5f9', color: '#334155', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.7rem' }}>
+                                                    ⚙️ {item.tools.split('{')[0]}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e3a8a' }}>
+                                            💬 {item.question}
+                                        </div>
+                                        <div style={{
+                                            fontSize: '0.8rem',
+                                            color: '#334155',
+                                            background: '#f8fafc',
+                                            padding: '8px 10px',
+                                            borderRadius: '6px',
+                                            lineHeight: 1.45,
+                                            maxHeight: '130px',
+                                            overflowY: 'auto',
+                                            whiteSpace: 'pre-wrap',
+                                            border: '1px solid #edf2f7',
+                                        }}>
+                                            {item.answer || '(답변 없음)'}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRestoreLog(item)}
+                                                style={{
+                                                    flex: 1,
+                                                    background: '#eff6ff',
+                                                    border: '1px solid #bfdbfe',
+                                                    color: '#1d4ed8',
+                                                    borderRadius: '6px',
+                                                    padding: '6px 10px',
+                                                    fontSize: '0.78rem',
+                                                    fontWeight: 600,
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '4px',
+                                                }}
+                                            >
+                                                ➕ 대화창에 불러오기
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleReaskLog(item.question)}
+                                                style={{
+                                                    background: '#f8fafc',
+                                                    border: '1px solid #cbd5e1',
+                                                    color: '#475569',
+                                                    borderRadius: '6px',
+                                                    padding: '6px 10px',
+                                                    fontSize: '0.78rem',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                }}
+                                            >
+                                                ✍️ 질문 복사
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                    /* 대화 본문 스크롤 영역 */
                     <div
                         style={{
                             flex: 1,
@@ -911,6 +1187,7 @@ export default function AdminChatWidget() {
                         )}
                         <div ref={bottomRef} />
                     </div>
+                    )}
 
                     {error && (
                         <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '8px 14px', fontSize: '0.82rem' }}>
