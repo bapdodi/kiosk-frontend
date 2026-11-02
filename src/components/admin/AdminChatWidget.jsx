@@ -307,6 +307,14 @@ const ActionCardView = ({ action, onExecute, onCancel, onOpenInWeb }) => {
 export default function AdminChatWidget() {
     const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
+    const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth <= 640 : false));
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 640);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
     const [isMaximized, setIsMaximized] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
     const [size, setSize] = useState(() => {
@@ -667,33 +675,35 @@ export default function AdminChatWidget() {
 
     return (
         <>
-            {/* 오른쪽 아래 플로팅 챗봇 트리거 버튼 */}
-            <button
-                type="button"
-                aria-label={isOpen ? 'AI 도우미 닫기' : 'AI 도우미 열기'}
-                onClick={() => setIsOpen(!isOpen)}
-                style={{
-                    position: 'fixed',
-                    bottom: '24px',
-                    right: '28px',
-                    width: '60px',
-                    height: '60px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                    color: '#fff',
-                    border: 'none',
-                    boxShadow: '0 8px 24px rgba(37, 99, 235, 0.45)',
-                    cursor: 'pointer',
-                    zIndex: 4500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: isOpen ? '1.5rem' : '1.8rem',
-                    transition: 'all 0.2s ease',
-                }}
-            >
-                {isOpen ? '✕' : '🤖'}
-            </button>
+            {/* 오른쪽 아래 플로팅 챗봇 트리거 버튼 (모바일에서 창이 열려 있을 때는 중복 방지를 위해 숨김) */}
+            {(!isOpen || !isMobile) && (
+                <button
+                    type="button"
+                    aria-label={isOpen ? 'AI 도우미 닫기' : 'AI 도우미 열기'}
+                    onClick={() => setIsOpen(!isOpen)}
+                    style={{
+                        position: 'fixed',
+                        bottom: '24px',
+                        right: '28px',
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                        color: '#fff',
+                        border: 'none',
+                        boxShadow: '0 8px 24px rgba(37, 99, 235, 0.45)',
+                        cursor: 'pointer',
+                        zIndex: 4500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: isOpen ? '1.5rem' : '1.8rem',
+                        transition: 'all 0.2s ease',
+                    }}
+                >
+                    {isOpen ? '✕' : '🤖'}
+                </button>
+            )}
 
             {/* 챗봇 팝업 창 */}
             {isOpen && (() => {
@@ -708,81 +718,100 @@ export default function AdminChatWidget() {
                     <div
                         style={{
                             position: 'fixed',
-                            bottom: '96px',
-                            right: '28px',
-                            width: `${currentWidth}px`,
-                            maxWidth: 'calc(100vw - 36px)',
-                            height: `${currentHeight}px`,
-                            maxHeight: 'calc(100vh - 110px)',
+                            ...(isMobile ? {
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                width: '100vw',
+                                maxWidth: '100vw',
+                                height: '100dvh',
+                                maxHeight: '100dvh',
+                                borderRadius: 0,
+                                boxShadow: 'none',
+                                zIndex: 5000,
+                            } : {
+                                bottom: '96px',
+                                right: '28px',
+                                width: `${currentWidth}px`,
+                                maxWidth: 'calc(100vw - 36px)',
+                                height: `${currentHeight}px`,
+                                maxHeight: 'calc(100vh - 110px)',
+                                borderRadius: '16px',
+                                boxShadow: '0 20px 48px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.08)',
+                                zIndex: 4500,
+                            }),
                             background: '#ffffff',
-                            borderRadius: '16px',
-                            boxShadow: '0 20px 48px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.08)',
-                            zIndex: 4500,
                             display: 'flex',
                             flexDirection: 'column',
                             overflow: 'hidden',
                             animation: isResizing ? 'none' : 'fadeIn 0.15s ease',
-                            transition: isResizing ? 'none' : 'width 0.15s ease, height 0.15s ease',
+                            transition: isResizing || isMobile ? 'none' : 'width 0.15s ease, height 0.15s ease',
                             userSelect: isResizing ? 'none' : 'auto',
                         }}
                     >
-                        {/* 좌상단 코너 리사이즈 핸들 */}
-                        <div
-                            onPointerDown={(e) => handleResizeStart(e, 'both')}
-                            title="모서리를 드래그하여 크기 조절"
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                width: '24px',
-                                height: '24px',
-                                cursor: 'nwse-resize',
-                                zIndex: 50,
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                justifyContent: 'flex-start',
-                                padding: '4px',
-                            }}
-                        >
-                            <svg width="10" height="10" viewBox="0 0 10 10" style={{ opacity: 0.65 }}>
-                                <path d="M 0,0 L 10,0 L 0,10 Z" fill="#ffffff" />
-                            </svg>
-                        </div>
+                        {/* 리사이즈 핸들 (데스크톱 전용) */}
+                        {!isMobile && (
+                            <>
+                                {/* 좌상단 코너 리사이즈 핸들 */}
+                                <div
+                                    onPointerDown={(e) => handleResizeStart(e, 'both')}
+                                    title="모서리를 드래그하여 크기 조절"
+                                    style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        width: '24px',
+                                        height: '24px',
+                                        cursor: 'nwse-resize',
+                                        zIndex: 50,
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        justifyContent: 'flex-start',
+                                        padding: '4px',
+                                    }}
+                                >
+                                    <svg width="10" height="10" viewBox="0 0 10 10" style={{ opacity: 0.65 }}>
+                                        <path d="M 0,0 L 10,0 L 0,10 Z" fill="#ffffff" />
+                                    </svg>
+                                </div>
 
-                        {/* 상단 가장자리 리사이즈 핸들 */}
-                        <div
-                            onPointerDown={(e) => handleResizeStart(e, 'top')}
-                            title="상단을 드래그하여 높이 조절"
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: '24px',
-                                right: '110px',
-                                height: '8px',
-                                cursor: 'ns-resize',
-                                zIndex: 40,
-                            }}
-                        />
+                                {/* 상단 가장자리 리사이즈 핸들 */}
+                                <div
+                                    onPointerDown={(e) => handleResizeStart(e, 'top')}
+                                    title="상단을 드래그하여 높이 조절"
+                                    style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: '24px',
+                                        right: '110px',
+                                        height: '8px',
+                                        cursor: 'ns-resize',
+                                        zIndex: 40,
+                                    }}
+                                />
 
-                        {/* 좌측 가장자리 리사이즈 핸들 */}
-                        <div
-                            onPointerDown={(e) => handleResizeStart(e, 'left')}
-                            title="좌측을 드래그하여 너비 조절"
-                            style={{
-                                position: 'absolute',
-                                top: '24px',
-                                left: 0,
-                                bottom: 0,
-                                width: '8px',
-                                cursor: 'ew-resize',
-                                zIndex: 40,
-                            }}
-                        />
+                                {/* 좌측 가장자리 리사이즈 핸들 */}
+                                <div
+                                    onPointerDown={(e) => handleResizeStart(e, 'left')}
+                                    title="좌측을 드래그하여 너비 조절"
+                                    style={{
+                                        position: 'absolute',
+                                        top: '24px',
+                                        left: 0,
+                                        bottom: 0,
+                                        width: '8px',
+                                        cursor: 'ew-resize',
+                                        zIndex: 40,
+                                    }}
+                                />
+                            </>
+                        )}
 
                         {/* 상단 헤더 바 */}
                         <div
                             style={{
-                                padding: '14px 18px',
+                                padding: isMobile ? '12px 14px' : '14px 18px',
                                 background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
                                 color: '#fff',
                                 display: 'flex',
@@ -794,8 +823,8 @@ export default function AdminChatWidget() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '1.3rem' }}>🤖</span>
                                 <div>
-                                    <div style={{ fontWeight: 800, fontSize: '0.98rem' }}>AI 관리자 도우미</div>
-                                    <div style={{ fontSize: '0.74rem', opacity: 0.85 }}>매출·재고 조회부터 입고·발주 전표까지</div>
+                                    <div style={{ fontWeight: 800, fontSize: isMobile ? '0.92rem' : '0.98rem' }}>AI 관리자 도우미</div>
+                                    <div style={{ fontSize: isMobile ? '0.7rem' : '0.74rem', opacity: 0.85 }}>매출·재고 조회부터 입고·발주 전표까지</div>
                                 </div>
                             </div>
 
@@ -842,26 +871,28 @@ export default function AdminChatWidget() {
                                         새 대화
                                     </button>
                                 )}
-                                <button
-                                    type="button"
-                                    title={isMaximized ? '원래 크기로 복원' : '최대화'}
-                                    onClick={() => setIsMaximized(!isMaximized)}
-                                    style={{
-                                        border: 'none',
-                                        background: 'rgba(255, 255, 255, 0.2)',
-                                        color: '#fff',
-                                        borderRadius: '6px',
-                                        padding: '4px 8px',
-                                        fontSize: '0.82rem',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        lineHeight: 1,
-                                    }}
-                                >
-                                    {isMaximized ? '❐' : '⛶'}
-                                </button>
+                                {!isMobile && (
+                                    <button
+                                        type="button"
+                                        title={isMaximized ? '원래 크기로 복원' : '최대화'}
+                                        onClick={() => setIsMaximized(!isMaximized)}
+                                        style={{
+                                            border: 'none',
+                                            background: 'rgba(255, 255, 255, 0.2)',
+                                            color: '#fff',
+                                            borderRadius: '6px',
+                                            padding: '4px 8px',
+                                            fontSize: '0.82rem',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            lineHeight: 1,
+                                        }}
+                                    >
+                                        {isMaximized ? '❐' : '⛶'}
+                                    </button>
+                                )}
                                 <button
                                     type="button"
                                     title="닫기"
@@ -1208,7 +1239,18 @@ export default function AdminChatWidget() {
                     )}
 
                     {/* 입력 폼 */}
-                    <form onSubmit={e => { e.preventDefault(); send(input); }} style={{ padding: '10px 12px', background: '#fff', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '6px', alignItems: 'flex-end' }}>
+                    <form
+                        onSubmit={e => { e.preventDefault(); send(input); }}
+                        style={{
+                            padding: isMobile ? '10px 12px max(12px, env(safe-area-inset-bottom, 12px)) 12px' : '10px 12px',
+                            background: '#fff',
+                            borderTop: '1px solid #e2e8f0',
+                            display: 'flex',
+                            gap: '6px',
+                            alignItems: 'flex-end',
+                            flexShrink: 0,
+                        }}
+                    >
                         <input
                             type="file"
                             ref={fileInputRef}
