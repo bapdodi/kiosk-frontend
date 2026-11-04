@@ -794,7 +794,7 @@ function KioskView({
 
   return (
     <div
-      className="kiosk-container"
+      className={`kiosk-container${showCheckout ? ' is-checkout' : ''}`}
       ref={kioskContainerRef}
       style={cartWidth != null ? { '--kiosk-cart-width': `${cartWidth}px` } : undefined}
     >
@@ -865,8 +865,9 @@ function KioskView({
         </>)}
       </div>
 
-      {/* 큰 화면(키오스크·PC)용 오른쪽 장바구니 레일 */}
-      <CartBar
+      {/* 큰 화면(키오스크·PC)용 오른쪽 장바구니 레일.
+          주문 마무리 중에는 숨긴다: 레일의 "주문하기"를 "이대로 주문하기" 대신 누르는 손님이 많았다. */}
+      {!showCheckout && <CartBar
         items={cart}
         onRemove={removeFromCart}
         onQuantityChange={updateCartQuantity}
@@ -874,7 +875,7 @@ function KioskView({
         onClear={clearCart}
         onResizeStart={handleCartResizeStart}
         onSelectProduct={openProductFromCart}
-      />
+      />}
 
       {/* Floating Cart Button (작은 화면 전용) */}
       <button type="button" className="floating-cart-btn" onClick={() => setIsCartOpen(true)} aria-label={`장바구니 열기, 총 ${cartItemCount}개`}>
