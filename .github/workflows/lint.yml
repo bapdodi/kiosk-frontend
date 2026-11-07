@@ -1,0 +1,26 @@
+name: Lint
+
+# 배포는 Vercel 이 main 을 빌드해서 한다. 여기서는 그 전에 lint 만 막는다.
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+
+    # 프리렌더용 Chrome 은 lint 에 필요 없다.
+    - run: npm ci
+      env:
+        PUPPETEER_SKIP_DOWNLOAD: 'true'
+
+    - run: npm run lint
