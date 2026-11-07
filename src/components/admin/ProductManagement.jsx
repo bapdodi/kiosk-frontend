@@ -104,7 +104,7 @@ const ProductManagement = () => {
             } else {
                 alert('저장에 실패했습니다.');
             }
-        } catch (err) {
+        } catch {
             alert('오류가 발생했습니다.');
         }
     };
@@ -126,7 +126,7 @@ const ProductManagement = () => {
                 setProducts(products.filter(p => p.id !== product.id));
                 setSelectedProducts(selectedProducts.filter(selId => selId !== product.id));
             }
-        } catch (err) {
+        } catch {
             alert('삭제 중 오류가 발생했습니다.');
         }
     };
@@ -160,7 +160,7 @@ const ProductManagement = () => {
             } else {
                 alert('ERP 상품을 불러오지 못했습니다: ' + (await res.text()));
             }
-        } catch (err) {
+        } catch {
             alert('네트워크 오류');
         } finally {
             setIsLoadingErpPreview(false);
@@ -183,7 +183,7 @@ const ProductManagement = () => {
             setSelectedErpKeys([]);
             await onRefresh();
             alert(describeErpSyncResult(result));
-        } catch (err) {
+        } catch {
             alert('네트워크 오류');
         } finally {
             setIsApplyingErpSync(false);
@@ -217,7 +217,7 @@ const ProductManagement = () => {
             } else {
                 alert('삭제 중 오류가 발생했습니다.');
             }
-        } catch (err) {
+        } catch {
             alert('삭제 중 오류가 발생했습니다.');
         }
     };
@@ -234,7 +234,7 @@ const ProductManagement = () => {
             if (!optionRes.ok) throw new Error(await optionRes.text());
             setTrashProducts(await productRes.json());
             setTrashOptions(await optionRes.json());
-        } catch (err) {
+        } catch {
             alert('휴지통을 불러오지 못했습니다.');
         } finally {
             setIsLoadingTrash(false);
@@ -384,7 +384,7 @@ const ProductManagement = () => {
                 alert('순서 저장 실패');
                 onRefresh(); // Rollback on failure
             }
-        } catch (e) {
+        } catch {
             alert('오류 발생');
             onRefresh();
         }
@@ -397,11 +397,6 @@ const ProductManagement = () => {
         setDraggedId(id);
         e.dataTransfer.effectAllowed = "move";
         // Customize drag image if needed, or just let default happen
-    };
-
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
     };
 
     const handleDrop = async (e, targetId) => {

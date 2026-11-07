@@ -48,6 +48,7 @@ const CategoryEditor = ({
         const name = prompt('새 대분류 이름을 입력하세요:');
         if (!name) return;
         try {
+            // eslint-disable-next-line react-hooks/purity -- 클릭 핸들러 안이라 렌더 중에 불리지 않는다
             const saved = await createCategory({ id: 'cat_' + Date.now(), name, level: 'main' });
             await refreshCategories?.();
             onChange([...cats, { mainCategory: saved.id, subCategory: '' }]);
@@ -61,6 +62,7 @@ const CategoryEditor = ({
         const name = prompt('새 중분류 이름을 입력하세요:');
         if (!name) return;
         try {
+            // eslint-disable-next-line react-hooks/purity -- 클릭 핸들러 안이라 렌더 중에 불리지 않는다
             const saved = await createCategory({ id: 'sub_' + Date.now(), name, parentId: mainId, level: 'sub' });
             await refreshCategories?.();
             updateRow(idx, { subCategory: saved.id });

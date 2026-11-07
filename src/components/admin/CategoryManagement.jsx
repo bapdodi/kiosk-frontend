@@ -129,7 +129,7 @@ const CategoryManagement = () => {
             }
             // 저장은 이미 성공했으므로, 재조회가 실패해도 낙관적 순서를 유지하고 넘어간다.
             await refreshCategories().catch(() => { });
-        } catch (e) {
+        } catch {
             alert('오류 발생');
         } finally {
             setIsReordering(false);
