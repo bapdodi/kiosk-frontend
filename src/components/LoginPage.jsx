@@ -24,7 +24,7 @@ const LoginPage = () => {
             } else {
                 setError('로그인 정보가 올바르지 않습니다.');
             }
-        } catch (err) {
+        } catch {
             setError('서버 연결 오류가 발생했습니다.');
         }
     };

@@ -73,7 +73,7 @@ const SearchableProductSelect = ({ value, products, onChange }) => {
                     {filteredProducts.map(p => (
                         <div
                             key={p.id}
-                            onMouseDown={(e) => {
+                            onMouseDown={() => {
                                 // onBlur보다 먼저 실행되도록 onMouseDown 사용
                                 onChange(p.id);
                                 setIsOpen(false);

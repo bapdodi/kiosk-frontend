@@ -42,6 +42,7 @@ const AdminLayout = ({
     const naverTab = new URLSearchParams(location.search).get('tab') || 'mapping';
     // 좁은 화면에서는 사이드바를 서랍으로 접는다. 화면을 이동하면 자동으로 닫는다.
     const [isNavOpen, setIsNavOpen] = useState(false);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 화면 이동 때 한 번 더 그릴 뿐이라 무해하다
     useEffect(() => { setIsNavOpen(false); }, [location.pathname, location.search]);
     // 네이버 연동은 백엔드 NAVER_INTEGRATION_ENABLED 로 켠다. 꺼져 있으면 메뉴를 숨긴다.
     const [naverEnabled, setNaverEnabled] = useState(false);

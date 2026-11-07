@@ -328,7 +328,7 @@ export default function AdminChatWidget() {
                     return { width: w, height: h };
                 }
             }
-        } catch {}
+        } catch { /* 저장값이 깨졌거나 저장소를 못 쓰면 기본값 */ }
         return { width: 480, height: 660 };
     });
 
@@ -339,7 +339,7 @@ export default function AdminChatWidget() {
                 const parsed = JSON.parse(saved);
                 if (Array.isArray(parsed)) return parsed;
             }
-        } catch {}
+        } catch { /* 저장값이 깨졌거나 저장소를 못 쓰면 기본값 */ }
         return [];
     });
     const [input, setInput] = useState('');
@@ -424,13 +424,13 @@ export default function AdminChatWidget() {
         setAttachedImage(null);
         try {
             localStorage.removeItem('admin_ai_chat_messages');
-        } catch {}
+        } catch { /* 저장소를 못 쓰는 브라우저면 기억만 못 할 뿐이다 */ }
     };
 
     useEffect(() => {
         try {
             localStorage.setItem('admin_ai_chat_size', JSON.stringify(size));
-        } catch {}
+        } catch { /* 저장소를 못 쓰는 브라우저면 기억만 못 할 뿐이다 */ }
     }, [size]);
 
     const handleResizeStart = (e, direction) => {
