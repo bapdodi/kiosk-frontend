@@ -1045,7 +1045,7 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                                 <col style={{ width: '120px' }} />
                                 <col style={{ width: '100px' }} />
                                 <col style={{ width: '150px' }} />
-                                <col style={{ width: '44px' }} />
+                                <col style={{ width: '64px' }} />
                             </colgroup>
                             <thead>
                                 <tr>
@@ -1064,7 +1064,13 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                             <tbody>
                                 {rows.map((r, idx) => {
                                     const amount = (Number(r.price) || 0) * (Number(r.ea) || 0);
-                                    const showList = searchRow === idx && resultsReady;
+                                    // 새 글자의 결과가 오는 동안에도 앞 결과를 그대로 보여 줘 목록이 깜빡이지 않게 한다(Enter 는 resultsReady 일 때만).
+                                    const showList = searchRow === idx && results.items.length > 0;
+                                    // 입력 중인 줄은 OCR 후보 칩이 있어도 검색 상태를 보여준다.
+                                    const searching = searchRow === idx && busy === 'searching';
+                                    const noResult = searchRow === idx && !searching && results.keyword === r.itemName.trim() && !results.items.length;
+                                    const hint = !r.itemCode && r.itemName.trim() && !showList && (searching || noResult || !r.ocr?.candidates?.length)
+                                        ? (searching ? '검색 중…' : noResult ? '검색 결과 없음' : '품목 미선택') : '';
                                     return (
                                         <tr key={r.key} style={{ background: r.ocr && !r.itemCode ? '#fef9c3' : (idx % 2 ? '#f8fafc' : '#fff') }}>
                                             <td style={{ ...gridCell, textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
@@ -1076,7 +1082,7 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                                                 <input
                                                     ref={el => { cellRefs.current[`${idx}-itemName`] = el; }}
                                                     style={{ ...cellInput, fontWeight: r.itemCode ? 600 : 400,
-                                                        ...(!r.itemCode && r.itemName.trim() && !showList && !r.ocr?.candidates?.length ? { paddingRight: '88px' } : {}) }}
+                                                        ...(hint ? { paddingRight: '100px' } : {}) }}
                                                     value={r.itemName}
                                                     placeholder={idx === 0 ? '품명을 입력하세요' : ''}
                                                     onChange={e => {
@@ -1094,13 +1100,13 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                                                     onBlur={() => setTimeout(() => setSearchRow(s => (s === idx ? null : s)), 150)}
                                                     onKeyDown={e => onCellKeyDown(e, idx, 'itemName')}
                                                 />
-                                                {!r.itemCode && r.itemName.trim() && !showList && !r.ocr?.candidates?.length && (
+                                                {hint && (
                                                     <span style={{
-                                                        position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
-                                                        fontSize: '0.75rem', color: busy === 'searching' ? '#64748b' : '#dc2626',
+                                                        position: 'absolute', right: '8px', top: r.ocr?.candidates?.length ? '20px' : '50%', transform: 'translateY(-50%)',
+                                                        fontSize: '0.75rem', color: searching ? '#64748b' : '#dc2626',
                                                         pointerEvents: 'none',
                                                     }}>
-                                                        {busy === 'searching' ? '검색 중…' : '품목 미선택'}
+                                                        {hint}
                                                     </span>
                                                 )}
                                                 {r.ocr && !r.itemCode && !showList && r.ocr.candidates.length > 0 && (
@@ -1236,12 +1242,26 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                                                         ⓘ
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={() => removeRow(idx)}
+                                                    title="이 줄 삭제"
+                                                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#dc2626', fontSize: '0.95rem' }}>
+                                                    ✕
+                                                </button>
                                             </td>
                                         </tr>
                                     );
                                 })}
                             </tbody>
                         </table>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        <button className="action-btn" onClick={() => setRows(prev => [...prev, emptyRow()])}>+ 줄 추가</button>
+                        <button className="action-btn"
+                            disabled={rows.length <= 1 || !!rows[rows.length - 1].itemCode || !!rows[rows.length - 1].itemName.trim()}
+                            onClick={() => setRows(prev => prev.slice(0, -1))}>
+                            − 빈 줄 빼기
+                        </button>
                     </div>
 
                     {/* ── 합계 + 실행 ── */}
@@ -1287,7 +1307,7 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                         키보드만으로 입력할 수 있습니다 —
                         품명에 글자를 치면 후보가 뜨고 <strong>↑↓</strong> 로 고른 뒤 <strong>Enter</strong>,
                         이어서 <strong>수량 → 단가 → 적요</strong> 순으로 <strong>Enter</strong> 를 누르면 다음 줄로 넘어갑니다.
-                        줄 삭제는 <strong>Ctrl+Delete</strong> 입니다.
+                        줄 삭제는 줄 끝의 <strong>✕</strong> 또는 <strong>Ctrl+Delete</strong> 입니다.
                         {vendorCode == null && <><br /><span style={{ color: '#dc2626' }}>상호(매입처)를 먼저 선택해야 저장할 수 있습니다.</span></>}
                         {missingPrice && <><br /><span style={{ color: '#dc2626' }}>단가가 비어 있는 줄이 있습니다.</span></>}
                         {!isOrder && !preview && canSubmit && <><br />저장하기 전에 <strong>미리보기</strong>로 ERP 에 들어갈 내용을 먼저 확인해 주세요.</>}
