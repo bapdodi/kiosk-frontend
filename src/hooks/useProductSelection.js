@@ -6,6 +6,7 @@ import {
     getOptionGroups,
 } from '../utils/productOptions';
 import { getPriceRange } from '../utils/price';
+import { voiceOptionSelections } from '../utils/voiceOrder';
 
 // 복합옵션 상품은 규격이 수십 개일 수 있어, 추천 기준으로 보낼 ERP 코드 수를 제한한다.
 const MAX_RECOMMENDATION_SOURCE_CODES = 30;
@@ -25,7 +26,7 @@ const getInitialSelections = (groups) => Object.fromEntries(
  * 규격 해석과 담기 규칙은 한 벌이어야 한다. 그 공통분모가 이 파일이다.
  * 여기에는 DOM 배치나 CSS 에 대한 판단을 넣지 않는다.
  */
-export function useProductSelection(product, { cartItems = [], products = [], onConfirm }) {
+export function useProductSelection(product, { cartItems = [], products = [], onConfirm, voiceSelection, onSelectionChange }) {
     // 규격 해석 규칙은 목록 카드와도 공유해야 해서 utils/productOptions.js 에 있다.
     const groups = getOptionGroups(product);
 
@@ -126,13 +127,18 @@ export function useProductSelection(product, { cartItems = [], products = [], on
     // 옵션이 2개 이상인 그룹은 사용자가 직접 고르도록 디폴트 선택하지 않는다.
     // (값이 하나뿐인 그룹은 선택의 여지가 없으므로 그대로 선택해 둔다.)
     useEffect(() => {
-        setSelections(getInitialSelections(groups));
-        setQuantity(1);
+        const requested = voiceSelection && String(product?.id) === voiceSelection.productId;
+        setSelections(requested ? voiceOptionSelections(product, voiceSelection.optionId) : getInitialSelections(groups));
+        setQuantity(requested ? voiceSelection.quantity : 1);
         setCurrentImageIndex(0);
         setFailedImages({});
         setShowProductPrompt(false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [product]);
+    }, [product, voiceSelection]);
+
+    useEffect(() => {
+        onSelectionChange?.({ productId: String(product?.id), selections, quantity });
+    }, [product?.id, selections, quantity, onSelectionChange]);
 
     // ── 동시구매 추천 ──────────────────────────────────────────────────────
     // 어떤 상품의 추천인지 함께 들고 있어야, 다른 상품으로 갈아탄 순간 이전 추천이 잠깐 비치지 않는다.

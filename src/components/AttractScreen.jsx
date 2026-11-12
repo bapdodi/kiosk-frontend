@@ -1,16 +1,17 @@
+import VoiceOrder from './VoiceOrder';
 import './AttractScreen.css';
 
 /**
  * 키오스크 대기 화면. 처음 켰을 때와 한동안 아무도 안 만졌을 때 보여준다.
  * 화면 아무 곳이나 누르면 주문 화면으로 들어간다.
  */
-const AttractScreen = ({ onStart }) => (
-    <div className="attract-screen" onClick={onStart} role="button" aria-label="화면을 터치해 주문 시작">
+const AttractScreen = ({ onStart, voiceControl }) => (
+    <div className="attract-screen" onClick={onStart}>
         <div className="attract-brand">
             <h2 className="attract-brand-name">동광배관자재</h2>
             <p className="attract-brand-phone">010-7612-6524</p>
         </div>
-        <div className="attract-main">
+        <div className="attract-main" role="button" tabIndex={0} aria-label="화면을 터치해 주문 시작" onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onStart(); } }}>
             <div className="attract-gauge" aria-hidden="true">
                 <svg viewBox="0 0 64 64" width="96" height="96">
                     <circle cx="32" cy="32" r="26" fill="none" stroke="#999" strokeWidth="4" />
@@ -29,7 +30,7 @@ const AttractScreen = ({ onStart }) => (
             </div>
             <p className="attract-touch">화면을 터치해 주세요</p>
         </div>
-
+        <div className="attract-voice" onClick={event => event.stopPropagation()}><VoiceOrder control={voiceControl} /></div>
     </div>
 );
 

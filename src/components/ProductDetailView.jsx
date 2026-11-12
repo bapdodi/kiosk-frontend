@@ -4,14 +4,14 @@ import { useProductSelection } from '../hooks/useProductSelection';
 import { formatPriceRange, formatWon } from '../utils/price';
 import { getOptionPriceRange } from '../utils/productOptions';
 
-const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, onCancel, onSelectProduct }) => {
+const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, onCancel, onSelectProduct, voiceSelection, onSelectionChange }) => {
     const {
         groups, selections, toggleOption, showProductPrompt,
         quantity, setQuantity, handleQuantityChange, handleBulkStep, startPress, stopPress,
         images, currentImageIndex, setCurrentImageIndex, hasMultipleImages,
         failedImages, setFailedImages, moveImage, handleImageTouchStart, handleImageTouchEnd,
         recommendedProducts, selectedTotalPrice, priceRange, optionSectionRef, handleConfirm,
-    } = useProductSelection(product, { cartItems, products, onConfirm });
+    } = useProductSelection(product, { cartItems, products, onConfirm, voiceSelection, onSelectionChange });
 
     if (!product) return null;
 

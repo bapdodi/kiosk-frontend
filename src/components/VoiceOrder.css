@@ -1,0 +1,7 @@
+.cart-voice-control{margin-bottom:12px}
+.cart-voice-button{width:100%;min-height:46px;padding:10px 16px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#334155;font:inherit;font-weight:700;cursor:pointer}
+.cart-voice-button[aria-pressed="true"]{border-color:#15803d;color:#15803d;background:#f0fdf4}
+.cart-voice-button:focus-visible{outline:3px solid #f59e0b;outline-offset:2px}
+.cart-voice-error{display:block;margin-top:6px;color:#b91c1c;line-height:1.5}
+
+.cart-voice-control.is-compact{margin:0}.cart-voice-control.is-compact .cart-voice-button{width:auto;padding:8px 10px;font-size:13px;min-height:40px}

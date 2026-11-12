@@ -1,3 +1,4 @@
+import VoiceOrder from './VoiceOrder';
 import { getImageUrl } from '../utils/imageUtils';
 import { cartTotal, formatWon } from '../utils/price';
 
@@ -6,7 +7,7 @@ import { cartTotal, formatWon } from '../utils/price';
 // 여기서 수량 변경/삭제까지 가능하게 해서 "다시 장바구니로 돌아가는" 왕복을 없앴다.
 //
 // 키오스크·PC 는 화면(screen), 폰은 기존처럼 팝업(modal)으로 띄운다.
-const OrderReview = ({ variant, items, onRemove, onQuantityChange, onClose, onConfirm, onSelectProduct }) => {
+const OrderReview = ({ variant, voiceControl, items, onRemove, onQuantityChange, onClose, onConfirm, onSelectProduct }) => {
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
     const total = cartTotal(items);
 
@@ -124,6 +125,7 @@ const OrderReview = ({ variant, items, onRemove, onQuantityChange, onClose, onCo
                     </div>
                 )}
 
+                <VoiceOrder control={voiceControl} />
                 <div className="review-foot">
                     <button className="review-back" onClick={onClose}>더 담기</button>
                     <button

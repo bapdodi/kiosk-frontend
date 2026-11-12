@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Cart from './components/Cart';
+import { useVoiceOrder } from './hooks/useVoiceOrder';
+import { voiceOptionSelections } from './utils/voiceOrder';
 import CartBar from './components/CartBar';
 import CategoryNav from './components/CategoryNav';
 import LoginPage from './components/LoginPage';
@@ -258,7 +260,6 @@ function KioskView({
   subCategories,
   cart,
   setCart,
-  orders,
   setOrders,
   activeMainCat,
   setActiveMainCat,
@@ -270,6 +271,10 @@ function KioskView({
 }) {
   const [selectingProduct, setSelectingProduct] = useState(null);
   const [optionQuantities, setOptionQuantities] = useState({});
+  const [voiceSelection, setVoiceSelection] = useState(null);
+  const [voiceSearchResults, setVoiceSearchResults] = useState(null);
+  const selectionStateRef = useRef(null);
+  const reportSelection = useCallback(selection => { selectionStateRef.current = selection; }, []);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [orderModal, setOrderModal] = useState({ isOpen: false, name: '' });
@@ -283,6 +288,11 @@ function KioskView({
   const [buyer, setBuyer] = useState(null);
   const [isBuyerPick, setIsBuyerPick] = useState(false);
   const lastScrollTop = useRef(0);
+  const buyerRef = useRef(null);
+  const completedOrderRef = useRef(null);
+  const submittingOrderRef = useRef(null);
+  const voiceCartRef = useRef(cart);
+  useEffect(() => { voiceCartRef.current = cart; buyerRef.current = buyer; completedOrderRef.current = completedOrder; }, [cart, buyer, completedOrder]);
 
   const isMobile = useIsMobile();
 
@@ -299,6 +309,7 @@ function KioskView({
   // 주문 중복 전송 방지용 키. 전송 성공 전까지 같은 키를 유지해
   // 재시도/더블클릭이 서버에서 같은 주문으로 합쳐지게 한다.
   const pendingOrderRequestId = useRef(null);
+  const pendingOrderPayload = useRef(null);
 
   useEffect(() => () => {
     if (cartToastTimer.current) clearTimeout(cartToastTimer.current);
@@ -467,11 +478,12 @@ function KioskView({
     [isSearching, filteredProducts.length, products, searchQuery],
   );
   const showingSimilar = similarProducts.length > 0;
-  const displayedProducts = showingSimilar ? similarProducts : filteredProducts;
+  const displayedProducts = voiceSearchResults ?? (showingSimilar ? similarProducts : filteredProducts);
 
   // 검색은 항상 전체 범위이므로 한 글자라도 입력되면 '전체' 탭으로 옮겨 준다.
   // CategoryNav 의 음성인식 콜백이 첫 렌더 함수를 붙잡고 있으므로 참조를 고정한다.
   const handleSearchChange = useCallback((value) => {
+    setVoiceSearchResults(null);
     setSearchQuery(value);
     if (normalizeSearchText(value) !== "") {
       setActiveMainCat(null);
@@ -480,18 +492,21 @@ function KioskView({
   }, [setSearchQuery, setActiveMainCat, setActiveSubCat]);
 
   const handleMainCatChange = (id) => {
+    setVoiceSearchResults(null);
     setSearchQuery(''); // 다른 카테고리를 고르면 검색어는 지운다
     setActiveMainCat(id);
     setActiveSubCat(null);
   };
 
   const handleSubCatChange = (id) => {
+    setVoiceSearchResults(null);
     setSearchQuery('');
     setActiveSubCat(id);
   };
 
   // 상품 카드(memo)에 넘기므로 참조를 고정해야 장바구니가 바뀔 때 카드 1천 장이 다시 그려지지 않는다.
   const handleAddToCartClick = useCallback((product) => {
+    setVoiceSelection(null);
     setSelectingProduct(product);
     setOptionQuantities({});
   }, []);
@@ -499,6 +514,7 @@ function KioskView({
   // 장바구니의 항목을 누르면 해당 상품의 주문(옵션 선택) 화면을 다시 연다.
   const openProductFromCart = (item) => {
     const target = products.find(p => p.id === item.id) || item;
+    setVoiceSelection(null);
     setIsCartOpen(false);
     setIsReviewOpen(false);
     setSelectingProduct(target);
@@ -508,6 +524,7 @@ function KioskView({
   // 추천 상품을 누르면 지금 모달을 그 상품으로 바꿔 연다. 모달을 닫았다가 목록에서 다시 찾는
   // 왕복이 없어야 추천이 실제로 눌린다.
   const openRecommendedProduct = (product) => {
+    setVoiceSelection(null);
     setSelectingProduct(product);
     setOptionQuantities({});
   };
@@ -519,13 +536,13 @@ function KioskView({
     }));
   };
 
-  const confirmAddToCart = (product, combinations, quantities, stayOpen = false) => {
+  const confirmAddToCart = (product, combinations, quantities, stayOpen = false, notify = true) => {
     const addedQuantity = Object.values(quantities).reduce(
       (total, qty) => total + (Number(qty) > 0 ? Number(qty) : 0),
       0
     );
 
-    setCart(previousCart => {
+    const appendItems = (previousCart) => {
       const newCart = [...previousCart];
       Object.entries(quantities).forEach(([comboId, qty]) => {
         if (qty > 0) {
@@ -551,9 +568,12 @@ function KioskView({
         }
       });
       return newCart;
-    });
+    };
+    const nextCart = appendItems(voiceCartRef.current);
+    voiceCartRef.current = nextCart;
+    setCart(nextCart);
 
-    if (addedQuantity > 0) showCartToast(product.name, addedQuantity);
+    if (notify && addedQuantity > 0) showCartToast(product.name, addedQuantity);
 
     if (!stayOpen) setSelectingProduct(null);
     setOptionQuantities({});
@@ -561,6 +581,22 @@ function KioskView({
 
   const removeFromCart = (cartId) => {
     setCart(prev => prev.filter(item => item.cartId !== cartId));
+  };
+
+  const addVoiceCartItem = (product, combinations, quantities) => {
+    const existing = voiceCartRef.current.find(i => i.id === product.id && i.selectedOption === combinations[0].displayName);
+    if ((existing?.quantity || 0) + Object.values(quantities)[0] > 9999) {
+      throw new Error('한 규격은 최대 9999개까지 담을 수 있습니다.');
+    }
+    confirmAddToCart(product, combinations, quantities, true, false);
+    return voiceCartRef.current;
+  };
+
+  const setVoiceCartQuantity = (cartId, quantity) => {
+    const next = quantity === 0 ? voiceCartRef.current.filter(i => i.cartId !== cartId)
+      : voiceCartRef.current.map(i => i.cartId === cartId ? { ...i, quantity } : i);
+    voiceCartRef.current = next;
+    setCart(next);
   };
 
   // 장바구니 전체 비우기. 실수로 눌러 주문을 날리는 일이 없게 한 번 확인한다.
@@ -608,49 +644,55 @@ function KioskView({
     return { customerName, erpCustomerCode: forcedCode || (matchedCustomer ? String(matchedCustomer.CODE) : "1") };
   };
 
-  const submitOrder = async ({ customerName, erpCustomerCode }) => {
-    const orderData = {
-      customerName,
-      erpCustomerCode,
-      // 금액은 보내지 않는다. 손님 화면은 단가를 모르고, 서버가 ERP 코드로 직접 계산한다.
-      items: cart.map(item => ({
-        name: item.name,
-        erpCode: item.erpCode, // Include ERP code for backend sync
-        quantity: item.quantity || 1, // Store the actual quantity mapping
-        selectedOption: item.selectedOption
-      })),
-      status: 'pending'
-    };
-
-    try {
-      if (!pendingOrderRequestId.current) {
-        pendingOrderRequestId.current = createRequestId();
-      }
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': pendingOrderRequestId.current
-        },
-        body: JSON.stringify(orderData)
-      });
-
-      if (response.ok) {
+  const submitOrder = (buyerInfo, { silent = false } = {}) => {
+    if (submittingOrderRef.current) return submittingOrderRef.current;
+    const items = voiceCartRef.current;
+    const { customerName, erpCustomerCode } = buyerInfo;
+    const send = async () => {
+      if (!items.length) return { submitted: false, error: '장바구니가 비어 있습니다.' };
+      const orderData = {
+        customerName, erpCustomerCode,
+        items: items.map(item => ({ name: item.name, erpCode: item.erpCode,
+          quantity: item.quantity || 1, selectedOption: item.selectedOption })),
+        status: 'pending',
+      };
+      try {
+        const payload = JSON.stringify(orderData);
+        if (pendingOrderPayload.current && pendingOrderPayload.current !== payload) {
+          throw new Error('이전 주문의 접수 결과가 확인되지 않았습니다. 이전 내역으로 다시 확인하거나 직원에게 문의해 주세요.');
+        }
+        if (!pendingOrderRequestId.current) pendingOrderRequestId.current = createRequestId();
+        pendingOrderPayload.current = payload;
+        const response = await fetch('/api/orders', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': pendingOrderRequestId.current },
+          body: payload,
+        });
+        if (!response.ok) throw new Error(await response.text() || '주문 처리 중 오류가 발생했습니다.');
         const savedOrder = await response.json();
-        setOrders([...orders, savedOrder]);
+        const completed = { order: savedOrder, customerName, items };
+        completedOrderRef.current = completed;
+        voiceCartRef.current = [];
         pendingOrderRequestId.current = null;
-        // 장바구니를 비우기 전에 넣은 내역을 완료 화면으로 넘긴다.
-        setCompletedOrder({ order: savedOrder, customerName, items: cart });
+        pendingOrderPayload.current = null;
+        setOrders(previous => [...previous, savedOrder]);
+        setCompletedOrder(completed);
         setCart([]);
         setIsReviewOpen(false);
         setOrderModal({ isOpen: false, name: '' });
-      } else {
-        const errorText = await response.text();
-        alert(errorText || '주문 처리 중 오류가 발생했습니다.');
+        const result = { submitted: true, orderNumber: String(savedOrder.id), customerName,
+          totalQuantity: items.reduce((sum, i) => sum + (i.quantity || 1), 0) };
+        if (!silent) voice.complete(result);
+        return result;
+      } catch (error) {
+        const message = error.message || '서버 연결 오류가 발생했습니다.';
+        if (!silent) alert(message);
+        return { submitted: false, error: message };
       }
-    } catch {
-      alert('서버 연결 오류가 발생했습니다.');
-    }
+    };
+    const pending = send();
+    submittingOrderRef.current = pending;
+    pending.finally(() => { submittingOrderRef.current = null; });
+    return pending;
   };
 
 
@@ -666,6 +708,10 @@ function KioskView({
   // 완료 화면만 닫으면 주문 직전에 보던 상품 상세가 그대로 남아 있어서
   // 다음 손님이 앞사람이 산 물건 페이지에서 시작하게 된다.
   const goHome = () => {
+    voice.stop();
+    setVoiceSearchResults(null);
+    setVoiceSelection(null);
+    completedOrderRef.current = null;
     setCompletedOrder(null);
     setSelectingProduct(null);
     setSearchQuery('');
@@ -678,6 +724,7 @@ function KioskView({
       return (
         <OrderReview
           variant={variant}
+          voiceControl={voice}
           items={cart}
           onRemove={removeFromCart}
           onQuantityChange={updateCartQuantity}
@@ -693,6 +740,7 @@ function KioskView({
       return (
         <CustomerSelect
           variant={variant}
+          voiceControl={voice}
           customers={customers}
           name={orderModal.name}
           onNameChange={(name) => setOrderModal(prev => ({ ...prev, name }))}
@@ -705,6 +753,7 @@ function KioskView({
             const info = resolveBuyer(name, code);
             if (!info) return;
             if (pickFirst) {
+              buyerRef.current = info;
               setBuyer(info);
               setIsBuyerPick(false);
               setOrderModal({ isOpen: false, name: '' });
@@ -725,6 +774,7 @@ function KioskView({
           order={completedOrder.order}
           customerName={completedOrder.customerName}
           items={completedOrder.items}
+          pauseAutoHome={voice.state === 'listening' || voice.state === 'finishing'}
           onHome={isMobile ? goHome : resetForNextCustomer}
         />
       );
@@ -744,10 +794,12 @@ function KioskView({
     setIsCartOpen(false);
     setIsReviewOpen(false);
     setOrderModal({ isOpen: false, name: '' });
+    buyerRef.current = null;
     setBuyer(null);
     setIsBuyerPick(false);
     setOptionQuantities({});
     pendingOrderRequestId.current = null;
+    pendingOrderPayload.current = null;
     setIsIdleWarning(false);
     setIsIdle(true);
   };
@@ -775,7 +827,7 @@ function KioskView({
       clearTimeout(timer);
       timer = setTimeout(() => setIsIdleWarning(true), IDLE_WARNING_MS);
     };
-    const events = ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'];
+    const events = ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll', 'kiosk-voice-activity'];
     events.forEach(e => window.addEventListener(e, restart, { capture: true, passive: true }));
     restart();
     return () => {
@@ -783,6 +835,73 @@ function KioskView({
       events.forEach(e => window.removeEventListener(e, restart, { capture: true }));
     };
   }, [isMobile, isIdle, isIdleWarning]);
+
+  const voice = useVoiceOrder({
+    enabled: !isIdleWarning,
+    products, cart, customers,
+    onStart: () => {
+      setIsIdle(false);
+      if (!buyerRef.current && !voiceCartRef.current.length) setIsBuyerPick(true);
+    },
+    onCustomerSearch: (query) => {
+      setIsBuyerPick(true);
+      setOrderModal({ isOpen: false, name: query });
+      setSelectingProduct(null);
+      setIsReviewOpen(false);
+      setIsCartOpen(false);
+    },
+    onCustomer: (customer) => {
+      const info = { customerName: customer.NAME.trim(), erpCustomerCode: String(customer.CODE) };
+      buyerRef.current = info;
+      setBuyer(info);
+      setIsBuyerPick(false);
+      setOrderModal({ isOpen: false, name: '' });
+    },
+    getCheckout: () => ({ buyer: buyerRef.current, cart: voiceCartRef.current,
+      completedOrder: completedOrderRef.current ? { orderNumber: String(completedOrderRef.current.order.id),
+        customerName: completedOrderRef.current.customerName } : null }),
+    onSubmit: submitOrder,
+    onAdd: addVoiceCartItem,
+    onQuantity: setVoiceCartQuantity,
+    onSearch: (query, found) => {
+      handleSearchChange(query);
+      setVoiceSearchResults(found);
+      setIsBuyerPick(false);
+      setOrderModal(prev => ({ ...prev, isOpen: false }));
+      setSelectingProduct(null);
+      setVoiceSelection(null);
+      setIsCartOpen(false);
+      setIsReviewOpen(false);
+    },
+    onProduct: (product) => {
+      setIsBuyerPick(false);
+      setSelectingProduct(product);
+      setIsCartOpen(false);
+      setIsReviewOpen(false);
+    },
+    onSelect: (product, option, quantity) => {
+      setIsBuyerPick(false);
+      voiceOptionSelections(product, option.optionId);
+      setVoiceSelection({ productId: String(product.id), optionId: option.optionId, quantity, requestId: createRequestId() });
+      setSelectingProduct(product);
+      setIsCartOpen(false);
+      setIsReviewOpen(false);
+    },
+    onReview: () => {
+      if (!voiceCartRef.current.length) return;
+      setSelectingProduct(null);
+      setIsCartOpen(false);
+      setIsReviewOpen(true);
+    },
+    getScreen: () => ({
+      buyer: buyerRef.current,
+      screen: (!isMobile && isIdle) ? 'welcome' : checkoutStage || (selectingProduct ? 'product' : isCartOpen ? 'cart' : 'products'),
+      query: searchQuery,
+      products: displayedProducts.slice(0, 6).map((p, index) => ({ position: index + 1, productId: String(p.id), name: p.name })),
+      selectedProduct: selectingProduct ? { productId: String(selectingProduct.id), name: selectingProduct.name,
+        ...(selectionStateRef.current?.productId === String(selectingProduct.id) ? selectionStateRef.current : {}) } : null,
+    }),
+  });
 
   const showCheckout = !isMobile && checkoutStage != null;
 
@@ -810,6 +929,7 @@ function KioskView({
             searchQuery={searchQuery}
             onSearchChange={handleSearchChange}
             onGoHome={handleGoHome}
+            voiceControl={isMobile ? voice : null}
             cartCount={cartItemCount}
             onOpenCart={() => setIsCartOpen(true)}
           />
@@ -820,6 +940,8 @@ function KioskView({
         {showCheckout ? renderCheckout('screen') : showDetail ? (
           <ProductDetailView
             product={selectingProduct}
+            voiceSelection={voiceSelection}
+            onSelectionChange={reportSelection}
             cartItems={cart}
             products={products}
             onSelectProduct={openRecommendedProduct}
@@ -873,6 +995,7 @@ function KioskView({
         onQuantityChange={updateCartQuantity}
         onCheckout={handleCheckout}
         onClear={clearCart}
+        voiceControl={voice}
         onResizeStart={handleCartResizeStart}
         onSelectProduct={openProductFromCart}
       />}
@@ -890,6 +1013,7 @@ function KioskView({
           <div className="cart-modal-content" onClick={(e) => e.stopPropagation()}>
             <Cart
               items={cart}
+              voiceControl={voice}
               onRemove={removeFromCart}
               onQuantityChange={updateCartQuantity}
               onCheckout={handleCheckout}
@@ -912,6 +1036,8 @@ function KioskView({
       {isMobile && selectingProduct && (
         <ProductPageMobile
           product={selectingProduct}
+          voiceSelection={voiceSelection}
+          onSelectionChange={reportSelection}
           cartItems={cart}
           products={products}
           onSelectProduct={openRecommendedProduct}
@@ -931,7 +1057,7 @@ function KioskView({
         />
       )}
 
-      {!isMobile && isIdle && <AttractScreen onStart={() => { setIsIdle(false); setIsBuyerPick(true); }} />}
+      {!isMobile && isIdle && <AttractScreen voiceControl={voice} onStart={() => { setIsIdle(false); setIsBuyerPick(true); }} />}
 
       {cartToast && (
         <div

@@ -1,3 +1,4 @@
+import VoiceOrder from './VoiceOrder';
 import CheckoutShell from './CheckoutShell';
 import { matchesCustomerSearch } from '../utils/search';
 
@@ -9,6 +10,7 @@ import { matchesCustomerSearch } from '../utils/search';
  */
 const CustomerSelect = ({
     variant,
+    voiceControl,
     customers,
     name,
     onNameChange,
@@ -46,6 +48,7 @@ const CustomerSelect = ({
             <div className="customer-select-head" style={{ padding: '20px', textAlign: 'center', borderBottom: '1px solid #f1f5f9', flex: '0 0 auto' }}>
                 <h3 className="customer-select-title" style={{ margin: 0, fontWeight: 900, fontSize: '2.2rem' }}>주문 확인</h3>
                 <p className="customer-select-sub" style={{ color: '#64748b', marginTop: '8px', fontSize: '1.35rem' }}>주문하실 상호를 선택하거나 검색해주세요.</p>
+                <VoiceOrder control={voiceControl} />
             </div>
 
             <div className="customer-select-body" style={{ padding: '20px' }}>

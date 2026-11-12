@@ -1,10 +1,11 @@
+import VoiceOrder from './VoiceOrder';
 import { cartTotal, formatWon } from '../utils/price';
 
 // 큰 화면(키오스크·PC)용 오른쪽 세로 장바구니 사이드바.
 // 동일 상품(id)은 하나로 묶고 규격(옵션)별로 하위 줄에 표시한다. (기존 장바구니 모달과 동일)
 // 상품은 한 줄씩 세로로 쌓이고, 넘치면 세로 스크롤한다.
 // 작은 화면(폰)에서는 CSS(min-width:601px)로 숨겨지고, 기존 floating 버튼 + 모달을 사용한다.
-const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onResizeStart, onSelectProduct }) => {
+const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onResizeStart, onSelectProduct, voiceControl }) => {
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
     const total = cartTotal(items);
 
@@ -102,6 +103,7 @@ const CartBar = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onRes
             </div>
 
             <div className="cart-bar-summary">
+                <VoiceOrder control={voiceControl} />
                 <div className="cart-bar-total">
                     <span className="cart-bar-total-count">총 {totalCount}개</span>
                     {total > 0 && <span className="cart-bar-total-price">{formatWon(total)}</span>}

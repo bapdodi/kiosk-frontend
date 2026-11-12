@@ -1,3 +1,4 @@
+import VoiceOrder from './VoiceOrder';
 import { useEffect, useRef, useState } from 'react';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -12,7 +13,8 @@ const CategoryNav = ({
     onSearchChange,
     onGoHome,
     cartCount = 0,
-    onOpenCart
+    onOpenCart,
+    voiceControl
 }) => {
     const recognitionRef = useRef(null);
     const mainCatScrollRef = useRef(null);
@@ -163,6 +165,7 @@ const CategoryNav = ({
                                         <line x1="21" y1="21" x2="16.65" y2="16.65" />
                                     </svg>
                                 </button>
+                                <VoiceOrder control={voiceControl} compact />
                                 <button
                                     type="button"
                                     className="mobile-header-icon-btn mobile-header-cart-btn"

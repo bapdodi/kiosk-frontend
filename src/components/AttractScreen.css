@@ -123,3 +123,6 @@
 @media (prefers-reduced-motion: reduce) {
   .attract-finger, .attract-tap-ring { animation: none; }
 }
+
+.attract-voice{position:absolute;bottom:3vh;left:50%;transform:translateX(-50%);width:min(360px,80vw)}
+.attract-voice .cart-voice-button{min-height:56px;font-size:22px}

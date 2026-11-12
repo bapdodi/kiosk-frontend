@@ -1,6 +1,7 @@
+import VoiceOrder from './VoiceOrder';
 import { cartTotal, formatWon } from '../utils/price';
 
-const Cart = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onSelectProduct }) => {
+const Cart = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onSelectProduct, voiceControl }) => {
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
     const total = cartTotal(items);
 
@@ -108,6 +109,7 @@ const Cart = ({ items, onRemove, onQuantityChange, onCheckout, onClear, onSelect
                 )}
             </div>
             <div className="cart-footer">
+                <VoiceOrder control={voiceControl} />
                 {total > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px', fontWeight: 800 }}>
                         <span>합계</span>

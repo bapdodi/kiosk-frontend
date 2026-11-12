@@ -15,7 +15,7 @@ import OrderStampGlove from './OrderStampGlove';
  */
 const AUTO_HOME_SECONDS = 10;
 
-const OrderDone = ({ variant, order, customerName, items, onHome }) => {
+const OrderDone = ({ variant, order, customerName, items, onHome, pauseAutoHome = false }) => {
     const hasStamp = Number.isInteger(order?.stampCount) && order.stampCount >= 1 && order.stampCount <= 5;
     const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
     const [left, setLeft] = useState(AUTO_HOME_SECONDS);
@@ -25,6 +25,7 @@ const OrderDone = ({ variant, order, customerName, items, onHome }) => {
     useEffect(() => { onHomeRef.current = onHome; });
 
     useEffect(() => {
+        if (pauseAutoHome) return;
         const countdown = setInterval(() => {
             setLeft(prev => Math.max(0, prev - 1));
         }, 1000);
@@ -33,7 +34,7 @@ const OrderDone = ({ variant, order, customerName, items, onHome }) => {
             clearInterval(countdown);
             clearTimeout(timeout);
         };
-    }, []);
+    }, [pauseAutoHome]);
 
     const orderLines = items.map((item) => (
         <div key={item.cartId} className="order-done-line">
