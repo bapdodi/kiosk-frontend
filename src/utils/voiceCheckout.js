@@ -12,7 +12,7 @@ export function voiceCheckoutFingerprint(buyer, cart) {
 
 /** Requires a fresh human utterance after the review readback; a model tool call alone cannot submit. */
 export class VoiceCheckoutConfirmation {
-    constructor() { this.userTurn = 0; this.role = null; this.userText = ''; this.review = null; this.userFinished = true; this.modelText = ''; }
+    constructor(kind = 'order') { this.kind = kind; this.userTurn = 0; this.role = null; this.userText = ''; this.review = null; this.userFinished = true; this.modelText = ''; }
     transcript(role, text, finished = true) {
         if (!text && !(role === 'user' && finished)) return;
         if (role === 'user') {
@@ -28,11 +28,11 @@ export class VoiceCheckoutConfirmation {
         if (role === 'model' && this.review) this.review.spoken = true;
     }
     assistantFinished() {
-        if (this.review?.spoken && this.review.readyAfterTurn == null && /(주문|접수).*(까요|겠어요|겠습니까|실래요)/.test(clean(this.modelText))) this.review.readyAfterTurn = this.userTurn;
+        if (this.review?.spoken && this.review.readyAfterTurn == null && (this.kind === 'order' ? /(주문|접수).*(까요|겠어요|겠습니까|실래요)/ : /(장바구니|새로|주문|상품).*(비울|지울|삭제|초기화|다시|새로).*(까요|겠어요|겠습니까|실래요)/).test(clean(this.modelText))) this.review.readyAfterTurn = this.userTurn;
     }
     prepare(buyer, cart, now = Date.now()) {
         this.modelText = '';
-        if (!buyer || !cart.length) throw new Error('상호 또는 비회원 선택과 상품 담기를 먼저 완료해 주세요.');
+        if ((this.kind === 'order' && !buyer) || !cart.length) throw new Error('상호 또는 비회원 선택과 상품 담기를 먼저 완료해 주세요.');
         this.review = { id: createRequestId(), fingerprint: voiceCheckoutFingerprint(buyer, cart),
             created: now, spoken: false, readyAfterTurn: null };
         return this.review.id;
@@ -43,8 +43,8 @@ export class VoiceCheckoutConfirmation {
             || review.fingerprint !== voiceCheckoutFingerprint(buyer, cart)) {
             throw new Error('주문 내용이 바뀌었거나 확인 시간이 지났습니다. prepare_review로 다시 확인해 주세요.');
         }
-        if (review.readyAfterTurn == null || this.userTurn <= review.readyAfterTurn || !this.userFinished || !isVoiceOrderConfirmation(this.userText)) {
-            throw new Error('주문 내역을 읽은 뒤 손님에게 주문을 접수할지 물어보고 명확한 확답을 받아 주세요.');
+        if (review.readyAfterTurn == null || this.userTurn <= review.readyAfterTurn || !this.userFinished || !(this.kind === 'order' ? isVoiceOrderConfirmation(this.userText) : /^(네|예|응|비워줘|비워주세요|네비워주세요|전부비워주세요|삭제해주세요|지워주세요|다시시작해주세요|네다시시작해주세요|새로시작해주세요)$/.test(clean(this.userText)))) {
+            throw new Error(this.kind === 'order' ? '주문 내역을 읽은 뒤 손님에게 주문을 접수할지 물어보고 명확한 확답을 받아 주세요.' : '장바구니를 비울지 물어보고 손님의 새로운 확답을 받아 주세요.');
         }
         this.review = null;
     }

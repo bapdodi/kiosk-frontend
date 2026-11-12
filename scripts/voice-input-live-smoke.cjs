@@ -1,6 +1,9 @@
 // Sends synthetic Korean speech through the real microphone/worklet/WebSocket path. No real orders are allowed.
 const puppeteer=require('puppeteer');const fs=require('node:fs');const path=require('node:path');
 (async()=>{
+ const expectedText=process.env.KIOSK_EXPECT_TEXT||'비회원';
+ const expectedScreen=process.env.KIOSK_EXPECT_SCREEN;
+ const normalize=text=>text.replace(/\s/g,'');
  const browser=await puppeteer.launch({headless:true,executablePath:process.env.CHROME_PATH||(fs.existsSync('/usr/bin/google-chrome')?'/usr/bin/google-chrome':undefined),args:['--no-sandbox','--autoplay-policy=no-user-gesture-required']});
  try {
   const page=await browser.newPage();await page.setViewport({width:1280,height:900});
@@ -42,13 +45,19 @@ const puppeteer=require('puppeteer');const fs=require('node:fs');const path=requ
   await page.click('.customer-select-head .voice-input-actions button:first-child');
   await page.waitForFunction(()=>__testMicStreams.length===2&&__testMicStreams[0].getTracks().every(t=>t.readyState==='ended'));
   injected=true;
-  const encoded=fs.readFileSync(path.join(__dirname,'fixtures/voice-order-input.mp3')).toString('base64');
+  const encoded=fs.readFileSync(process.env.KIOSK_SPEECH_FIXTURE||path.join(__dirname,'fixtures/voice-order-input.mp3')).toString('base64');
   const duration=await page.evaluate(async encoded=>{const data=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));const buffer=await __inputContext.decodeAudioData(data.buffer);const source=__inputContext.createBufferSource();source.buffer=buffer;source.connect(__inputDestination);source.start();return buffer.duration;},encoded);
-  for(let i=0;i<Math.ceil(duration)+25&&!outputAfterInput;i++)await new Promise(r=>setTimeout(r,1000));
-  const heardVisible=await page.evaluate(()=>[...document.querySelectorAll('.voice-input-heard')].some(e=>e.textContent.includes('비회원')));
-  const button=await page.$('.customer-select-head .cart-voice-button')||await page.$('.kiosk-cart-bar .cart-voice-button');if(button)await button.click();
-  console.log(JSON.stringify({setup,frames,nonSilent,maxSample,inputRecognized:userText,outputAfterInput,heardVisible,microphoneReconnected:true,tools,orders,errors}));
+  const screenMatches=()=>page.evaluate(screen=>screen==='products'?!!document.querySelector('.product-card')&&!document.querySelector('.customer-select-head,.cart-modal-content,.product-detail-view,.attract-screen')
+    :screen==='cart'?!!document.querySelector('.cart-modal-content'):screen==='welcome'?!!document.querySelector('.attract-screen'):true,expectedScreen);
+  for(let i=0;i<Math.ceil(duration)+25;i++){
+   if(outputAfterInput&&(!expectedScreen||await screenMatches()))break;
+   await new Promise(r=>setTimeout(r,1000));
+  }
+  const navigated=!expectedScreen||await screenMatches();
+  const heardVisible=await page.evaluate(text=>[...document.querySelectorAll('.voice-input-heard')].some(e=>e.textContent.replace(/\s/g,'').includes(text.replace(/\s/g,''))),expectedText);
+  const button=await page.$('.attract-voice .cart-voice-button')||await page.$('.cart-modal-content .cart-voice-button')||await page.$('.customer-select-head .cart-voice-button')||await page.$('.kiosk-cart-bar .cart-voice-button');if(button)await button.click();
+  console.log(JSON.stringify({setup,frames,nonSilent,maxSample,inputRecognized:userText,outputAfterInput,heardVisible,expectedScreen,navigated,microphoneReconnected:true,tools,orders,errors}));
   await page.evaluate(()=>Promise.all(__testInputContexts.map(c=>c.close())));
-  if(!userText.includes('비회원')||!outputAfterInput||!heardVisible||nonSilent===0||orders||errors.length)process.exitCode=1;
+  if(!normalize(userText).includes(normalize(expectedText))||!navigated||!outputAfterInput||!heardVisible||nonSilent===0||orders||errors.length)process.exitCode=1;
  }finally{await browser.close();}
 })().catch(e=>{console.error(e.message);process.exit(1);});

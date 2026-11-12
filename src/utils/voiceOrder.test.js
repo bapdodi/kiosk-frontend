@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveVoiceLine, searchVoiceProducts, validateVoiceQuantity, voiceOptions, publicVoiceCart, voiceOptionSelections } from './voiceOrder.js';
+import { resolveVoiceLine, searchVoiceProducts, validateVoiceQuantity, voiceOptions, publicVoiceCart, voiceOptionSelections, resolveVoiceSelectionUpdate } from './voiceOrder.js';
 
 const product = { id: 10, name: '동 엘보', erpCode: '100', combinations: [
     { id: 20, name: '15A / 국산', kioskName: '15미리 국산', erpCode: '101' },
@@ -44,4 +44,15 @@ test('voice option selection lights the exact existing UI buttons, never guesses
     assert.throws(() => voiceOptionSelections(product, '22'));
     const singleGroup = { id: 1, combinations: [{ id: 2, name: '15A / 특수', erpCode: '1' }] };
     assert.deepEqual(Object.values(voiceOptionSelections(singleGroup, '2')), [['15A / 특수']]);
+});
+
+
+test('partial voice selection preserves touch choices and quantity, but refuses impossible combinations', () => {
+    const current = { productId: '10', selections: { '규격 (Size)': ['15A'] }, quantity: 7 };
+    const selected = resolveVoiceSelectionUpdate(product, current, { choices: [{ groupName: '원산지 (Origin)', value: '국산' }] });
+    assert.equal(selected.optionId, '20');assert.equal(selected.quantity, 7);
+    assert.equal(resolveVoiceSelectionUpdate(product, selected, { quantity: 3 }).quantity, 3);
+    assert.equal(resolveVoiceSelectionUpdate(product, current, { quantity: 3 }).optionId, null);
+    assert.throws(() => resolveVoiceSelectionUpdate(product, current, { choices: [{ groupName: '원산지 (Origin)', value: '수입' }] }));
+    assert.throws(() => resolveVoiceSelectionUpdate(product, current, { choices: [{ groupName: '규격 (Size)', value: '가짜' }] }));
 });

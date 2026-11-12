@@ -26,7 +26,7 @@ const getInitialSelections = (groups) => Object.fromEntries(
  * 규격 해석과 담기 규칙은 한 벌이어야 한다. 그 공통분모가 이 파일이다.
  * 여기에는 DOM 배치나 CSS 에 대한 판단을 넣지 않는다.
  */
-export function useProductSelection(product, { cartItems = [], products = [], onConfirm, voiceSelection, onSelectionChange }) {
+export function useProductSelection(product, { cartItems = [], products = [], onConfirm, voiceSelection, voiceImageRequest, onSelectionChange }) {
     // 규격 해석 규칙은 목록 카드와도 공유해야 해서 utils/productOptions.js 에 있다.
     const groups = getOptionGroups(product);
 
@@ -128,7 +128,7 @@ export function useProductSelection(product, { cartItems = [], products = [], on
     // (값이 하나뿐인 그룹은 선택의 여지가 없으므로 그대로 선택해 둔다.)
     useEffect(() => {
         const requested = voiceSelection && String(product?.id) === voiceSelection.productId;
-        setSelections(requested ? voiceOptionSelections(product, voiceSelection.optionId) : getInitialSelections(groups));
+        setSelections(requested ? (voiceSelection.selections || voiceOptionSelections(product, voiceSelection.optionId)) : getInitialSelections(groups));
         setQuantity(requested ? voiceSelection.quantity : 1);
         setCurrentImageIndex(0);
         setFailedImages({});
@@ -137,8 +137,16 @@ export function useProductSelection(product, { cartItems = [], products = [], on
     }, [product, voiceSelection]);
 
     useEffect(() => {
-        onSelectionChange?.({ productId: String(product?.id), selections, quantity });
-    }, [product?.id, selections, quantity, onSelectionChange]);
+        onSelectionChange?.({ productId: String(product?.id), selections, quantity, imageCount: images.length, imageIndex: currentImageIndex + 1 });
+    }, [product?.id, selections, quantity, images.length, currentImageIndex, onSelectionChange]);
+
+    useEffect(() => {
+        if (voiceImageRequest?.productId === String(product?.id)) {
+            setCurrentImageIndex(Math.max(0, Math.min(images.length - 1, voiceImageRequest.imageIndex)));
+        }
+        // One image command applies once; manual image choices remain usable afterward.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [voiceImageRequest]);
 
     // ── 동시구매 추천 ──────────────────────────────────────────────────────
     // 어떤 상품의 추천인지 함께 들고 있어야, 다른 상품으로 갈아탄 순간 이전 추천이 잠깐 비치지 않는다.

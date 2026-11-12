@@ -188,7 +188,7 @@ export class LiveOrderSession {
                         const result = await pending;
                         if (this.closed || this.cancelledCalls.has(call.id)) continue;
                         responses.push({ id: call.id, name: call.name, response: { result } });
-                        if (result?.submitted === true) {
+                        if (result?.submitted === true || result?.endCall === true) {
                             this.beginCompletion();
                         }
                     }

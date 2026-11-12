@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Cart from './components/Cart';
 import { useVoiceOrder } from './hooks/useVoiceOrder';
 import { voiceOptionSelections } from './utils/voiceOrder';
+import { resolveVoiceDestination, resolveVoiceCategory, resolveVoiceImage } from './utils/voiceNavigation';
 import CartBar from './components/CartBar';
 import CategoryNav from './components/CategoryNav';
 import LoginPage from './components/LoginPage';
@@ -272,6 +273,7 @@ function KioskView({
   const [selectingProduct, setSelectingProduct] = useState(null);
   const [optionQuantities, setOptionQuantities] = useState({});
   const [voiceSelection, setVoiceSelection] = useState(null);
+  const [voiceImageRequest, setVoiceImageRequest] = useState(null);
   const [voiceSearchResults, setVoiceSearchResults] = useState(null);
   const selectionStateRef = useRef(null);
   const reportSelection = useCallback(selection => { selectionStateRef.current = selection; }, []);
@@ -836,9 +838,105 @@ function KioskView({
     };
   }, [isMobile, isIdle, isIdleWarning]);
 
+  const navigateVoiceScreen = (target, resetSearch = false) => {
+    if (submittingOrderRef.current) throw new Error('주문을 접수 중입니다. 결과를 먼저 확인해 주세요.');
+    let destination = resolveVoiceDestination({ welcomeOpen: !isMobile && isIdle, customerOpen: orderModal.isOpen, cartOpen: isCartOpen,
+      reviewOpen: isReviewOpen, buyerOpen: isBuyerPick, productOpen: !!selectingProduct,
+      query: searchQuery, mainCategory: activeMainCat }, target);
+    if (completedOrderRef.current) {
+      if (!['products', 'welcome'].includes(destination)) throw new Error('접수 완료 후에는 처음 화면이나 상품 목록으로 이동할 수 있습니다.');
+      completedOrderRef.current = null;
+      buyerRef.current = null;
+      setCompletedOrder(null);
+      setBuyer(null);
+    }
+    if (destination === 'review' && !voiceCartRef.current.length) throw new Error('장바구니가 비어 있습니다. 상품을 먼저 담아 주세요.');
+    setOrderModal(previous => ({ ...previous, isOpen: false }));
+    setIsBuyerPick(destination === 'buyer');
+    setIsReviewOpen(destination === 'review');
+    setIsCartOpen(destination === 'cart');
+    if (!['cart', 'product'].includes(destination)) setSelectingProduct(null);
+    setIsIdle(destination === 'welcome' && !isMobile);
+    if (resetSearch || destination === 'welcome' || (target === 'back' && destination === 'products' && !selectingProduct && !checkoutStage && !isCartOpen)) {
+      setVoiceSearchResults(null);
+      setSearchQuery('');
+      setActiveMainCat(null);
+      setActiveSubCat(null);
+    }
+    if (destination === 'welcome' && isMobile) destination = 'products';
+    return destination;
+  };
+
+  const voiceScrollTarget = (area) => {
+    if (!['screen', 'products', 'options', 'cart'].includes(area)) throw new Error('이동할 영역을 다시 확인해 주세요.');
+    const selectors = area === 'cart' ? '.cart-items, .cart-bar-items' : area === 'options' ? '.option-scroll-body, .mp-scroll'
+      : area === 'products' ? '.kiosk-main' : isCartOpen ? '.cart-items'
+        : checkoutStage === 'review' ? '.review-body' : ['buyer', 'customer'].includes(checkoutStage) ? '.customer-select-body'
+          : selectingProduct ? '.option-scroll-body, .mp-scroll' : '.kiosk-main';
+    return [...(kioskContainerRef.current?.querySelectorAll(selectors) || [])].find(element => element.getClientRects().length
+      && element.scrollHeight > element.clientHeight && /auto|scroll/.test(getComputedStyle(element).overflowY))
+      || document.scrollingElement;
+  };
+
   const voice = useVoiceOrder({
     enabled: !isIdleWarning,
     products, cart, customers,
+    ui: {
+      navigate: navigateVoiceScreen,
+      listProducts: () => displayedProducts,
+      categories: () => mainCategories.map(main => ({ id: String(main.id), name: main.name,
+        children: (subCategories[main.id] || []).map(sub => ({ id: String(sub.id), name: sub.name })) })),
+      category: (mainId, subId) => {
+        const selected = resolveVoiceCategory(mainCategories, subCategories, mainId, subId);
+        navigateVoiceScreen('products');
+        setVoiceSearchResults(null);
+        setSearchQuery('');
+        setActiveMainCat(selected.main);
+        setActiveSubCat(selected.sub);
+        return { screen: 'products', category: selected };
+      },
+      selection: (product, selected) => {
+        navigateVoiceScreen('products');
+        setSelectingProduct(product);
+        setVoiceSelection({ ...selected, requestId: createRequestId() });
+      },
+      image: (action, index) => {
+        if (!selectingProduct) throw new Error('먼저 상품 상세 화면을 열어 주세요.');
+        const selected = selectionStateRef.current;
+        const current = selected?.productId === String(selectingProduct.id) ? selected : null;
+        const count = current?.imageCount ?? (selectingProduct.images || []).length;
+        const imageIndex = resolveVoiceImage(action, index, (current?.imageIndex || 1) - 1, count);
+        setVoiceImageRequest({ productId: String(selectingProduct.id), imageIndex, requestId: createRequestId() });
+        return { imageIndex: imageIndex + 1, imageCount: count };
+      },
+      scroll: async (direction, area) => {
+        if (!['up', 'down', 'top', 'bottom'].includes(direction)) throw new Error('위 또는 아래로 이동할 수 있습니다.');
+        if (area === 'products' && !kioskContainerRef.current?.querySelector('.kiosk-main')) navigateVoiceScreen('products');
+        if (area === 'cart' && isMobile && !isCartOpen) navigateVoiceScreen('cart');
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const element = voiceScrollTarget(area);
+        const before = element.scrollTop;
+        const maximum = Math.max(0, element.scrollHeight - element.clientHeight);
+        const step = Math.max(100, element.clientHeight * 0.8);
+        const top = direction === 'top' ? 0 : direction === 'bottom' ? maximum : Math.max(0, Math.min(maximum, before + (direction === 'up' ? -step : step)));
+        element.scrollTo({ top, behavior: 'smooth' });
+        return { moved: top !== before, atStart: top === 0, atEnd: top === maximum };
+      },
+      clear: (action) => {
+        if (!['clear_cart', 'reset_order'].includes(action)) throw new Error('초기화할 내용을 다시 확인해 주세요.');
+        if (submittingOrderRef.current || pendingOrderPayload.current) throw new Error('이전 주문의 접수 결과부터 확인해 주세요.');
+        voiceCartRef.current = [];
+        setCart([]);
+        setVoiceSelection(null);
+        setOptionQuantities({});
+        if (action === 'reset_order') {
+          buyerRef.current = null;
+          setBuyer(null);
+          setOrderModal({ isOpen: false, name: '' });
+          navigateVoiceScreen('buyer', true);
+        } else navigateVoiceScreen('cart');
+      },
+    },
     onStart: () => {
       setIsIdle(false);
       if (!buyerRef.current && !voiceCartRef.current.length) setIsBuyerPick(true);
@@ -895,9 +993,11 @@ function KioskView({
     },
     getScreen: () => ({
       buyer: buyerRef.current,
-      screen: (!isMobile && isIdle) ? 'welcome' : checkoutStage || (selectingProduct ? 'product' : isCartOpen ? 'cart' : 'products'),
+      screen: (!isMobile && isIdle) ? 'welcome' : checkoutStage || (isCartOpen ? 'cart' : selectingProduct ? 'product' : 'products'),
       query: searchQuery,
-      products: displayedProducts.slice(0, 6).map((p, index) => ({ position: index + 1, productId: String(p.id), name: p.name })),
+      totalProducts: displayedProducts.length,
+      activeCategory: { main: activeMainCat, sub: activeSubCat },
+      products: displayedProducts.slice(0, 12).map((p, index) => ({ position: index + 1, productId: String(p.id), name: p.name })),
       selectedProduct: selectingProduct ? { productId: String(selectingProduct.id), name: selectingProduct.name,
         ...(selectionStateRef.current?.productId === String(selectingProduct.id) ? selectionStateRef.current : {}) } : null,
     }),
@@ -941,6 +1041,7 @@ function KioskView({
           <ProductDetailView
             product={selectingProduct}
             voiceSelection={voiceSelection}
+            voiceImageRequest={voiceImageRequest}
             onSelectionChange={reportSelection}
             cartItems={cart}
             products={products}
@@ -1037,6 +1138,7 @@ function KioskView({
         <ProductPageMobile
           product={selectingProduct}
           voiceSelection={voiceSelection}
+          voiceImageRequest={voiceImageRequest}
           onSelectionChange={reportSelection}
           cartItems={cart}
           products={products}

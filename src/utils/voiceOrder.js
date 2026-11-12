@@ -68,3 +68,29 @@ export function voiceOptionSelections(product, optionId) {
     }
     return Object.fromEntries(groups.map((g, i) => [g.name, [values[i]]]));
 }
+
+/** Apply partial choices to the same option buttons as touch input, preserving the current quantity. */
+export function resolveVoiceSelectionUpdate(product, current, args = {}) {
+    const groups = getOptionGroups(product);
+    const matching = current?.productId === String(product.id);
+    let selections = matching ? { ...current.selections } : Object.fromEntries(groups.filter(g => g.values.length === 1).map(g => [g.name, [g.values[0]]]));
+    if (args.optionId != null) selections = voiceOptionSelections(product, args.optionId);
+    if (args.choices != null) {
+        if (!Array.isArray(args.choices) || args.choices.length > groups.length) throw new Error('규격 선택을 다시 확인해 주세요.');
+        for (const choice of args.choices) {
+            const group = groups.find(g => g.name === choice.groupName);
+            if (!group || !group.values.includes(choice.value)) throw new Error('실제 화면에 있는 규격만 선택할 수 있습니다.');
+            selections[group.name] = [choice.value];
+        }
+    }
+    const quantity = args.quantity ?? (matching ? Number(current.quantity) || 1 : 1);
+    validateVoiceQuantity(quantity);
+    const options = voiceOptions(product);
+    const matches = options.filter(option => {
+        const values = voiceOptionSelections(product, option.optionId);
+        return groups.every(g => !selections[g.name]?.length || selections[g.name][0] === values[g.name][0]);
+    });
+    if (matches.length === 0) throw new Error('함께 선택할 수 없는 규격입니다. 규격 목록을 다시 확인해 주세요.');
+    const complete = groups.every(g => selections[g.name]?.length === 1);
+    return { productId: String(product.id), selections, quantity, optionId: complete ? matches[0].optionId : null };
+}

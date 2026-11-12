@@ -16,7 +16,7 @@ const formatQuantity = (n) => (n || 0).toLocaleString('ko-KR');
  * 하단에 주문 바가 고정된다. 키오스크용 OptionModal 과 화면은 완전히 별개고,
  * 규격·수량·가격 규칙만 useProductSelection 으로 공유한다.
  */
-const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, onCancel, onSelectProduct, onOpenCart, voiceSelection, onSelectionChange }) => {
+const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, onCancel, onSelectProduct, onOpenCart, voiceSelection, voiceImageRequest, onSelectionChange }) => {
     const {
         groups,
         selections, toggleOption,
@@ -31,7 +31,7 @@ const ProductPageMobile = ({ product, cartItems = [], products = [], onConfirm, 
         addedLines, addedTotalQuantity,
         selectedTotalPrice, priceRange,
         optionSectionRef, handleConfirm,
-    } = useProductSelection(product, { cartItems, products, onConfirm, voiceSelection, onSelectionChange });
+    } = useProductSelection(product, { cartItems, products, onConfirm, voiceSelection, voiceImageRequest, onSelectionChange });
 
     const quantityRef = useRef(null);
     // 규격을 다 고른 "순간"에만 수량으로 내려준다. 매 렌더마다 움직이면 손가락을 방해한다.

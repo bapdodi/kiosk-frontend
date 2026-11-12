@@ -62,3 +62,16 @@ test('a greeting or partial user transcript cannot authorize an order', () => {
     gate.transcript('user', '', true);
     gate.confirm(id, buyer, cart);
 });
+
+
+test('clearing a draft requires a separate fresh confirmation and never reuses an order confirmation', () => {
+    const gate = new VoiceCheckoutConfirmation('cart');
+    gate.transcript('user', '네');
+    const id = gate.prepare(null, cart);
+    gate.transcript('model', '장바구니를 모두 비울까요?');gate.assistantFinished();
+    assert.throws(() => gate.confirm(id, null, cart));
+    gate.transcript('user', '아니요');assert.throws(() => gate.confirm(id, null, cart));
+    gate.transcript('model', '장바구니를 모두 비울까요?');gate.assistantFinished();
+    gate.transcript('user', '네 비워주세요');gate.confirm(id, null, cart);
+    assert.throws(() => gate.confirm(id, null, cart));
+});
