@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { VoiceInputStatus } from '../utils/voiceInputStatus';
 import { matchesCustomerSearch } from '../utils/search';
 import { VoiceCheckoutConfirmation } from '../utils/voiceCheckout';
 import { LiveOrderSession } from '../utils/liveOrderSession';
@@ -6,10 +7,12 @@ import { publicVoiceCart, resolveVoiceLine, searchVoiceProducts, validateVoiceQu
 
 /** A single call follows the existing kiosk screens; cart buttons only control its lifetime. */
 export function useVoiceOrder({ enabled, products, cart, onAdd, onQuantity, onSearch, onProduct, onSelect, onReview, getScreen, customers, onStart, onCustomerSearch, onCustomer, getCheckout, onSubmit }) {
+    const input = useMemo(() => new VoiceInputStatus(), []);
     const [state, setState] = useState('idle');
     const [error, setError] = useState('');
     const [available, setAvailable] = useState(false);
     const session = useRef(null);
+    const heardRole = useRef(null);
     const confirmation = useRef(new VoiceCheckoutConfirmation());
     const latest = useRef(null);
     useEffect(() => { latest.current = { products, cart, onAdd, onQuantity, onSearch, onProduct, onSelect, onReview, getScreen, customers, onStart, onCustomerSearch, onCustomer, getCheckout, onSubmit }; });
@@ -20,12 +23,13 @@ export function useVoiceOrder({ enabled, products, cart, onAdd, onQuantity, onSe
         return () => abort.abort();
     }, []);
 
-    const stop = () => {
+    const stop = useCallback(() => {
         session.current?.close();
         session.current = null;
         confirmation.current.reset();
+        input.reset();
         setState('idle');
-    };
+    }, [input]);
     useEffect(() => {
         // Cleanup ends calls on idle/reset/completion, not on product/cart/review navigation.
         if (enabled) return () => {
@@ -38,7 +42,7 @@ export function useVoiceOrder({ enabled, products, cart, onAdd, onQuantity, onSe
         const hide = () => { if (document.hidden) stop(); };
         document.addEventListener('visibilitychange', hide);
         return () => { document.removeEventListener('visibilitychange', hide); session.current?.close(); };
-    }, []);
+    }, [stop]);
 
     const tool = async (name, args) => {
         const current = latest.current;
@@ -120,13 +124,19 @@ export function useVoiceOrder({ enabled, products, cart, onAdd, onQuantity, onSe
         if (session.current) { stop(); return; }
         if (!enabled || !available) return;
         setError('');
+        input.reset();
         confirmation.current.reset();
         latest.current.onStart();
         const call = new LiveOrderSession({
             onState: setState, onError: message => { setError(message); session.current = null; },
             onTool: tool,
             onActivity: () => window.dispatchEvent(new Event('kiosk-voice-activity')),
-            onTranscript: (role, text, finished) => confirmation.current.transcript(role, text, finished),
+            onInputStatus: input.update,
+            onTranscript: (role, text, finished) => {
+                confirmation.current.transcript(role, text, finished);
+                if (role === 'user' && text) input.update({ heard: ((heardRole.current === 'user' ? input.getSnapshot().heard : '') + text).slice(-160), warning: '' });
+                heardRole.current = role;
+            },
             onTurnComplete: () => confirmation.current.assistantFinished(),
             onFinish: () => { session.current = null; confirmation.current.reset(); },
         });
@@ -134,5 +144,7 @@ export function useVoiceOrder({ enabled, products, cart, onAdd, onQuantity, onSe
         call.start();
     };
     const complete = result => { confirmation.current.reset(); session.current?.completeOrder(result); };
-    return { complete, available: available && enabled, state: enabled ? state : 'idle', error, toggle, stop };
+    const selectMicrophone = deviceId => session.current?.switchMicrophone(deviceId);
+    const finishUtterance = () => session.current?.finishUtterance();
+    return { input, selectMicrophone, finishUtterance, complete, available: available && enabled, state: enabled ? state : 'idle', error, toggle, stop };
 }

@@ -5,3 +5,8 @@
 .cart-voice-error{display:block;margin-top:6px;color:#b91c1c;line-height:1.5}
 
 .cart-voice-control.is-compact{margin:0}.cart-voice-control.is-compact .cart-voice-button{width:auto;padding:8px 10px;font-size:13px;min-height:40px}
+.voice-input-panel{margin-top:8px;padding:10px;border:1px solid #dbe4e0;border-radius:8px;background:#f8faf9;text-align:left;color:#334155;font-size:12px;line-height:1.5}
+.voice-input-panel small{display:block}.voice-input-level{height:6px;overflow:hidden;background:#e2e8f0;border-radius:3px}.voice-input-level>span{display:block;height:100%;background:#15803d;transition:width .15s}.voice-input-signal{margin:4px 0 8px}
+.voice-input-device{display:flex;align-items:center;gap:6px}.voice-input-device select{min-width:0;flex:1;max-width:100%;padding:5px;border:1px solid #cbd5e1;border-radius:5px;background:#fff;color:#334155;font:inherit}
+.voice-input-actions{display:flex;gap:6px;margin-top:8px}.voice-input-actions button{flex:1;min-height:32px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:5px;background:#fff;color:#334155;font:inherit;cursor:pointer}.voice-input-actions button:disabled{opacity:.5;cursor:wait}.voice-input-heard{margin-top:6px;overflow-wrap:anywhere;color:#166534}
+.voice-input-compact{position:relative;font-size:11px}.voice-input-compact summary{cursor:pointer}.voice-input-compact .voice-input-panel{position:absolute;right:0;top:100%;width:min(320px,85vw);z-index:30;box-shadow:0 5px 20px #0002}
