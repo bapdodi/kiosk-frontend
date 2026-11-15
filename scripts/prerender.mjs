@@ -29,7 +29,7 @@ const MIME = {
 }
 
 // 간단한 정적 파일 서버
-function startServer(port = 5050) {
+function startServer(port = Number(process.env.PRERENDER_PORT) || 5052) {
   return new Promise((resolve) => {
     const server = createServer((req, res) => {
       // URL에서 쿼리스트링 제거
@@ -78,6 +78,7 @@ async function prerender() {
 
   const browser = await puppeteer.launch({
     headless: true,
+    executablePath: process.env.CHROME_PATH || (existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined),
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   })
 

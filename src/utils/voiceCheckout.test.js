@@ -47,6 +47,15 @@ test('does not accept yes before readback finishes, and resetting ends authoriza
     assert.throws(() => gate.prepare(null, cart));
     assert.throws(() => gate.prepare(buyer, []));
     assert.equal(isVoiceOrderConfirmation('네, 그대로 주문해 주세요.'), true);
+    assert.equal(isVoiceOrderConfirmation('네 맞아요 주문해 주세요'), true);
+    assert.equal(isVoiceOrderConfirmation('네 그렇게 해주세요'), true);
+    assert.equal(isVoiceOrderConfirmation('맞습니다 주문해주세요'), true);
+    assert.equal(isVoiceOrderConfirmation('응 맞아 주문해줘'), true);
+    assert.equal(isVoiceOrderConfirmation('네 진행해주세요'), true);
+    assert.equal(isVoiceOrderConfirmation('네 확인했습니다'), true);
+    assert.equal(isVoiceOrderConfirmation('네 부탁드립니다'), true);
+    assert.equal(isVoiceOrderConfirmation('이대로 주문해주세요'), true);
+    assert.equal(isVoiceOrderConfirmation('네 맞아요'), true);
 });
 
 

@@ -10,15 +10,73 @@ export class LiveOrderSession {
         this.cancelledCalls = new Set();
         this.nextAudio = 0;
         this.muted = false;
+        this.logged = false;
+        this.sessionLog = {
+            customerName: '',
+            status: 'connecting',
+            transcript: [],
+            tools: [],
+            errorMessage: null,
+            orderId: null,
+        };
     }
+
+    recordTranscript(role, text) {
+        if (!text) return;
+        const roleLabel = role === 'user' ? '손님' : 'AI';
+        console.log(`[AI통화:${roleLabel}]`, text);
+        const last = this.sessionLog.transcript[this.sessionLog.transcript.length - 1];
+        if (last && last.startsWith(`[${roleLabel}]`)) {
+            this.sessionLog.transcript[this.sessionLog.transcript.length - 1] = `${last} ${text}`;
+        } else {
+            this.sessionLog.transcript.push(`[${roleLabel}] ${text}`);
+        }
+    }
+
+    recordTool(name, args, result) {
+        console.log('[AI통화:도구실행]', name, args, '→', result);
+        this.sessionLog.tools.push(`${name}(${JSON.stringify(args || {})}) → ${JSON.stringify(result || {})}`);
+        if (result?.name) this.sessionLog.customerName = result.name;
+        if (result?.customerName) this.sessionLog.customerName = result.customerName;
+        if (result?.orderNumber) {
+            this.sessionLog.orderId = Number(result.orderNumber) || null;
+            this.sessionLog.status = 'ordered';
+        }
+    }
+
+    flushLog() {
+        if (this.logged) return;
+        this.logged = true;
+        try {
+            const payload = {
+                customerName: this.sessionLog.customerName || null,
+                status: this.sessionLog.status,
+                transcript: this.sessionLog.transcript.join('\n'),
+                tools: this.sessionLog.tools.join('\n'),
+                errorMessage: this.sessionLog.errorMessage,
+                orderId: this.sessionLog.orderId,
+            };
+            fetch('/api/order-voice/log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                keepalive: true,
+            }).catch(() => {});
+        } catch { /* ignore logging errors */ }
+    }
+
     async start() {
         try {
             if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
                 throw new Error('음성 주문은 HTTPS 또는 localhost에서 사용할 수 있습니다.');
             }
             this.onState('connecting');
-            // Resume synchronously from the user's click, before any network await (Safari autoplay).
-            this.audio = new AudioContext();
+            // Prefer 16kHz context so browser native high-quality sinc resampling is used when supported
+            try {
+                this.audio = new AudioContext({ sampleRate: 16000 });
+            } catch {
+                this.audio = new AudioContext();
+            }
             await this.audio.resume();
             let preferred = '';
             try { preferred = localStorage.getItem('kioskVoiceInputDevice') || ''; } catch { /* storage unavailable */ }
@@ -84,6 +142,7 @@ export class LiveOrderSession {
             }, 1000);
             this.deviceChange = () => this.describeMicrophone();
             navigator.mediaDevices.addEventListener?.('devicechange', this.deviceChange);
+            this.sessionLog.status = 'listening';
             this.onState('listening');
             connection.sendClientContent({ turns: [{ role: 'user', parts: [{ text: 'AI 음성 주문을 시작합니다. get_screen으로 현재 화면을 확인하고 상호 선택이 없으면 상호 또는 비회원 여부부터 물어보세요. 기존 화면을 조작하며 주문 완료까지 도와주세요.' }] }], turnComplete: true });
         } catch (error) {
@@ -158,7 +217,9 @@ export class LiveOrderSession {
             if (content?.interrupted) { clearTimeout(this.turnEnd); this.stopAudio(); }
             for (const [role, transcript] of [['user', content?.inputTranscription], ['model', content?.outputTranscription]]) {
                 if (transcript?.text || transcript?.finished === true) {
-                    this.onTranscript(role, transcript.text || '', transcript.finished);
+                    const text = transcript.text || '';
+                    this.recordTranscript(role, text);
+                    this.onTranscript(role, text, transcript.finished ?? true);
                     this.onActivity();
                 }
             }
@@ -187,6 +248,7 @@ export class LiveOrderSession {
                         }
                         const result = await pending;
                         if (this.closed || this.cancelledCalls.has(call.id)) continue;
+                        this.recordTool(call.name, call.args, result);
                         responses.push({ id: call.id, name: call.name, response: { result } });
                         if (result?.submitted === true || result?.endCall === true) {
                             this.beginCompletion();
@@ -243,23 +305,33 @@ export class LiveOrderSession {
     }
     completeOrder(result) {
         if (this.closed || !this.connection) return;
+        this.sessionLog.status = 'ordered';
+        if (result?.orderNumber) this.sessionLog.orderId = Number(result.orderNumber) || null;
+        if (result?.customerName) this.sessionLog.customerName = result.customerName;
         this.beginCompletion();
         this.connection.sendClientContent({ turns: [{ role: 'user', parts: [{ text:
             `손님이 화면에서 주문을 확정했고 실제 서버 접수가 완료되었습니다. 서버 결과: ${JSON.stringify(result)}. 주문번호를 안내하고 통화를 마무리하세요.` }] }], turnComplete: true });
     }
     finish() {
         if (this.closed) return;
+        if (this.sessionLog.status !== 'ordered') this.sessionLog.status = 'completed';
+        this.flushLog();
         this.close();
         this.onState('idle');
         this.onFinish?.();
     }
     fail(message) {
         if (this.closed) return;
+        console.error('[AI통화:오류]', message);
+        this.sessionLog.errorMessage = message;
+        this.sessionLog.status = 'error';
+        this.flushLog();
         this.close();
         this.onError(message);
         this.onState('error');
     }
     close() {
+        this.flushLog();
         this.closed = true;
         clearTimeout(this.startup);
         clearTimeout(this.deadline);

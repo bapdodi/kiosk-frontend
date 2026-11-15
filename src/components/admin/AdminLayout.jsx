@@ -170,6 +170,14 @@ const AdminLayout = ({
                         <span style={{ fontSize: '1.2rem' }}>💰</span>
                         <span style={{ fontWeight: 600 }}>금전 출납부</span>
                     </NavLink>
+                    <NavLink
+                        to="/admin/voice-logs"
+                        className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
+                        style={{ textDecoration: 'none' }}
+                    >
+                        <span style={{ fontSize: '1.2rem' }}>📞</span>
+                        <span style={{ fontWeight: 600 }}>AI 통화 기록</span>
+                    </NavLink>
                     {naverEnabled && (
                         <div className="admin-nav-group">
                             <NavLink

@@ -9,6 +9,7 @@ import NaverSyncPage from './NaverSyncPage';
 import OrderManagement from './OrderManagement';
 import ProductForm from './ProductForm';
 import ProductManagement from './ProductManagement';
+import VoiceLogPage from './VoiceLogPage';
 
 /**
  * 관리자 화면 전체. 손님 화면(키오스크·폰) 번들에서 떼어 내려고 App 이 lazy 로 한 번에 불러온다.
@@ -31,6 +32,7 @@ export default function AdminRoutes(layoutProps) {
         <Route path="erp-receiving" element={<ErpReceivingPage />} />
         <Route path="erp-order" element={<ErpReceivingPage mode="order" />} />
         <Route path="cash-ledger" element={<CashLedgerPage />} />
+        <Route path="voice-logs" element={<VoiceLogPage />} />
         <Route path="assistant" element={<Navigate to="/admin/orders" replace />} />
       </Route>
     </Routes>
