@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
 import './ProductDetailView.css';
 import { useProductSelection } from '../hooks/useProductSelection';
@@ -5,6 +6,8 @@ import { formatPriceRange, formatWon } from '../utils/price';
 import { getOptionPriceRange } from '../utils/productOptions';
 
 const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, onCancel, onSelectProduct, voiceSelection, voiceImageRequest, onSelectionChange }) => {
+    const [isZoomOpen, setIsZoomOpen] = useState(false);
+
     const {
         groups, selections, toggleOption, showProductPrompt,
         quantity, setQuantity, handleQuantityChange, handleBulkStep, startPress, stopPress,
@@ -13,27 +16,68 @@ const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, 
         recommendedProducts, selectedTotalPrice, priceRange, optionSectionRef, handleConfirm,
     } = useProductSelection(product, { cartItems, products, onConfirm, voiceSelection, voiceImageRequest, onSelectionChange });
 
+    useEffect(() => {
+        if (!isZoomOpen) return;
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') setIsZoomOpen(false);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isZoomOpen]);
+
     if (!product) return null;
+
+    const currentImage = images[currentImageIndex];
+    const hasValidImage = Boolean(currentImage && !failedImages[currentImageIndex]);
 
     return (
         <section className="product-detail-view order-focused-detail" aria-labelledby="option-product-title">
             <div className="option-scroll-body">
                 <button type="button" className="option-back-btn" onClick={onCancel}>← 상품 목록</button>
                 <div className="option-detail-layout">
-                    <div className="option-image-area"
+                    <div
+                        className={`option-image-area${hasValidImage ? ' clickable' : ''}`}
+                        onClick={hasValidImage ? () => setIsZoomOpen(true) : undefined}
                         onTouchStart={hasMultipleImages ? handleImageTouchStart : undefined}
-                        onTouchEnd={hasMultipleImages ? handleImageTouchEnd : undefined}>
-                        {images.length === 0 || failedImages[currentImageIndex] ? (
+                        onTouchEnd={hasMultipleImages ? handleImageTouchEnd : undefined}
+                        role={hasValidImage ? 'button' : undefined}
+                        tabIndex={hasValidImage ? 0 : undefined}
+                        onKeyDown={hasValidImage ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsZoomOpen(true); } } : undefined}
+                        aria-label={hasValidImage ? `${product.name} 사진 크게 보기` : undefined}
+                    >
+                        {!hasValidImage ? (
                             <div className="no-image-placeholder">이미지 없음</div>
                         ) : (
-                            <img src={getImageUrl(images[currentImageIndex])} alt={product.name}
-                                onError={() => setFailedImages(prev => ({ ...prev, [currentImageIndex]: true }))} />
+                            <>
+                                <img
+                                    src={getImageUrl(currentImage)}
+                                    alt={product.name}
+                                    onError={() => setFailedImages(prev => ({ ...prev, [currentImageIndex]: true }))}
+                                />
+                                <button
+                                    type="button"
+                                    className="option-image-zoom-trigger"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsZoomOpen(true);
+                                    }}
+                                    aria-label="사진 크게 보기"
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                        <circle cx="11" cy="11" r="8" />
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                        <line x1="11" y1="8" x2="11" y2="14" />
+                                        <line x1="8" y1="11" x2="14" y2="11" />
+                                    </svg>
+                                    <span>크게 보기</span>
+                                </button>
+                            </>
                         )}
                         {hasMultipleImages && <>
-                            <span className="option-image-counter">{currentImageIndex + 1} / {images.length}</span>
-                            <button type="button" className="option-image-arrow prev" onClick={() => moveImage(-1)} aria-label="이전 사진">‹</button>
-                            <button type="button" className="option-image-arrow next" onClick={() => moveImage(1)} aria-label="다음 사진">›</button>
-                            <div className="option-image-dots">{images.map((_, i) => (
+                            <span className="option-image-counter" onClick={e => e.stopPropagation()}>{currentImageIndex + 1} / {images.length}</span>
+                            <button type="button" className="option-image-arrow prev" onClick={(e) => { e.stopPropagation(); moveImage(-1); }} aria-label="이전 사진">‹</button>
+                            <button type="button" className="option-image-arrow next" onClick={(e) => { e.stopPropagation(); moveImage(1); }} aria-label="다음 사진">›</button>
+                            <div className="option-image-dots" onClick={e => e.stopPropagation()}>{images.map((_, i) => (
                                 <button type="button" key={i} onClick={() => setCurrentImageIndex(i)}
                                     aria-label={`${i + 1}번째 사진`} aria-pressed={i === currentImageIndex} />
                             ))}</div>
@@ -120,6 +164,64 @@ const ProductDetailView = ({ product, cartItems = [], products = [], onConfirm, 
                     </div>
                 )}
             </div>
+            {isZoomOpen && hasValidImage && (
+                <div
+                    className="image-zoom-backdrop"
+                    onClick={() => setIsZoomOpen(false)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`${product.name} 사진 크게 보기`}
+                >
+                    <div className="image-zoom-modal" onClick={e => e.stopPropagation()}>
+                        <div className="image-zoom-header">
+                            <div className="image-zoom-title-wrap">
+                                <span className="image-zoom-badge">사진 확대</span>
+                                <h3 className="image-zoom-title">{product.name}</h3>
+                            </div>
+                            <button
+                                type="button"
+                                className="image-zoom-close-btn"
+                                onClick={() => setIsZoomOpen(false)}
+                                aria-label="닫기"
+                            >✕</button>
+                        </div>
+                        <div
+                            className="image-zoom-body"
+                            onClick={() => setIsZoomOpen(false)}
+                            onTouchStart={hasMultipleImages ? handleImageTouchStart : undefined}
+                            onTouchEnd={hasMultipleImages ? handleImageTouchEnd : undefined}
+                        >
+                            <img
+                                src={getImageUrl(currentImage)}
+                                alt={product.name}
+                                className="image-zoom-img"
+                            />
+                            {hasMultipleImages && (
+                                <>
+                                    <button
+                                        type="button"
+                                        className="image-zoom-arrow prev"
+                                        onClick={(e) => { e.stopPropagation(); moveImage(-1); }}
+                                        aria-label="이전 사진"
+                                    >‹</button>
+                                    <button
+                                        type="button"
+                                        className="image-zoom-arrow next"
+                                        onClick={(e) => { e.stopPropagation(); moveImage(1); }}
+                                        aria-label="다음 사진"
+                                    >›</button>
+                                    <div className="image-zoom-counter" onClick={e => e.stopPropagation()}>
+                                        {currentImageIndex + 1} / {images.length}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        <div className="image-zoom-footer">
+                            <span>화면 아무 곳이나 ✕ 버튼을 누르면 닫힙니다</span>
+                        </div>
+                    </div>
+                </div>
+            )}
         </section>
     );
 };
