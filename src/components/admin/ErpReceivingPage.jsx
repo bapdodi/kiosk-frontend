@@ -526,6 +526,8 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
         });
         const converted = draft.lines.filter(l => l.converted).length;
         if (converted) notes.push(`${converted}줄은 지난 거래 단가에 맞춰 수량·단가를 환산했습니다(명세서의 숫자와 다를 수 있으니 확인하세요).`);
+        const returns = lines.filter(r => Number(r.ea) < 0).length;
+        if (returns) notes.push(`반품 ${returns}줄은 마이너스 수량으로 들어갑니다. 입고와 같은 전표에 함께 저장됩니다.`);
         const unmatched = lines.filter(r => !r.itemCode).length;
         if (unmatched) notes.push(`품목을 못 정한 줄 ${unmatched}건(노란색)은 품목을 골라야 저장됩니다.`);
         setRows([...lines, emptyRow()]);
@@ -695,7 +697,8 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
 
     // ── 합계/전송 ───────────────────────────────────────────────────────────
 
-    const filled = rows.filter(r => r.itemCode && Number(r.ea) > 0);
+    // 입고(매입)는 반품을 음수 수량으로 넣는다. 발주는 양수만.
+    const filled = rows.filter(r => r.itemCode && (isOrder ? Number(r.ea) > 0 : (Number(r.ea) || 0) !== 0));
     const total = useMemo(
         () => filled.reduce((sum, r) => sum + (Number(r.price) || 0) * (Number(r.ea) || 0), 0),
         [filled]
@@ -1192,7 +1195,7 @@ const ErpReceivingPage = ({ mode = 'receive' }) => {
                                             <td style={gridCell}>
                                                 <input
                                                     ref={el => { cellRefs.current[`${idx}-ea`] = el; }}
-                                                    type="number" min="1"
+                                                    type="number" min={isOrder ? 1 : undefined}
                                                     disabled={!r.itemCode}
                                                     style={{ ...cellInput, textAlign: 'right' }}
                                                     value={r.ea}
