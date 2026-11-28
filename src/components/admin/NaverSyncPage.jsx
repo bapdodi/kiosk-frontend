@@ -70,6 +70,7 @@ const NaverSyncPage = () => {
     const [productPage, setProductPage] = useState(1);       // 1-based 페이지 번호
     const [expandedIds, setExpandedIds] = useState([]);      // 규격 펼친 상품 id 목록
     const [pushModal, setPushModal] = useState(null);        // 전송 전 규격 검토 모달 { product, combos:[{id,name,priceA,stock,include}] }
+    const [erpStock, setErpStock] = useState(null);          // ERP 코드 → 현재고. null = 못 불러옴
 
     // ── 동기화 상태 ──
     const [previews, setPreviews] = useState(null); // null = 아직 안 불러옴
@@ -106,14 +107,19 @@ const NaverSyncPage = () => {
     useEffect(() => {
         fetch('/api/channels/naver/admin/config-status').then(r => r.ok ? r.json() : null).then(d => { if (d) setConfigured(!!d.configured); }).catch(() => { });
         loadMappings();
+        // 재고는 키오스크 DB 에 복사하지 않는다. 재고 조회 탭과 같은 ERP 현재고를 코드별로 들고 있는다.
+        fetch('/api/erp-receiving/admin/stock').then(r => r.ok ? r.json() : null)
+            .then(rows => { if (rows) setErpStock(Object.fromEntries(rows.map(r => [String(r.CODE), Math.trunc(Number(r.JEGO) || 0)]))); })
+            .catch(() => { });
     }, []);
 
     // ── 상품 전송 헬퍼 ──────────────────────────────────────────────────────
-    // 키오스크 기준 유효 재고(복합옵션이면 조합 재고 합, 아니면 단품 재고) — 백엔드 effectiveStock 과 동일 규칙
+    const stockOf = (erpCode) => (erpCode && erpStock?.[erpCode]) || 0;
+    // 유효 재고(복합옵션이면 조합 재고 합, 아니면 단품 재고) — 백엔드 computeEffectiveStock·ErpStock.withStock 과 동일 규칙
     const computeEffectiveStock = (p) => {
         const combos = (p.combinations || []).filter(c => !c.deleted);
-        if (combos.length > 0) return combos.reduce((s, c) => s + (c.stock || 0), 0);
-        return p.stock || 0;
+        if (combos.length > 0) return combos.reduce((s, c) => s + stockOf(c.erpCode), 0);
+        return stockOf(p.erpCode);
     };
 
     // ── 규격/가격 표시 헬퍼 ──
@@ -176,11 +182,13 @@ const NaverSyncPage = () => {
             pushToNaver(p.id);
             return;
         }
+        // 모달 재고가 그대로 네이버로 가므로, ERP 재고 없이 0 으로 채워 보내지 않는다.
+        if (erpStock === null) return alert('ERP 재고를 불러오지 못했습니다. 경영박사 연결을 확인한 뒤 새로고침하세요.');
         setStatusMenuId(null);
         setPushModal({
             product: p,
             combos: combos.map(c => ({
-                id: c.id, name: c.name || '', priceA: c.priceA ?? 0, stock: c.stock ?? 0, include: true,
+                id: c.id, name: c.name || '', priceA: c.priceA ?? 0, stock: stockOf(c.erpCode), include: true,
             })),
         });
     };
@@ -260,7 +268,7 @@ const NaverSyncPage = () => {
         if (link.naverStatus === 'SUSPENSION') return 'suspended';
         const changed = link.lastSyncedName !== p.name
             || link.lastSyncedPrice !== p.priceA
-            || link.lastSyncedStock !== computeEffectiveStock(p);
+            || (erpStock !== null && link.lastSyncedStock !== computeEffectiveStock(p));
         return changed ? 'changed' : 'linked';
     };
 
@@ -749,7 +757,7 @@ const NaverSyncPage = () => {
                                                                     {(c.priceA || 0) - repPrice > 0 ? `+${((c.priceA || 0) - repPrice).toLocaleString()}원` : '-'}
                                                                 </td>
                                                                 <td style={{ textAlign: 'right', fontWeight: 700 }}>{comboPrice(c).toLocaleString()}원</td>
-                                                                <td style={{ textAlign: 'right' }}>{c.stock ?? 0}</td>
+                                                                <td style={{ textAlign: 'right' }}>{erpStock === null ? '-' : stockOf(c.erpCode)}</td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
