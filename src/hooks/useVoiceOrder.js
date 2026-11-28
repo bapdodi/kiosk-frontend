@@ -214,7 +214,6 @@ export function useVoiceOrder({ enabled, products, cart, onAdd, onQuantity, onSe
         const call = new LiveOrderSession({
             onState: setState, onError: message => { setError(message); session.current = null; },
             onTool: tool,
-            onActivity: () => window.dispatchEvent(new Event('kiosk-voice-activity')),
             onInputStatus: input.update,
             onTranscript: (role, text, finished) => {
                 draftConfirmation.current.transcript(role, text, finished);

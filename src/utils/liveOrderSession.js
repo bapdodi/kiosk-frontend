@@ -2,8 +2,8 @@ import { pcm16Level, microphoneWarning } from './voiceInputStatus';
 
 /** Owns every microphone/socket/audio resource for one customer; close() is safe during startup. */
 export class LiveOrderSession {
-    constructor({ onState, onTranscript, onTool, onActivity, onError, onTurnComplete, onFinish, onInputStatus }) {
-        Object.assign(this, { onState, onTranscript, onTool, onActivity, onError, onTurnComplete, onFinish, onInputStatus });
+    constructor({ onState, onTranscript, onTool, onError, onTurnComplete, onFinish, onInputStatus }) {
+        Object.assign(this, { onState, onTranscript, onTool, onError, onTurnComplete, onFinish, onInputStatus });
         this.closed = false;
         this.sources = new Set();
         this.seenCalls = new Map();
@@ -220,7 +220,6 @@ export class LiveOrderSession {
                     const text = transcript.text || '';
                     this.recordTranscript(role, text);
                     this.onTranscript(role, text, transcript.finished ?? true);
-                    this.onActivity();
                 }
             }
             for (const part of content?.modelTurn?.parts || []) {
@@ -255,7 +254,6 @@ export class LiveOrderSession {
                         }
                     }
                     if (!this.closed && responses.length) this.connection?.sendToolResponse({ functionResponses: responses });
-                    this.onActivity();
                 }).catch(() => this.fail('AI 응답을 처리하지 못했습니다. 주문 화면을 확인해 주세요.'));
             }
         } catch { this.fail('AI 응답을 처리하지 못했습니다. 담은 상품을 확인해 주세요.'); }
@@ -279,7 +277,6 @@ export class LiveOrderSession {
     sendText(text) {
         if (!this.closed && this.connection) {
             this.connection.sendClientContent({ turns: [{ role: 'user', parts: [{ text }] }], turnComplete: true });
-            this.onActivity();
         }
     }
     setMuted(muted) {

@@ -852,7 +852,6 @@ const ProductManagement = () => {
                                                 <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '4px' }}>
                                                     ERP {option.erpCode || '코드 없음'}
                                                     {option.priceC != null ? ` · ${option.priceC.toLocaleString()}원` : ''}
-                                                    {option.stock != null ? ` · 재고 ${option.stock}` : ''}
                                                 </div>
                                             </div>
                                             <button className="action-btn" style={{ color: '#2563eb' }} onClick={() => restoreOption(option)}>복원</button>

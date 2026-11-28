@@ -12,7 +12,6 @@ import OrderReview from './components/OrderReview';
 import CustomerSelect from './components/CustomerSelect';
 import OrderDone from './components/OrderDone';
 import AttractScreen from './components/AttractScreen';
-import IdleWarning from './components/IdleWarning';
 import ProductCard from './components/ProductCard';
 import { getChosungChar, getSearchMatchScore, getSimilarProducts, normalizeSearchText } from './utils/search';
 import { describeError, fetchJson } from './utils/apiError';
@@ -24,10 +23,6 @@ import { createRequestId } from './utils/requestId';
 
 // 관리자 화면(엑셀 라이브러리 포함)은 손님이 받을 이유가 없어 따로 받는다. AdminRoutes 주석 참고.
 const AdminRoutes = lazy(() => import('./components/admin/AdminRoutes'));
-
-// 키오스크를 이만큼 아무도 안 만지면 자리비움 안내를 띄우고, 안내 후에도(IDLE_WARNING_SECONDS)
-// 연장하지 않으면 장바구니를 비우고 대기 화면으로 돌아간다.
-const IDLE_WARNING_MS = 90 * 1000;
 
 // ... (KioskView & ProtectedRoute components)
 
@@ -786,10 +781,8 @@ function KioskView({
 
   // 대기 화면. 폰 손님에게는 띄우지 않는다(키오스크·PC 전용).
   const [isIdle, setIsIdle] = useState(true);
-  // 자리비움 안내를 띄우는 중인가. 이 동안은 터치가 들어와도 자동으로 연장되지 않고 "연장하기"만 이어 준다.
-  const [isIdleWarning, setIsIdleWarning] = useState(false);
 
-  // 한동안 아무 입력이 없으면 앞 손님이 담아 둔 것을 전부 지우고 처음으로 돌린다.
+  // 앞 손님이 담아 둔 것을 전부 지우고 처음으로 돌린다. 시간이 지났다고 저절로 돌리지는 않는다(손님 불편).
   const resetForNextCustomer = () => {
     goHome();
     setCart([]);
@@ -802,11 +795,8 @@ function KioskView({
     setOptionQuantities({});
     pendingOrderRequestId.current = null;
     pendingOrderPayload.current = null;
-    setIsIdleWarning(false);
     setIsIdle(true);
   };
-  const resetRef = useRef(resetForNextCustomer);
-  useEffect(() => { resetRef.current = resetForNextCustomer; });
 
   const handleGoHome = () => {
     if (cart.length > 0) {
@@ -821,22 +811,6 @@ function KioskView({
       resetForNextCustomer();
     }
   };
-
-  useEffect(() => {
-    if (isMobile || isIdle || isIdleWarning) return;
-    let timer;
-    const restart = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => setIsIdleWarning(true), IDLE_WARNING_MS);
-    };
-    const events = ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll', 'kiosk-voice-activity'];
-    events.forEach(e => window.addEventListener(e, restart, { capture: true, passive: true }));
-    restart();
-    return () => {
-      clearTimeout(timer);
-      events.forEach(e => window.removeEventListener(e, restart, { capture: true }));
-    };
-  }, [isMobile, isIdle, isIdleWarning]);
 
   const navigateVoiceScreen = (target, resetSearch = false) => {
     if (submittingOrderRef.current) throw new Error('주문을 접수 중입니다. 결과를 먼저 확인해 주세요.');
@@ -879,7 +853,7 @@ function KioskView({
   };
 
   const voice = useVoiceOrder({
-    enabled: !isIdleWarning,
+    enabled: true,
     products, cart, customers,
     ui: {
       navigate: navigateVoiceScreen,
@@ -1149,13 +1123,6 @@ function KioskView({
             setSelectingProduct(null);
             setIsCartOpen(true);
           }}
-        />
-      )}
-
-      {!isMobile && !isIdle && isIdleWarning && (
-        <IdleWarning
-          onExtend={() => setIsIdleWarning(false)}
-          onTimeout={() => resetRef.current()}
         />
       )}
 
